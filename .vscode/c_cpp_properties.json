@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "C:/Program Files (x86)/Windows Kits/10/Include/10.0.22621.0/ucrt",
+                "C:/Program Files (x86)/Windows Kits/10/Include/10.0.22621.0/um",
+                "C:/Program Files (x86)/Windows Kits/10/Include/10.0.22621.0/shared",
+                "${workspaceFolder}/packages/WinPixEventRuntime.1.0.240308001/Include/WinPixEventRuntime"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE"
+            ],
+            "windowsSdkVersion": "10.0.22621.0",
+            "intelliSenseMode": "windows-msvc-x64",
+            "compilerPath": "C:/Program Files (x86)/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.29.30133/bin/Hostx64/x64/cl.exe"
+        }
+    ],
+    "version": 4
+}
