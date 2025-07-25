@@ -21,6 +21,15 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="D3DUtil.cpp" />
+    <ClCompile Include="DX12CommandList.cpp" />
+    <ClCompile Include="DX12DescriptorHeap.cpp" />
+    <ClCompile Include="DX12Device.cpp" />
+    <ClCompile Include="DX12FrameBuffer.cpp" />
+    <ClCompile Include="DX12PSO.cpp" />
+    <ClCompile Include="DX12Resource.cpp" />
+    <ClCompile Include="DX12RootSignature.cpp" />
+    <ClCompile Include="DX12SwapChain.cpp" />
+    <ClCompile Include="DX12View.cpp" />
     <ClCompile Include="RenderDX12.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -28,6 +37,15 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3DUtil.h" />
+    <ClInclude Include="DX12CommandList.h" />
+    <ClInclude Include="DX12DescriptorHeap.h" />
+    <ClInclude Include="DX12Device.h" />
+    <ClInclude Include="DX12FrameBuffer.h" />
+    <ClInclude Include="DX12PSO.h" />
+    <ClInclude Include="DX12Resource.h" />
+    <ClInclude Include="DX12RootSignature.h" />
+    <ClInclude Include="DX12SwapChain.h" />
+    <ClInclude Include="DX12View.h" />
     <ClInclude Include="RenderDX12.h" />
     <ClInclude Include="stdafx.h" />
   </ItemGroup>

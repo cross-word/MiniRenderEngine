@@ -22,9 +22,10 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{a8d92315-8a82-4e8a-bb11-fc8309850966}</ProjectGuid>
+    <ProjectGuid>{F9E85C30-9082-46F7-ABBC-467E60656058}</ProjectGuid>
     <RootNamespace>MiniEgineCore</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.22621.0</WindowsTargetPlatformVersion>
+    <ProjectName>MiniEngineCore</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

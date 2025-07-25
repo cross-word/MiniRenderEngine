@@ -19,6 +19,7 @@
 #include <string_view>
 #include <vector>
 #include <array>
+#include <memory>
 #include <forward_list>
 #include <bitset>
 #include <type_traits>
@@ -41,3 +42,4 @@
 
 #include <wrl.h>
 #include <shellapi.h>
+#include "D3DUtil.h"

@@ -1,0 +1,132 @@
+#include "stdafx.h"
+#include "DX12View.h"
+
+DX12View::DX12View(DX12Resource* m_DX12Resource)
+{
+	this->m_DX12Resource = m_DX12Resource;
+}
+
+DX12View::DX12View(DX12ResourceBuffer* m_DX12ResourceBuffer)
+{
+	this->m_DX12Resource = m_DX12ResourceBuffer;
+}
+
+DX12View::DX12View(DX12ResourceTexture* m_DX12ResourceTexture)
+{
+	this->m_DX12Resource = m_DX12ResourceTexture;
+}
+
+DX12View::DX12View(
+    ID3D12Device* device,
+    EViewType viewType,
+    DX12Resource* DX12Resource,
+    D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle,
+    const D3D12_CONSTANT_BUFFER_VIEW_DESC* cbvDesc,
+    const D3D12_SHADER_RESOURCE_VIEW_DESC* srvDesc,
+    const D3D12_UNORDERED_ACCESS_VIEW_DESC* uavDesc,
+    const D3D12_DEPTH_STENCIL_VIEW_DESC* dsvDesc,
+    const D3D12_RENDER_TARGET_VIEW_DESC* rtvDesc)
+    : m_type(viewType), m_DX12Resource(DX12Resource), m_cpuHandle(cpuHandle)
+{
+    switch (viewType)
+    {
+    case EViewType::EConstantBufferView:
+        m_resourceView.m_constantBufferViewDesc = *cbvDesc;
+        device->CreateConstantBufferView(&m_resourceView.m_constantBufferViewDesc, m_cpuHandle);
+        break;
+    case EViewType::EShaderResourceView:
+        m_resourceView.m_shaderResourceViewDesc = *srvDesc;
+        device->CreateShaderResourceView(DX12Resource->GetResource(), &m_resourceView.m_shaderResourceViewDesc, m_cpuHandle);
+        break;
+    case EViewType::EUnorderedAccessView:
+        m_resourceView.m_unorederedAccessViewDesc = *uavDesc;
+        device->CreateUnorderedAccessView(DX12Resource->GetResource(), nullptr, &m_resourceView.m_unorederedAccessViewDesc, m_cpuHandle);
+        break;
+    case EViewType::EDepthStencilView:
+        m_resourceView.m_depthStencilViewDesc = *dsvDesc;
+        device->CreateDepthStencilView(DX12Resource->GetResource(), &m_resourceView.m_depthStencilViewDesc, m_cpuHandle);
+        break;
+    case EViewType::ERenderTargetView:
+        m_resourceView.m_renderTargetViewDesc = *rtvDesc;
+        device->CreateRenderTargetView(DX12Resource->GetResource(), &m_resourceView.m_renderTargetViewDesc, m_cpuHandle);
+        break;
+    default:
+        assert(false && "Wrong constructor for this view type");
+    }
+}
+
+//vertex view or index view
+DX12View::DX12View(
+    ID3D12Device* device,
+    EViewType viewType,
+    DX12Resource* DX12Resource,
+    D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle,
+    D3D12_GPU_VIRTUAL_ADDRESS bufferLocation,
+    UINT sizeInBytes,
+    UINT vertexStride,
+    DXGI_FORMAT indexFormat)
+    : m_type(viewType), m_DX12Resource(DX12Resource), m_cpuHandle(cpuHandle)
+{
+    switch (viewType)
+    {
+    case EViewType::EVertexView:
+        m_resourceView.m_vertexBufferView.BufferLocation = DX12Resource->GetResource()->GetGPUVirtualAddress();
+        m_resourceView.m_vertexBufferView.SizeInBytes = sizeInBytes;
+        m_resourceView.m_vertexBufferView.StrideInBytes = vertexStride;
+        break;
+    case EViewType::EIndexView:
+        m_resourceView.m_indexBufferView.BufferLocation = DX12Resource->GetResource()->GetGPUVirtualAddress();
+        m_resourceView.m_indexBufferView.SizeInBytes = sizeInBytes;
+        m_resourceView.m_indexBufferView.Format = indexFormat;
+        break;
+    default:
+        assert(false && "Wrong constructor for this view type");
+    }
+}
+
+DX12View::~DX12View()
+{
+
+}
+
+D3D12_VERTEX_BUFFER_VIEW* DX12View::GetVertexBufferView()
+{
+    assert(&(m_resourceView.m_vertexBufferView) != nullptr);
+    return &(m_resourceView.m_vertexBufferView);
+}
+
+D3D12_INDEX_BUFFER_VIEW* DX12View::GetIndexBufferView()
+{
+    assert(&(m_resourceView.m_indexBufferView) != nullptr);
+    return &(m_resourceView.m_indexBufferView);
+}
+
+D3D12_CONSTANT_BUFFER_VIEW_DESC* DX12View::GetConstantBufferViewDesc()
+{
+    assert(&(m_resourceView.m_constantBufferViewDesc) != nullptr);
+    return &(m_resourceView.m_constantBufferViewDesc);
+}
+
+D3D12_SHADER_RESOURCE_VIEW_DESC* DX12View::GetShaderResourceViewDesc()
+{
+    assert(&(m_resourceView.m_shaderResourceViewDesc) != nullptr);
+    return &(m_resourceView.m_shaderResourceViewDesc);
+}
+
+D3D12_UNORDERED_ACCESS_VIEW_DESC* DX12View::GetUnorderedAccessViewDesc()
+{
+    assert(&(m_resourceView.m_unorederedAccessViewDesc) != nullptr);
+    return &(m_resourceView.m_unorederedAccessViewDesc);
+}
+
+D3D12_DEPTH_STENCIL_VIEW_DESC* DX12View::GetDepthStencilViewDesc()
+{
+    assert(&(m_resourceView.m_depthStencilViewDesc) != nullptr);
+    return &(m_resourceView.m_depthStencilViewDesc);
+}
+
+D3D12_RENDER_TARGET_VIEW_DESC* DX12View::GetRenderTargetViewDesc()
+{
+    assert(&(m_resourceView.m_renderTargetViewDesc) != nullptr);
+    return &(m_resourceView.m_renderTargetViewDesc);
+}
