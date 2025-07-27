@@ -31,9 +31,15 @@ public:
     void Present(DX12Device* DX12Device);
 
 private:
+    void CreateRenderTargetsAndViews(DX12Device* DX12Device);
+    void CreateDepthStencilAndView(DX12Device* DX12Device);
+    void CreateMsaaRenderTargetAndView(DX12Device* DX12Device);
+    void CreateMsaaDepthStencilAndView(DX12Device* DX12Device);
+    void SetViewPortAndScissor(DX12Device* DX12Device);
+
     UINT m_currBackBufferIndex = 0;
     std::vector<std::unique_ptr<DX12Resource>> m_DX12RenderTargets;
-    std::vector<std::unique_ptr<DX12View>> m_DX12RenderTargetsView;
+    std::vector<std::unique_ptr<DX12View>> m_DX12RenderTargetViews;
     std::unique_ptr<DX12ResourceTexture> m_DX12DepthStencil;
     std::unique_ptr<DX12View> m_DX12DepthStencilView;
 

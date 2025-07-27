@@ -43,6 +43,18 @@ void DX12FrameBuffer::Resize(DX12Device* DX12Device)
 
 	m_currBackBufferIndex = 0;
 
+	CreateRenderTargetsAndViews(DX12Device);
+	CreateDepthStencilAndView(DX12Device);
+	CreateMsaaRenderTargetAndView(DX12Device);
+	CreateMsaaDepthStencilAndView(DX12Device);
+	SetViewPortAndScissor(DX12Device);
+
+	// Execute the resize commands.
+	DX12Device->GetDX12CommandList()->SubmitAndWait();
+}
+
+void DX12FrameBuffer::CreateRenderTargetsAndViews(DX12Device* DX12Device)
+{
 	//create RTV
 	CD3DX12_CPU_DESCRIPTOR_HANDLE RTVHeapHandle(
 		DX12Device->GetDX12RTVHeap()->GetDescHeap()->GetCPUDescriptorHandleForHeapStart()
@@ -52,14 +64,17 @@ void DX12FrameBuffer::Resize(DX12Device* DX12Device)
 		ThrowIfFailed(DX12Device->GetDX12SwapChain()->GetSwapChain()->GetBuffer(i, IID_PPV_ARGS(m_DX12RenderTargets[i]->GetAddressOf())));
 		m_DX12RenderTargets[i]->TransitionState(DX12Device->GetDX12CommandList()->GetCommandList(), D3D12_RESOURCE_STATE_PRESENT);
 		RTVHeapHandle.Offset(1, DX12Device->GetDX12RTVHeap()->GetDescSize());
-		m_DX12RenderTargetsView.push_back(std::make_unique<DX12View>(
+		m_DX12RenderTargetViews.push_back(std::make_unique<DX12View>(
 			DX12Device->GetDevice(),
 			EViewType::ERenderTargetView,
 			m_DX12RenderTargets[i].get(),
 			RTVHeapHandle
-			));
+		));
 	}
-	
+}
+
+void DX12FrameBuffer::CreateDepthStencilAndView(DX12Device* DX12Device)
+{
 	//create DSV
 	m_DX12DepthStencil->CreateDepthStencil(
 		DX12Device->GetDevice(),
@@ -78,8 +93,10 @@ void DX12FrameBuffer::Resize(DX12Device* DX12Device)
 		DSVHeapHandle
 	);
 	m_DX12DepthStencil->TransitionState(DX12Device->GetDX12CommandList()->GetCommandList(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
-	
-	//////////////////////////////////////////////////////////////////////
+}
+
+void DX12FrameBuffer::CreateMsaaRenderTargetAndView(DX12Device* DX12Device)
+{
 	//create MSAA RTV
 	m_DX12MsaaRenderTarget->CreateRenderTarget(
 		DX12Device->GetDevice(),
@@ -96,14 +113,17 @@ void DX12FrameBuffer::Resize(DX12Device* DX12Device)
 		DX12Device->GetDX12SwapChain()->GetSwapChainBufferCount(),
 		DX12Device->GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV)
 	);
-	
+
 	m_DX12MsaaRenderTargetView = std::make_unique<DX12View>(
 		DX12Device->GetDevice(),
 		EViewType::ERenderTargetView,
 		m_DX12MsaaRenderTarget.get(),
 		msaaRTVOffsetHandle
 	);
+}
 
+void DX12FrameBuffer::CreateMsaaDepthStencilAndView(DX12Device* DX12Device)
+{
 	//create MSAA DSV
 	m_DX12MsaaDepthStencil->CreateDepthStencil(
 		DX12Device->GetDevice(),
@@ -131,8 +151,10 @@ void DX12FrameBuffer::Resize(DX12Device* DX12Device)
 		msaaDSVOffsetHandle
 	);
 	m_DX12MsaaDepthStencil->TransitionState(DX12Device->GetDX12CommandList()->GetCommandList(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
-	//////////////////////////////////////////////////////////////////////
-	
+}
+
+void DX12FrameBuffer::SetViewPortAndScissor(DX12Device* DX12Device)
+{
 	// Update the viewport transform to cover the client area.
 	m_viewport.TopLeftX = 0;
 	m_viewport.TopLeftY = 0;
@@ -142,9 +164,6 @@ void DX12FrameBuffer::Resize(DX12Device* DX12Device)
 	m_viewport.MaxDepth = 1.0f;
 
 	m_scissor = { 0, 0, DX12Device->GetDX12SwapChain()->GetClientWidth(), DX12Device->GetDX12SwapChain()->GetClientHeight() };
-
-	// Execute the resize commands.
-	DX12Device->GetDX12CommandList()->SubmitAndWait();
 }
 
 void DX12FrameBuffer::BeginFrame(DX12Device* DX12Device)

@@ -48,10 +48,7 @@ void DX12ResourceBuffer::CreateConstantBuffer(ID3D12Device* device)
 
 void DX12ResourceBuffer::CreateVertexBuffer(ID3D12Device* device, std::span<const Vertex> vertices, ID3D12GraphicsCommandList* cmdList)
 {
-	// Note: using upload heaps to transfer static data like vert buffers is not 
-	// recommended. Every time the GPU needs it, the upload heap will be marshalled 
-	// over. Please read up on Default Heap usage. An upload heap is used here for 
-	// code simplicity and because there are very few verts to actually transfer.
+	// resourcse which do not change during frame upload to GPU in initial time!!
 
 	const UINT64 vertexSize = static_cast<UINT64>(vertices.size()) * sizeof(Vertex);
 	if (vertexSize == 0) { m_resource.Reset(); m_uploadBuffer.Reset(); return; }
@@ -66,6 +63,7 @@ void DX12ResourceBuffer::CreateVertexBuffer(ID3D12Device* device, std::span<cons
 		D3D12_RESOURCE_STATE_COMMON, //DEFAULT 버퍼의 초기 상태는 무조건 COMMON (작성해도 무시됨)
 		nullptr,
 		IID_PPV_ARGS(&m_resource)));
+	m_currentState = D3D12_RESOURCE_STATE_COMMON;
 	TransitionState(cmdList, D3D12_RESOURCE_STATE_COPY_DEST);
 
 	CD3DX12_HEAP_PROPERTIES heapProp2 = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
@@ -78,6 +76,7 @@ void DX12ResourceBuffer::CreateVertexBuffer(ID3D12Device* device, std::span<cons
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
 		IID_PPV_ARGS(m_uploadBuffer.ReleaseAndGetAddressOf())));
+	m_uploadBufferCurrentState = D3D12_RESOURCE_STATE_GENERIC_READ;
 
 	CopyAndUploadResource(m_uploadBuffer.Get(), vertices.data(), static_cast<size_t>(vertexSize));
 	cmdList->CopyBufferRegion(m_resource.Get(), 0, m_uploadBuffer.Get(), 0, vertexSize); //명령 실행까지 uploadbuffer 살아있어야함 => 어떻게 보장하게?
@@ -86,6 +85,8 @@ void DX12ResourceBuffer::CreateVertexBuffer(ID3D12Device* device, std::span<cons
 
 void DX12ResourceBuffer::CreateIndexBuffer(ID3D12Device* device, std::span<const uint32_t> indices, ID3D12GraphicsCommandList* cmdList)
 {
+	// resourcse which do not change during frame upload to GPU in initial time!!
+
 	const UINT64 indexSize = static_cast<UINT64>(indices.size()) * sizeof(uint32_t);
 	if (indexSize == 0) { m_resource.Reset(); m_uploadBuffer.Reset(); return; }
 
@@ -98,6 +99,7 @@ void DX12ResourceBuffer::CreateIndexBuffer(ID3D12Device* device, std::span<const
 		D3D12_RESOURCE_STATE_COMMON, //DEFAULT 버퍼의 초기 상태는 무조건 COMMON (작성해도 무시됨)
 		nullptr,
 		IID_PPV_ARGS(&m_resource)));
+	m_currentState = D3D12_RESOURCE_STATE_COMMON;
 	TransitionState(cmdList, D3D12_RESOURCE_STATE_COPY_DEST);
 
 	CD3DX12_HEAP_PROPERTIES heapProp2 = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
@@ -109,6 +111,7 @@ void DX12ResourceBuffer::CreateIndexBuffer(ID3D12Device* device, std::span<const
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
 		IID_PPV_ARGS(m_uploadBuffer.ReleaseAndGetAddressOf())));
+	m_uploadBufferCurrentState = D3D12_RESOURCE_STATE_GENERIC_READ;
 
 	CopyAndUploadResource(m_uploadBuffer.Get(), indices.data(), static_cast<size_t>(indexSize));
 	cmdList->CopyBufferRegion(m_resource.Get(), 0, m_uploadBuffer.Get(), 0, indexSize); //명령 실행까지 uploadbuffer 살아있어야함 => 어떻게 보장하게?

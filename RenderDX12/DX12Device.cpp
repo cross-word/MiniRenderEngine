@@ -35,47 +35,11 @@ void DX12Device::Initialize(HWND hWnd)
 			IID_PPV_ARGS(&m_device)
 		));
 	}
-
-	m_DX12SwapChain = std::make_unique<DX12SwapChain>();
-
 	InitDX12CommandList();
-	//create swap chain
-	m_DX12SwapChain = std::make_unique<DX12SwapChain>();
-	m_DX12SwapChain->InitializeMultiSample(m_device.Get());
-	m_DX12SwapChain->InitializeSwapChain(m_DX12CommandList.get(), m_factory.Get(), hWnd);
-
-	//create RTV/DSV descriptor heap
-
-	m_DX12RTVHeap = std::make_unique<DX12DescriptorHeap>();
-	m_DX12RTVHeap->Initialize(
-		m_device.Get(),
-		m_DX12SwapChain->GetSwapChainBufferCount()+1,
-		D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
-		D3D12_DESCRIPTOR_HEAP_FLAG_NONE
-	);
-
-	m_DX12DSVHeap = std::make_unique<DX12DescriptorHeap>();
-	m_DX12DSVHeap->Initialize(
-		m_device.Get(),
-		1+1,
-		D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
-		D3D12_DESCRIPTOR_HEAP_FLAG_NONE
-	);
-
-	////////////////////////////////
-	// MAKING DEVICE END
-	////////////////////////////////
-
-	//Constant Buffer Desc Heap
-	m_DX12CBVHeap = std::make_unique<DX12DescriptorHeap>();
-	m_DX12CBVHeap->Initialize(
-		m_device.Get(),
-		1,
-		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
-	);
-
-	//Init Root Signature
+	InitDX12SwapChain(hWnd);
+	InitDX12RTVDescHeap();
+	InitDX12DSVDescHeap();
+	InitDX12ConstantBufferDescHeap();
 	InitDX12RootSignature();
 	CreateDX12PSO();
 }
@@ -85,6 +49,47 @@ void DX12Device::InitDX12CommandList()
 	//create command queue/allocator/fence
 	m_DX12CommandList = std::make_unique<DX12CommandList>();
 	m_DX12CommandList->Initialize(m_device.Get());
+}
+
+void DX12Device::InitDX12SwapChain(HWND hWnd)
+{
+	//create swap chain
+	m_DX12SwapChain = std::make_unique<DX12SwapChain>();
+	m_DX12SwapChain->InitializeMultiSample(m_device.Get());
+	m_DX12SwapChain->InitializeSwapChain(m_DX12CommandList.get(), m_factory.Get(), hWnd);
+}
+
+void DX12Device::InitDX12RTVDescHeap()
+{
+	m_DX12RTVHeap = std::make_unique<DX12DescriptorHeap>();
+	m_DX12RTVHeap->Initialize(
+		m_device.Get(),
+		m_DX12SwapChain->GetSwapChainBufferCount() + 1,
+		D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
+		D3D12_DESCRIPTOR_HEAP_FLAG_NONE
+	);
+}
+
+void DX12Device::InitDX12DSVDescHeap()
+{
+	m_DX12DSVHeap = std::make_unique<DX12DescriptorHeap>();
+	m_DX12DSVHeap->Initialize(
+		m_device.Get(),
+		1 + 1,
+		D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
+		D3D12_DESCRIPTOR_HEAP_FLAG_NONE
+	);
+}
+
+void DX12Device::InitDX12ConstantBufferDescHeap()
+{
+	m_DX12CBVHeap = std::make_unique<DX12DescriptorHeap>();
+	m_DX12CBVHeap->Initialize(
+		m_device.Get(),
+		1,
+		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
+	);
 }
 
 void DX12Device::InitDX12RootSignature()
@@ -146,7 +151,6 @@ void DX12Device::InitShader()
 
 void DX12Device::PrepareInitialResource()
 {
-	CreateDX12PSO();
 	InitConstantBuffer();
 	InitVertex();//tmp func
 	InitIndex();//tmp func
@@ -214,6 +218,7 @@ void DX12Device::InitVertex()
 	m_DX12VertexBuffer->CreateVertexBuffer(m_device.Get(), vertices, m_DX12CommandList->GetCommandList());
 
 	m_DX12CommandList->SubmitAndWait(); //임시방편
+	m_DX12VertexBuffer->ResetUploadBuffer();
 
 	m_DX12VertexView = std::make_unique<DX12View>(
 		m_device.Get(),
@@ -266,6 +271,7 @@ void DX12Device::InitIndex()
 	m_DX12IndexBuffer->CreateIndexBuffer(m_device.Get(), indices, m_DX12CommandList->GetCommandList());
 
 	m_DX12CommandList->SubmitAndWait(); //임시방편
+	m_DX12IndexBuffer->ResetUploadBuffer();
 
 	m_DX12IndexView = std::make_unique<DX12View>(
 		m_device.Get(),

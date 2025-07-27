@@ -41,14 +41,16 @@ protected:
 
 class DX12ResourceBuffer : public DX12Resource
 {
-private:
-	ComPtr<ID3D12Resource> m_uploadBuffer;
 public:
+	void ResetUploadBuffer() noexcept { m_uploadBuffer.Reset(); m_uploadBufferCurrentState = D3D12_RESOURCE_STATE_COMMON; }
 	void CreateConstantBuffer(ID3D12Device* device);
     void CreateVertexBuffer(ID3D12Device* device, std::span<const Vertex> vertices, ID3D12GraphicsCommandList* cmdList);
 	void CreateIndexBuffer(ID3D12Device* device, std::span<const uint32_t> indices, ID3D12GraphicsCommandList* cmdList);
 	void CopyAndUploadResource(ID3D12Resource* uploadBuffer, const void* sourceAddress, size_t dataSize, CD3DX12_RANGE* readRange = nullptr);
 
+private:
+	ComPtr<ID3D12Resource> m_uploadBuffer;
+	D3D12_RESOURCE_STATES  m_uploadBufferCurrentState = D3D12_RESOURCE_STATE_COMMON; //default state common
 };
 
 class DX12ResourceTexture : public DX12Resource

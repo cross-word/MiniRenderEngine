@@ -50,6 +50,10 @@ public:
 	void UpdateConstantBuffer();
 private:
 	void InitDX12CommandList();
+	void InitDX12SwapChain(HWND hWnd);
+	void InitDX12RTVDescHeap();
+	void InitDX12DSVDescHeap();
+	void InitDX12ConstantBufferDescHeap();
 	void InitDX12RootSignature();
 	void InitShader(); //temp func
 	void InitConstantBuffer();
