@@ -22,7 +22,7 @@ class DX12CommandList
 public:
 	DX12CommandList();
 	~DX12CommandList();
-	void Initialize(ID3D12Device* m_device);
+	void Initialize(ID3D12Device* device);
 	inline ID3D12CommandAllocator* GetCommandAllocator() const noexcept { return m_commandAllocator.Get(); }
 	inline ID3D12GraphicsCommandList* GetCommandList() const noexcept { return m_commandList.Get(); }
 	inline ID3D12CommandQueue* GetCommandQueue() const noexcept { return m_commandQueue.Get(); }

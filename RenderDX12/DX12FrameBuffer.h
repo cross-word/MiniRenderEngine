@@ -24,11 +24,11 @@ public:
     ~DX12FrameBuffer();
 
 
-    void Initialize(DX12Device* m_DX12Device);
-    void Resize(DX12Device* m_DX12Device);
-    void BeginFrame(DX12Device* m_DX12Device);
-    void EndFrame(DX12Device* m_DX12Device);
-    void Present(DX12Device* m_DX12Device);
+    void Initialize(DX12Device* DX12Device);
+    void Resize(DX12Device* DX12Device);
+    void BeginFrame(DX12Device* DX12Device);
+    void EndFrame(DX12Device* DX12Device);
+    void Present(DX12Device* DX12Device);
 
 private:
     UINT m_currBackBufferIndex = 0;

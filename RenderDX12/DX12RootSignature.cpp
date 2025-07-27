@@ -12,7 +12,7 @@ DX12RootSignature::~DX12RootSignature()
 
 }
 
-void DX12RootSignature::Initialize(ID3D12Device* m_device)
+void DX12RootSignature::Initialize(ID3D12Device* device)
 {
 	// Root parameter can be a table, root descriptor or root constants.
 	CD3DX12_ROOT_PARAMETER slotRootParameter[1];
@@ -35,7 +35,7 @@ void DX12RootSignature::Initialize(ID3D12Device* m_device)
 		OutputDebugStringA((char*)errorBlob->GetBufferPointer());
 		errorBlob->Release();
 	}
-	ThrowIfFailed(m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_rootSignature)));
+	ThrowIfFailed(device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_rootSignature)));
 
 	return;
 }

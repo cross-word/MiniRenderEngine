@@ -12,21 +12,21 @@ DX12CommandList::~DX12CommandList()
 	FlushCommandQueue();
 }
 
-void DX12CommandList::Initialize(ID3D12Device* m_device)
+void DX12CommandList::Initialize(ID3D12Device* device)
 {
 	//create command queue/allocator
 	D3D12_COMMAND_QUEUE_DESC m_queueDesc = {};
 	m_queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 	m_queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
 
-	ThrowIfFailed(m_device->CreateCommandQueue(
+	ThrowIfFailed(device->CreateCommandQueue(
 		&m_queueDesc, IID_PPV_ARGS(&m_commandQueue)
 	));
-	ThrowIfFailed(m_device->CreateCommandAllocator(
+	ThrowIfFailed(device->CreateCommandAllocator(
 		D3D12_COMMAND_LIST_TYPE_DIRECT,
 		IID_PPV_ARGS(m_commandAllocator.GetAddressOf())
 	));
-	ThrowIfFailed(m_device->CreateCommandList(
+	ThrowIfFailed(device->CreateCommandList(
 		0,
 		D3D12_COMMAND_LIST_TYPE_DIRECT,
 		m_commandAllocator.Get(),
@@ -37,7 +37,7 @@ void DX12CommandList::Initialize(ID3D12Device* m_device)
 	m_commandList->Close();
 
 	//create fence
-	ThrowIfFailed(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
+	ThrowIfFailed(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
 
 	return;
 }

@@ -29,8 +29,8 @@ IMPORTANT MEMBER:
 2. m_FrameBuffer
 
 Variable Naming Rule in RenderDX12 project:
-1. d3d12 API variable -> m_~
-2. custom class DX12 valibale -> m_DX12~
+1. d3d12 API variable && member variable -> m_~
+2. custom class DX12 valibale && member variable -> m_DX12~
 */
 class RenderDX12_API RenderDX12
 {

@@ -18,9 +18,9 @@ class DX12View
 {
 public:
 
-	DX12View(DX12Resource* m_DX12Resource);
-	DX12View(DX12ResourceBuffer* m_DX12ResourceBuffer);
-	DX12View(DX12ResourceTexture* m_DX12ResourceTexture);
+	DX12View(DX12Resource* DX12Resource);
+	DX12View(DX12ResourceBuffer* DX12ResourceBuffer);
+	DX12View(DX12ResourceTexture* DX12ResourceTexture);
 	DX12View(
 		ID3D12Device* device,
 		EViewType viewType,

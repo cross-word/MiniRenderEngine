@@ -3,6 +3,7 @@
 #include <string>
 #include <wrl.h>
 #include <DirectXMath.h>
+#include "../MiniEngineCore/EngineConfig.h"
 using namespace DirectX;
 
 class DxException
@@ -55,7 +56,7 @@ enum class EViewType
 
 struct ObjectConstants
 {
-    float aspect = (float)800 / 600;
+    float aspect = (float)EngineConfig::DefaultWidth / EngineConfig::DefaultHeight;
     DirectX::XMMATRIX world = XMMatrixIdentity();
     DirectX::XMMATRIX view = XMMatrixLookAtLH({ 2,2,-5,1 }, { 0,0,0,1 }, { 0,1,0,0 });
     DirectX::XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, aspect, 0.1f, 100.0f);

@@ -41,7 +41,7 @@ void DX12Device::Initialize(HWND hWnd)
 	InitDX12CommandList();
 	//create swap chain
 	m_DX12SwapChain = std::make_unique<DX12SwapChain>();
-	m_DX12SwapChain->IntializeMultiSample(m_device.Get());
+	m_DX12SwapChain->InitializeMultiSample(m_device.Get());
 	m_DX12SwapChain->InitializeSwapChain(m_DX12CommandList.get(), m_factory.Get(), hWnd);
 
 	//create RTV/DSV descriptor heap

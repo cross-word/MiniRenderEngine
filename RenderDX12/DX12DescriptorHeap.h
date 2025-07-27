@@ -19,7 +19,7 @@ public:
 	~DX12DescriptorHeap();
 
 	void Initialize(
-		ID3D12Device* m_device,
+		ID3D12Device* device,
 		INT numDesc,
 		D3D12_DESCRIPTOR_HEAP_TYPE descHeapType,
 		D3D12_DESCRIPTOR_HEAP_FLAGS descFlag,

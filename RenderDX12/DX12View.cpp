@@ -1,19 +1,19 @@
 #include "stdafx.h"
 #include "DX12View.h"
 
-DX12View::DX12View(DX12Resource* m_DX12Resource)
+DX12View::DX12View(DX12Resource* DX12Resource)
 {
-	this->m_DX12Resource = m_DX12Resource;
+	this->m_DX12Resource = DX12Resource;
 }
 
-DX12View::DX12View(DX12ResourceBuffer* m_DX12ResourceBuffer)
+DX12View::DX12View(DX12ResourceBuffer* DX12ResourceBuffer)
 {
-	this->m_DX12Resource = m_DX12ResourceBuffer;
+	this->m_DX12Resource = DX12ResourceBuffer;
 }
 
-DX12View::DX12View(DX12ResourceTexture* m_DX12ResourceTexture)
+DX12View::DX12View(DX12ResourceTexture* DX12ResourceTexture)
 {
-	this->m_DX12Resource = m_DX12ResourceTexture;
+	this->m_DX12Resource = DX12ResourceTexture;
 }
 
 DX12View::DX12View(

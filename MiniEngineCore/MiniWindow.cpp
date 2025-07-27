@@ -13,6 +13,7 @@
 #include "MiniWindow.h"
 #include "resource.h"
 #include "MiniTimer.h"
+#include "EngineConfig.h"
 
 #include "../RenderDX12/RenderDX12.h"
 
@@ -44,7 +45,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
 
     MSG msg = {};
     bool running = true;
-    const LONGLONG targetFrameTime = 16666; // 16.666ms
     LONGLONG lastTime = win.m_timer.GetTime();
 
     while (running)
@@ -74,9 +74,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
         LONGLONG now = win.m_timer.GetTime();
         LONGLONG elapsed = now - lastTime;
 
-        while (elapsed < targetFrameTime)
+        while (elapsed < EngineConfig::TargetFrameTime)
         {
-            LONGLONG remain = targetFrameTime - elapsed;
+            LONGLONG remain = EngineConfig::TargetFrameTime - elapsed;
             if (remain > 2000)
             {
                 Sleep(1);

@@ -11,16 +11,16 @@ DX12SwapChain::~DX12SwapChain()
 
 }
 
-void DX12SwapChain::IntializeMultiSample(ID3D12Device* m_device)
+void DX12SwapChain::InitializeMultiSample(ID3D12Device* device)
 {
 	//set anti-aliasing
 //set x8 msaa
 	D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS m_sQualityLevels;
 	m_sQualityLevels.Format = m_renderTargetFormat;
-	m_sQualityLevels.SampleCount = 8;
+	m_sQualityLevels.SampleCount = m_8xMsaaSampleCount;
 	m_sQualityLevels.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
 	m_sQualityLevels.NumQualityLevels = 0;
-	ThrowIfFailed(m_device->CheckFeatureSupport(
+	ThrowIfFailed(device->CheckFeatureSupport(
 		D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
 		&m_sQualityLevels,
 		sizeof(m_sQualityLevels)
@@ -29,7 +29,7 @@ void DX12SwapChain::IntializeMultiSample(ID3D12Device* m_device)
 	assert(m_8xMsaaQuality > 0 && "Unexpected MSAA quality level.");
 }
 
-void DX12SwapChain::InitializeSwapChain(DX12CommandList* m_DX12CommandList, IDXGIFactory4* m_factory, HWND hWnd)
+void DX12SwapChain::InitializeSwapChain(DX12CommandList* DX12CommandList, IDXGIFactory4* factory, HWND hWnd)
 {
 	//create swap chain
 	m_swapChain.Reset();
@@ -48,8 +48,8 @@ void DX12SwapChain::InitializeSwapChain(DX12CommandList* m_DX12CommandList, IDXG
 	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
 	ComPtr<IDXGISwapChain1> tmpSwapChain;
-	ThrowIfFailed(m_factory->CreateSwapChainForHwnd(
-		m_DX12CommandList->GetCommandQueue(),
+	ThrowIfFailed(factory->CreateSwapChainForHwnd(
+		DX12CommandList->GetCommandQueue(),
 		hWnd, //window
 		&swapChainDesc,
 		nullptr,

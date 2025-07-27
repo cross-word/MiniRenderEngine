@@ -146,6 +146,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="EngineConfig.h" />
     <ClInclude Include="MiniTimer.h" />
     <ClInclude Include="MiniWindow.h" />
     <ClInclude Include="resource.h" />
