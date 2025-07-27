@@ -64,7 +64,7 @@ void DX12Device::InitDX12RTVDescHeap()
 	m_DX12RTVHeap = std::make_unique<DX12DescriptorHeap>();
 	m_DX12RTVHeap->Initialize(
 		m_device.Get(),
-		m_DX12SwapChain->GetSwapChainBufferCount() + 1,
+		m_DX12SwapChain->GetSwapChainBufferCount() + m_DX12SwapChain->GetSwapChainBufferCount(),
 		D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
 		D3D12_DESCRIPTOR_HEAP_FLAG_NONE
 	);
@@ -75,7 +75,7 @@ void DX12Device::InitDX12DSVDescHeap()
 	m_DX12DSVHeap = std::make_unique<DX12DescriptorHeap>();
 	m_DX12DSVHeap->Initialize(
 		m_device.Get(),
-		1 + 1,
+		m_DX12SwapChain->GetSwapChainBufferCount() + m_DX12SwapChain->GetSwapChainBufferCount(),
 		D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
 		D3D12_DESCRIPTOR_HEAP_FLAG_NONE
 	);

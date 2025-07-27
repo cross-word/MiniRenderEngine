@@ -3,6 +3,7 @@
 #include "DX12Device.h"
 #include "DX12Resource.h"
 #include "DX12View.h"
+#include "../MiniEngineCore/EngineConfig.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
@@ -38,18 +39,19 @@ private:
     void SetViewPortAndScissor(DX12Device* DX12Device);
 
     UINT m_currBackBufferIndex = 0;
-    std::vector<std::unique_ptr<DX12Resource>> m_DX12RenderTargets;
-    std::vector<std::unique_ptr<DX12View>> m_DX12RenderTargetViews;
-    std::unique_ptr<DX12ResourceTexture> m_DX12DepthStencil;
-    std::unique_ptr<DX12View> m_DX12DepthStencilView;
+    std::unique_ptr<DX12Resource> m_DX12RenderTargets[EngineConfig::SwapChainBufferCount];
+    std::unique_ptr<DX12View> m_DX12RenderTargetViews[EngineConfig::SwapChainBufferCount];
+    std::unique_ptr<DX12ResourceTexture> m_DX12DepthStencils[EngineConfig::SwapChainBufferCount];
+    std::unique_ptr<DX12View> m_DX12DepthStencilViews[EngineConfig::SwapChainBufferCount];
+    
+    //There are same amount of Msaa objects as the swapchain count.
+    std::unique_ptr<DX12ResourceTexture> m_DX12MsaaRenderTargets[EngineConfig::SwapChainBufferCount];
+    std::unique_ptr<DX12View> m_DX12MsaaRenderTargetViews[EngineConfig::SwapChainBufferCount];
+    std::unique_ptr<DX12ResourceTexture> m_DX12MsaaDepthStencils[EngineConfig::SwapChainBufferCount];
+    std::unique_ptr<DX12View> m_DX12MsaaDepthStencilViews[EngineConfig::SwapChainBufferCount];
 
-    std::unique_ptr<DX12ResourceTexture> m_DX12MsaaRenderTarget;
-    std::unique_ptr<DX12View> m_DX12MsaaRenderTargetView;
-    std::unique_ptr<DX12ResourceTexture> m_DX12MsaaDepthStencil;
-    std::unique_ptr<DX12View> m_DX12MsaaDepthStencilView;
-
-    D3D12_CPU_DESCRIPTOR_HANDLE msaaDSVOffsetHandle = {};
-    D3D12_CPU_DESCRIPTOR_HANDLE msaaRTVOffsetHandle = {};
+    CD3DX12_CPU_DESCRIPTOR_HANDLE msaaDSVOffsetHandle[EngineConfig::SwapChainBufferCount];
+    CD3DX12_CPU_DESCRIPTOR_HANDLE msaaRTVOffsetHandle[EngineConfig::SwapChainBufferCount];
 
     D3D12_VIEWPORT m_viewport{};
     D3D12_RECT     m_scissor{};
