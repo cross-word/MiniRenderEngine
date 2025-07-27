@@ -33,9 +33,18 @@ public:
 private:
     UINT m_currBackBufferIndex = 0;
     std::vector<std::unique_ptr<DX12Resource>> m_DX12RenderTargets;
+    std::vector<std::unique_ptr<DX12View>> m_DX12RenderTargetsView;
     std::unique_ptr<DX12ResourceTexture> m_DX12DepthStencil;
+    std::unique_ptr<DX12View> m_DX12DepthStencilView;
+
+    std::unique_ptr<DX12ResourceTexture> m_DX12MsaaRenderTarget;
+    std::unique_ptr<DX12View> m_DX12MsaaRenderTargetView;
+    std::unique_ptr<DX12ResourceTexture> m_DX12MsaaDepthStencil;
+    std::unique_ptr<DX12View> m_DX12MsaaDepthStencilView;
+
+    D3D12_CPU_DESCRIPTOR_HANDLE msaaDSVOffsetHandle = {};
+    D3D12_CPU_DESCRIPTOR_HANDLE msaaRTVOffsetHandle = {};
 
     D3D12_VIEWPORT m_viewport{};
     D3D12_RECT     m_scissor{};
-    DXGI_FORMAT m_depthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 };

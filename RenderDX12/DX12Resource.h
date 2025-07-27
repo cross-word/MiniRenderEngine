@@ -1,5 +1,7 @@
 #pragma once
 
+#include <span>
+
 #include "stdafx.h"
 #include "DX12CommandList.h"
 
@@ -28,7 +30,7 @@ public:
 	D3D12_GPU_VIRTUAL_ADDRESS GetGPUVAdress() const noexcept { return m_resource->GetGPUVirtualAddress(); }
 	D3D12_RESOURCE_STATES GetCurrentState() const noexcept { return m_currentState; }
 
-	void TransitionState(ID3D12GraphicsCommandList* m_commandList, D3D12_RESOURCE_STATES newState);
+	void TransitionState(ID3D12GraphicsCommandList* m_commandList, D3D12_RESOURCE_STATES newState); //실제 상태전이는 커맨드 실행시에 전이됨, 수정해야함
 
 	void Reset() noexcept { m_resource.Reset(); m_currentState = D3D12_RESOURCE_STATE_COMMON; }
 	ID3D12Resource** GetAddressOf() noexcept { return m_resource.GetAddressOf(); }
@@ -40,12 +42,12 @@ protected:
 class DX12ResourceBuffer : public DX12Resource
 {
 private:
-
+	ComPtr<ID3D12Resource> m_uploadBuffer;
 public:
 	void CreateConstantBuffer(ID3D12Device* m_device);
-    void CreateVertexBuffer(ID3D12Device* m_device, Vertex* vertex, UINT vertexBufferSize);
-    void UploadConstantBuffer(void* sourceAddress, size_t DataSize);
-    void UploadConstantBuffer(CD3DX12_RANGE readRange, void* sourceAddress, size_t dataSize);
+    void CreateVertexBuffer(ID3D12Device* m_device, std::span<const Vertex> vertices, ID3D12GraphicsCommandList* m_cmdList);
+	void CreateIndexBuffer(ID3D12Device* m_device, std::span<const uint32_t> indices, ID3D12GraphicsCommandList* m_cmdList);
+	void CopyAndUploadResource(ID3D12Resource* uploadBuffer, const void* sourceAddress, size_t dataSize, CD3DX12_RANGE* readRange = nullptr);
 
 };
 
@@ -58,7 +60,13 @@ public:
 		ID3D12Device* m_device,
 		UINT clientWidth,
 		UINT clientHeight,
-		UINT sampleDescCount,
-		UINT sampleDescQuality,
+		UINT multiSampleDescCount,
 		DXGI_FORMAT m_depthStencilFormat);
+
+	void CreateRenderTarget(
+		ID3D12Device* m_device,
+		UINT clientWidth,
+		UINT clientHeight,
+		UINT multiSampleDescCount,
+		DXGI_FORMAT m_renderTargetFormat);
 };

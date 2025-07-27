@@ -30,14 +30,20 @@ public:
 	void Initialize(HWND hWnd);
 
 	inline ID3D12Device* GetDevice() const noexcept { return m_device.Get(); }
-	inline DX12DescriptorHeap* GetDX12RTVHeap() const noexcept { return m_DX12rtvHeap.get(); }
-	inline DX12DescriptorHeap* GetDX12CBVHeap() const noexcept { return m_DX12cbvHeap.get(); }
-	inline DX12DescriptorHeap* GetDX12DSVHeap() const noexcept { return m_DX12dsvHeap.get(); }
+	inline DX12DescriptorHeap* GetDX12RTVHeap() const noexcept { return m_DX12RTVHeap.get(); }
+	inline DX12DescriptorHeap* GetDX12CBVHeap() const noexcept { return m_DX12CBVHeap.get(); }
+	inline DX12DescriptorHeap* GetDX12DSVHeap() const noexcept { return m_DX12DSVHeap.get(); }
 	inline DX12CommandList* GetDX12CommandList() const noexcept { return m_DX12CommandList.get(); }
 	inline DX12RootSignature* GetDX12RootSignature() const noexcept { return m_DX12RootSignature.get(); }
 	inline DX12PSO* GetDX12PSO() const noexcept { return m_DX12PSO.get(); }
-	inline DX12View* GetDX12VertexBufferView() const { return m_DX12vertexView.get(); }
-	inline DX12SwapChain* GetDX12SwapChain() const noexcept { return m_DX12swapChain.get(); }
+	inline DX12View* GetDX12VertexBufferView() const { return m_DX12VertexView.get(); }
+	inline DX12View* GetDX12IndexBufferView() const { return m_DX12IndexView.get(); }
+	inline DX12SwapChain* GetDX12SwapChain() const noexcept { return m_DX12SwapChain.get(); }
+	inline D3D12_CPU_DESCRIPTOR_HANDLE GetOffsetCPUHandle(D3D12_CPU_DESCRIPTOR_HANDLE start, UINT index, UINT handleIncrementSize)
+	{
+		start.ptr += SIZE_T(index) * handleIncrementSize;
+		return start;
+	}
 
 	void CreateDX12PSO();
 	void PrepareInitialResource();
@@ -48,6 +54,7 @@ private:
 	void InitShader(); //temp func
 	void InitConstantBuffer();
 	void InitVertex();
+	void InitIndex();
 private:
 	ComPtr<IDXGIFactory4> m_factory;
 	ComPtr<ID3D12Device> m_device;
@@ -56,20 +63,21 @@ private:
 	std::unique_ptr<DX12PSO> m_DX12PSO;
 
 	//initial resources
-	std::unique_ptr<DX12ResourceBuffer> m_DX12constantBuffer;
-	std::unique_ptr<DX12ResourceBuffer> m_DX12vertexBuffer;
-	std::unique_ptr<DX12SwapChain> m_DX12swapChain;
+	std::unique_ptr<DX12ResourceBuffer> m_DX12ConstantBuffer;
+	std::unique_ptr<DX12View> m_DX12ConstantBufferView;
+	std::unique_ptr<DX12ResourceBuffer> m_DX12VertexBuffer;
+	std::unique_ptr<DX12View> m_DX12VertexView;
+	std::unique_ptr<DX12ResourceBuffer> m_DX12IndexBuffer;
+	std::unique_ptr<DX12View> m_DX12IndexView;
+	DXGI_FORMAT m_indexFormat = DXGI_FORMAT_R32_UINT;
+	std::unique_ptr<DX12SwapChain> m_DX12SwapChain;
 
-	std::unique_ptr<DX12DescriptorHeap> m_DX12rtvHeap;
-	std::unique_ptr<DX12DescriptorHeap> m_DX12cbvHeap;
-	std::unique_ptr<DX12DescriptorHeap> m_DX12dsvHeap;
-
-	std::unique_ptr<DX12View> m_DX12constantBufferView;
-	std::unique_ptr<DX12View> m_DX12vertexView;
+	std::unique_ptr<DX12DescriptorHeap> m_DX12RTVHeap;
+	std::unique_ptr<DX12DescriptorHeap> m_DX12CBVHeap;
+	std::unique_ptr<DX12DescriptorHeap> m_DX12DSVHeap;
 
 	///tmp variable
 	ComPtr<ID3DBlob> m_vertexShader = nullptr;
 	ComPtr<ID3DBlob> m_pixelShader = nullptr;
 	std::vector<D3D12_INPUT_ELEMENT_DESC> m_inputLayout;
-
 };

@@ -33,6 +33,7 @@ public:
 	void ResetList();
 	void ResetList(ID3D12PipelineState* pInitiaState);
 	void ExecuteCommandLists(UINT NumCommandLists, ID3D12CommandList** ppCommandLists);
+	void SubmitAndWait();
 private:
 	ComPtr<ID3D12CommandAllocator> m_commandAllocator;
 	ComPtr<ID3D12GraphicsCommandList> m_commandList;

@@ -13,21 +13,6 @@ DX12Device::~DX12Device()
 void DX12Device::Initialize(HWND hWnd)
 {
 	assert(hWnd);
-	UINT dxgiFactoryFlags = 0;
-
-	//enable debug layer
-#if defined(DEBUG) || defined(_DEBUG)
-	{
-		ComPtr<ID3D12Debug> debugController;
-		if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
-		{
-			debugController->EnableDebugLayer();
-
-			// Enable additional debug layers.
-			dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
-		}
-	}
-#endif
 
 	// create hardware device
 	// make hardware adaptor if it can. if not, make warp adapator.
@@ -51,28 +36,28 @@ void DX12Device::Initialize(HWND hWnd)
 		));
 	}
 
-	m_DX12swapChain = std::make_unique<DX12SwapChain>();
+	m_DX12SwapChain = std::make_unique<DX12SwapChain>();
 
 	InitDX12CommandList();
 	//create swap chain
-	m_DX12swapChain = std::make_unique<DX12SwapChain>();
-	m_DX12swapChain->IntializeMultiSample(m_device.Get());
-	m_DX12swapChain->InitializeSwapChain(m_DX12CommandList.get(), m_factory.Get(), hWnd);
+	m_DX12SwapChain = std::make_unique<DX12SwapChain>();
+	m_DX12SwapChain->IntializeMultiSample(m_device.Get());
+	m_DX12SwapChain->InitializeSwapChain(m_DX12CommandList.get(), m_factory.Get(), hWnd);
 
 	//create RTV/DSV descriptor heap
 
-	m_DX12rtvHeap = std::make_unique<DX12DescriptorHeap>();
-	m_DX12rtvHeap->Initialize(
+	m_DX12RTVHeap = std::make_unique<DX12DescriptorHeap>();
+	m_DX12RTVHeap->Initialize(
 		m_device.Get(),
-		m_DX12swapChain->GetSwapChainBufferCount(),
+		m_DX12SwapChain->GetSwapChainBufferCount()+1,
 		D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
 		D3D12_DESCRIPTOR_HEAP_FLAG_NONE
 	);
 
-	m_DX12dsvHeap = std::make_unique<DX12DescriptorHeap>();
-	m_DX12dsvHeap->Initialize(
+	m_DX12DSVHeap = std::make_unique<DX12DescriptorHeap>();
+	m_DX12DSVHeap->Initialize(
 		m_device.Get(),
-		1,
+		1+1,
 		D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
 		D3D12_DESCRIPTOR_HEAP_FLAG_NONE
 	);
@@ -82,8 +67,8 @@ void DX12Device::Initialize(HWND hWnd)
 	////////////////////////////////
 
 	//Constant Buffer Desc Heap
-	m_DX12cbvHeap = std::make_unique<DX12DescriptorHeap>();
-	m_DX12cbvHeap->Initialize(
+	m_DX12CBVHeap = std::make_unique<DX12DescriptorHeap>();
+	m_DX12CBVHeap->Initialize(
 		m_device.Get(),
 		1,
 		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
@@ -112,7 +97,13 @@ void DX12Device::CreateDX12PSO()
 {
 	m_DX12PSO = std::make_unique<DX12PSO>();
 	InitShader();
-	m_DX12PSO->CreatePSO(m_device.Get(), m_inputLayout, m_DX12RootSignature->GetRootSignature(), m_vertexShader.Get(), m_pixelShader.Get());
+	m_DX12PSO->CreatePSO(
+		GetDevice(),
+		m_inputLayout,
+		m_DX12RootSignature->GetRootSignature(),
+		m_DX12SwapChain->GetRenderTargetFormat(),
+		m_vertexShader.Get(),
+		m_pixelShader.Get());
 }
 
 void DX12Device::InitShader()
@@ -158,30 +149,31 @@ void DX12Device::PrepareInitialResource()
 	CreateDX12PSO();
 	InitConstantBuffer();
 	InitVertex();//tmp func
+	InitIndex();//tmp func
 }
 
 void DX12Device::InitConstantBuffer()
 {
 	//create constant buffer resource
-	m_DX12constantBuffer = std::make_unique<DX12ResourceBuffer>();
-	m_DX12constantBuffer->CreateConstantBuffer(m_device.Get());
+	m_DX12ConstantBuffer = std::make_unique<DX12ResourceBuffer>();
+	m_DX12ConstantBuffer->CreateConstantBuffer(m_device.Get());
 
 	//allocate cbv
-	D3D12_GPU_VIRTUAL_ADDRESS cbAddress = m_DX12constantBuffer->GetResource()->GetGPUVirtualAddress();
-	UINT elementByteSize = CalcConstantBufferByteSize(sizeof(ObjectConstants));
+	D3D12_GPU_VIRTUAL_ADDRESS cbAddress = m_DX12ConstantBuffer->GetResource()->GetGPUVirtualAddress();
+	UINT elementByteSize = CalcConstantBufferByteSize(sizeof(ObjectConstants::WorldViewProj));
 
 	int CBufIndex = 0;
 	cbAddress += CBufIndex * elementByteSize;
 
 	D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
 	cbvDesc.BufferLocation = cbAddress;
-	cbvDesc.SizeInBytes = CalcConstantBufferByteSize(sizeof(ObjectConstants));
+	cbvDesc.SizeInBytes = CalcConstantBufferByteSize(sizeof(ObjectConstants::WorldViewProj));
 
-	m_DX12constantBufferView = std::make_unique<DX12View>(
+	m_DX12ConstantBufferView = std::make_unique<DX12View>(
 		m_device.Get(),
 		EViewType::EConstantBufferView,
-		m_DX12constantBuffer.get(),
-		m_DX12cbvHeap->GetDescHeap()->GetCPUDescriptorHandleForHeapStart(),
+		m_DX12ConstantBuffer.get(),
+		m_DX12CBVHeap->GetDescHeap()->GetCPUDescriptorHandleForHeapStart(),
 		&cbvDesc
 	);
 }
@@ -190,38 +182,99 @@ void DX12Device::UpdateConstantBuffer()
 {
 	//copy constant value to constant buffer (temp code)
 	XMFLOAT4X4 objConstants;
-	XMStoreFloat4x4(&objConstants, XMMatrixIdentity());
-	m_DX12constantBuffer->UploadConstantBuffer(&objConstants, sizeof(objConstants));
+	ObjectConstants obj;
+	XMStoreFloat4x4(&objConstants, obj.WorldViewProj);
+	m_DX12ConstantBuffer->CopyAndUploadResource(m_DX12ConstantBuffer->GetResource(), &objConstants, sizeof(ObjectConstants::WorldViewProj));
 }
 
-//Should recieve vertex(or verteces)
+//Should receive vertex(or verteces)
 void DX12Device::InitVertex()
 {
-	Vertex triangleVertices[] =
+
+	std::array<Vertex, 8> vertices =
 	{
-		{ { 0.0f, 0.25f , 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
-		{ { 0.25f, -0.25f , 0.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },
-		{ { -0.25f, -0.25f , 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }
+		Vertex({ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::White) }),
+		Vertex({ XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Black) }),
+		Vertex({ XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Red) }),
+		Vertex({ XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::Green) }),
+		Vertex({ XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Blue) }),
+		Vertex({ XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Yellow) }),
+		Vertex({ XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Cyan) }),
+		Vertex({ XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Magenta) })
 	};
+
 	D3D12_CPU_DESCRIPTOR_HANDLE nullHandle = {};
-	const UINT vertexBufferSize = sizeof(triangleVertices);
+	const UINT vertexBufferSize = (UINT)vertices.size() * sizeof(Vertex);
 	const UINT vertexStride = sizeof(Vertex);
-	m_DX12vertexBuffer = std::make_unique<DX12ResourceBuffer>();
-	//make vertex res
-	//make vertex view
-	m_DX12vertexBuffer->CreateVertexBuffer(m_device.Get(), triangleVertices, vertexBufferSize);
 
-	// Copy the triangle data to the vertex buffer.(tmp code)
-	CD3DX12_RANGE readRange(0, 0);
-	m_DX12vertexBuffer->UploadConstantBuffer(readRange, triangleVertices, vertexBufferSize);
+	m_DX12CommandList->ResetAllocator();
+	m_DX12CommandList->ResetList();
 
-	m_DX12vertexView = std::make_unique<DX12View>(
+	m_DX12VertexBuffer = std::make_unique<DX12ResourceBuffer>();
+	m_DX12VertexBuffer->CreateVertexBuffer(m_device.Get(), vertices, m_DX12CommandList->GetCommandList());
+
+	m_DX12CommandList->SubmitAndWait(); //임시방편
+
+	m_DX12VertexView = std::make_unique<DX12View>(
 		m_device.Get(),
 		EViewType::EVertexView,
-		m_DX12vertexBuffer.get(),
+		m_DX12VertexBuffer.get(),
 		nullHandle,
-		m_DX12vertexBuffer.get()->GetGPUVAdress(),
+		m_DX12VertexBuffer.get()->GetGPUVAdress(),
 		vertexBufferSize,
 		vertexStride
+	);
+}
+
+//should receive index
+void DX12Device::InitIndex()
+{
+	std::array<std::uint32_t, 36> indices =
+	{
+		// front face
+		0, 1, 2,
+		0, 2, 3,
+
+		// back face
+		4, 6, 5,
+		4, 7, 6,
+
+		// left face
+		4, 5, 1,
+		4, 1, 0,
+
+		// right face
+		3, 2, 6,
+		3, 6, 7,
+
+		// top face
+		1, 5, 6,
+		1, 6, 2,
+
+		// bottom face
+		4, 0, 3,
+		4, 3, 7
+	};
+
+	D3D12_CPU_DESCRIPTOR_HANDLE nullHandle = {};
+	const UINT indexBufferSize = (UINT)indices.size() * sizeof(uint32_t);
+
+	m_DX12CommandList->ResetAllocator();
+	m_DX12CommandList->ResetList();
+
+	m_DX12IndexBuffer = std::make_unique<DX12ResourceBuffer>();
+	m_DX12IndexBuffer->CreateIndexBuffer(m_device.Get(), indices, m_DX12CommandList->GetCommandList());
+
+	m_DX12CommandList->SubmitAndWait(); //임시방편
+
+	m_DX12IndexView = std::make_unique<DX12View>(
+		m_device.Get(),
+		EViewType::EIndexView,
+		m_DX12IndexBuffer.get(),
+		nullHandle,
+		m_DX12IndexBuffer.get()->GetGPUVAdress(),
+		indexBufferSize,
+		0U,
+		m_indexFormat
 	);
 }

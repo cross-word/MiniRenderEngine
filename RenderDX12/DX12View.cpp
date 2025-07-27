@@ -43,12 +43,26 @@ DX12View::DX12View(
         device->CreateUnorderedAccessView(DX12Resource->GetResource(), nullptr, &m_resourceView.m_unorederedAccessViewDesc, m_cpuHandle);
         break;
     case EViewType::EDepthStencilView:
-        m_resourceView.m_depthStencilViewDesc = *dsvDesc;
-        device->CreateDepthStencilView(DX12Resource->GetResource(), &m_resourceView.m_depthStencilViewDesc, m_cpuHandle);
+        if (rtvDesc != nullptr)
+        {
+            m_resourceView.m_depthStencilViewDesc = *dsvDesc;
+            device->CreateDepthStencilView(DX12Resource->GetResource(), &m_resourceView.m_depthStencilViewDesc, m_cpuHandle);
+        }
+        else
+        {
+            device->CreateDepthStencilView(DX12Resource->GetResource(), nullptr, m_cpuHandle);
+        }
         break;
     case EViewType::ERenderTargetView:
-        m_resourceView.m_renderTargetViewDesc = *rtvDesc;
-        device->CreateRenderTargetView(DX12Resource->GetResource(), &m_resourceView.m_renderTargetViewDesc, m_cpuHandle);
+        if (rtvDesc != nullptr)
+        {
+            m_resourceView.m_renderTargetViewDesc = *rtvDesc;
+            device->CreateRenderTargetView(DX12Resource->GetResource(), &m_resourceView.m_renderTargetViewDesc, m_cpuHandle);
+        }
+        else 
+        {
+            device->CreateRenderTargetView(DX12Resource->GetResource(), nullptr, m_cpuHandle);
+        }
         break;
     default:
         assert(false && "Wrong constructor for this view type");

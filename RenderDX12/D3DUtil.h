@@ -52,14 +52,14 @@ enum class EViewType
     ERenderTargetView
 };
 
+
 struct ObjectConstants
 {
-    DirectX::XMFLOAT4X4 WorldViewProj = {
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1
-    };
+    float aspect = (float)800 / 600;
+    DirectX::XMMATRIX world = XMMatrixIdentity();
+    DirectX::XMMATRIX view = XMMatrixLookAtLH({ 2,2,-5,1 }, { 0,0,0,1 }, { 0,1,0,0 });
+    DirectX::XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, aspect, 0.1f, 100.0f);
+    DirectX::XMMATRIX WorldViewProj = XMMatrixTranspose(world * view * proj);
 };
 
 static UINT CalcConstantBufferByteSize(UINT byteSize)

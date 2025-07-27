@@ -90,3 +90,11 @@ void DX12CommandList::ExecuteCommandLists(UINT NumCommandLists, ID3D12CommandLis
 
 	return;
 }
+
+void DX12CommandList::SubmitAndWait()
+{
+	m_commandList->Close();
+	ID3D12CommandList* cmdsLists[] = { m_commandList.Get()};
+	m_commandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
+	FlushCommandQueue();
+}

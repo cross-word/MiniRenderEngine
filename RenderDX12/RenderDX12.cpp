@@ -47,9 +47,6 @@ void RenderDX12::OnResize()
 	m_DX12Device.GetDX12CommandList()->ResetList();
 
 	m_DX12FrameBuffer.Resize(&m_DX12Device);
-
-	// Wait until resize is complete.
-	m_DX12Device.GetDX12CommandList()->FlushCommandQueue();
 }
 
 void RenderDX12::Draw()
@@ -67,10 +64,9 @@ void RenderDX12::Draw()
 
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetVertexBuffers(0, 1, m_DX12Device.GetDX12VertexBufferView()->GetVertexBufferView());
-	m_DX12Device.GetDX12CommandList()->GetCommandList()->DrawInstanced(3, 1, 0, 0);
+	m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetIndexBuffer(m_DX12Device.GetDX12IndexBufferView()->GetIndexBufferView());
+	m_DX12Device.GetDX12CommandList()->GetCommandList()->DrawIndexedInstanced(36, 1, 0, 0, 0);
 
 	m_DX12FrameBuffer.EndFrame(&m_DX12Device);
-
 	m_DX12FrameBuffer.Present(&m_DX12Device);
-	m_DX12Device.GetDX12CommandList()->FlushCommandQueue();
 }

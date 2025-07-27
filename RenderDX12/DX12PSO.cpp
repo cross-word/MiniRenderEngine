@@ -11,7 +11,13 @@ DX12PSO::~DX12PSO()
 
 }
 
-void DX12PSO::CreatePSO(ID3D12Device* m_device, const std::vector<D3D12_INPUT_ELEMENT_DESC>& m_inputLayout, ID3D12RootSignature* m_rootSignature, ID3DBlob* m_vertexShader, ID3DBlob* m_pixelShader)
+void DX12PSO::CreatePSO(
+	ID3D12Device* m_device,
+	const std::vector<D3D12_INPUT_ELEMENT_DESC>& m_inputLayout,
+	ID3D12RootSignature* m_rootSignature,
+	DXGI_FORMAT m_renderTargetFormat,
+	ID3DBlob* m_vertexShader,
+	ID3DBlob* m_pixelShader)
 {
 	// Describe and create the graphics pipeline state object (PSO).
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
@@ -26,8 +32,10 @@ void DX12PSO::CreatePSO(ID3D12Device* m_device, const std::vector<D3D12_INPUT_EL
 	psoDesc.SampleMask = UINT_MAX;
 	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	psoDesc.NumRenderTargets = 1;
-	psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-	psoDesc.SampleDesc.Count = 1;
+	psoDesc.RTVFormats[0] = m_renderTargetFormat;
+	psoDesc.SampleDesc.Count = 8;
+	psoDesc.SampleDesc.Quality = 0;
+	psoDesc.RasterizerState.MultisampleEnable = TRUE;
 
 	// allocate PSO to vector
 	ComPtr<ID3D12PipelineState> tmpPSO;
