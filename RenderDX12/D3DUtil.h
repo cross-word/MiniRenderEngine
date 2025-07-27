@@ -36,12 +36,6 @@ inline std::wstring AnsiToWString(const std::string& str)
 }
 #endif
 
-struct Vertex
-{
-    XMFLOAT3 pos;
-    XMFLOAT4 color;
-};
-
 enum class EViewType
 {
     EVertexView,

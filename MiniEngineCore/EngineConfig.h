@@ -9,4 +9,6 @@ struct EngineConfig
     static constexpr UINT MsaaSampleCount = 8;
     static constexpr LONGLONG TargetFrameTime = 16666; // 16.666ms
     static constexpr UINT SwapChainBufferCount = 2;
+    static inline constexpr const wchar_t* ModelObjFilePath = LR"(..\Models\Cube.obj)"; // tmp
+    static inline constexpr const wchar_t* ShaderFilePath = LR"(..\\Shaders\\color.hlsl)"; // tmp
 };

@@ -4,6 +4,7 @@
 
 #include "stdafx.h"
 #include "DX12CommandList.h"
+#include "../FileLoader/SimpleLoader.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;

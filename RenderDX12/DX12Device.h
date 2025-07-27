@@ -57,8 +57,7 @@ private:
 	void InitDX12RootSignature();
 	void InitShader(); //temp func
 	void InitConstantBuffer();
-	void InitVertex();
-	void InitIndex();
+	void InitMeshFromOBJ(const std::wstring& filename);
 private:
 	ComPtr<IDXGIFactory4> m_factory;
 	ComPtr<ID3D12Device> m_device;
