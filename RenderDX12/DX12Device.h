@@ -68,8 +68,15 @@ private:
 	std::unique_ptr<DX12PSO> m_DX12PSO;
 
 	//initial resources
-	std::unique_ptr<DX12ResourceBuffer> m_DX12ConstantBuffer;
-	std::unique_ptr<DX12View> m_DX12ConstantBufferView;
+	std::unique_ptr<DX12ResourceBuffer> m_DX12PassConstantBuffer;
+	std::unique_ptr<DX12View> m_DX12PassConstantBufferView;
+	std::unique_ptr<DX12ResourceBuffer> m_DX12ObjectConstantBuffer;
+	std::unique_ptr<DX12View> m_DX12ObjectConstantBufferView;
+	std::unique_ptr<DX12ResourceBuffer> m_DX12MaterialConstantBuffer;
+	std::unique_ptr<DX12View> m_DX12MaterialConstantBufferView;
+
+
+
 	std::unique_ptr<DX12ResourceBuffer> m_DX12VertexBuffer;
 	std::unique_ptr<DX12View> m_DX12VertexView;
 	std::unique_ptr<DX12ResourceBuffer> m_DX12IndexBuffer;

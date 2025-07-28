@@ -4,7 +4,7 @@
 // Transforms and colors geometry.
 //***************************************************************************************
 
-cbuffer cbPerObject : register(b0)
+cbuffer cbPerObject : register(b1)
 {
 	float4x4 gWorldViewProj; 
 };

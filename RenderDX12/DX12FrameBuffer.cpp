@@ -70,7 +70,7 @@ void DX12FrameBuffer::CreateRenderTargetsAndViews(DX12Device* DX12Device)
 			m_DX12RenderTargets[i].get(),
 			RTVHeapHandle
 		);
-		RTVHeapHandle.Offset(1, DX12Device->GetDX12RTVHeap()->GetDescSize());
+		RTVHeapHandle.Offset(1, DX12Device->GetDX12RTVHeap()->GetDescIncSize());
 	}
 }
 
@@ -96,7 +96,7 @@ void DX12FrameBuffer::CreateDepthStencilAndView(DX12Device* DX12Device)
 			DSVHeapHandle
 		);
 		m_DX12DepthStencils[i]->TransitionState(DX12Device->GetDX12CommandList()->GetCommandList(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
-		DSVHeapHandle.Offset(1, DX12Device->GetDX12DSVHeap()->GetDescSize());
+		DSVHeapHandle.Offset(1, DX12Device->GetDX12DSVHeap()->GetDescIncSize());
 	}
 }
 
@@ -124,7 +124,7 @@ void DX12FrameBuffer::CreateMsaaRenderTargetAndView(DX12Device* DX12Device)
 			 m_DX12MsaaRenderTargets[i].get(),
 			 tmpMsaaRTVOffsetHandle
 		 );
-		 tmpMsaaRTVOffsetHandle.Offset(1, DX12Device->GetDX12RTVHeap()->GetDescSize());
+		 tmpMsaaRTVOffsetHandle.Offset(1, DX12Device->GetDX12RTVHeap()->GetDescIncSize());
 	}
 }
 
@@ -154,7 +154,7 @@ void DX12FrameBuffer::CreateMsaaDepthStencilAndView(DX12Device* DX12Device)
 			tmpMsaaDSVOffsetHandle
 		);
 		m_DX12MsaaDepthStencils[i]->TransitionState(DX12Device->GetDX12CommandList()->GetCommandList(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
-		tmpMsaaDSVOffsetHandle.Offset(1, DX12Device->GetDX12DSVHeap()->GetDescSize());
+		tmpMsaaDSVOffsetHandle.Offset(1, DX12Device->GetDX12DSVHeap()->GetDescIncSize());
 	}
 }
 

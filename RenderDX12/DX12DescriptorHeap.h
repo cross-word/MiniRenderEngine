@@ -26,8 +26,8 @@ public:
 		UINT nodeMask = 0);
 
 	inline ID3D12DescriptorHeap* GetDescHeap() const noexcept { return m_descHeap.Get(); }
-	inline UINT GetDescSize() const noexcept { return m_descriptorSize; }
+	inline UINT GetDescIncSize() const noexcept { return m_descriptorIncrementSize; }
 private:
 	ComPtr<ID3D12DescriptorHeap> m_descHeap;
-	UINT m_descriptorSize = 0;
+	UINT m_descriptorIncrementSize = 0;
 };

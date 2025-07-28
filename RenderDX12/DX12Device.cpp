@@ -88,7 +88,7 @@ void DX12Device::InitDX12ConstantBufferDescHeap()
 	m_DX12CBVHeap = std::make_unique<DX12DescriptorHeap>();
 	m_DX12CBVHeap->Initialize(
 		m_device.Get(),
-		1,
+		3,
 		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
 		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
 	);
@@ -159,43 +159,90 @@ void DX12Device::PrepareInitialResource()
 
 void DX12Device::InitConstantBuffer()
 {
-	//create constant buffer resource
-	m_DX12ConstantBuffer = std::make_unique<DX12ResourceBuffer>();
-	m_DX12ConstantBuffer->CreateConstantBuffer(m_device.Get());
+	//CREATE BUFFER
+	//ALLOCATE GPU ADDRESS
+	UINT elementByteSize[3] = 
+	{	CalcConstantBufferByteSize(sizeof(PassConstants)),
+		CalcConstantBufferByteSize(sizeof(ObjectConstants)),
+		CalcConstantBufferByteSize(sizeof(MaterialConstants)) };
+	int CBIndex = 0;
+	auto descCPUAddress = m_DX12CBVHeap->GetDescHeap()->GetCPUDescriptorHandleForHeapStart();
 
-	//allocate cbv
-	D3D12_GPU_VIRTUAL_ADDRESS cbAddress = m_DX12ConstantBuffer->GetResource()->GetGPUVirtualAddress();
-	UINT elementByteSize = CalcConstantBufferByteSize(sizeof(ObjectConstants::WorldViewProj));
+	//PassConstantBuffer
+	m_DX12PassConstantBuffer = std::make_unique<DX12ResourceBuffer>();
+	m_DX12PassConstantBuffer->CreateConstantBuffer(m_device.Get(), elementByteSize[CBIndex]);
+	D3D12_GPU_VIRTUAL_ADDRESS cbAddress = m_DX12PassConstantBuffer->GetResource()->GetGPUVirtualAddress();
 
-	int CBufIndex = 0;
-	cbAddress += CBufIndex * elementByteSize;
+	D3D12_CONSTANT_BUFFER_VIEW_DESC passCBVDesc;
+	passCBVDesc.BufferLocation = cbAddress;
+	passCBVDesc.SizeInBytes = elementByteSize[CBIndex];
 
-	D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
-	cbvDesc.BufferLocation = cbAddress;
-	cbvDesc.SizeInBytes = CalcConstantBufferByteSize(sizeof(ObjectConstants::WorldViewProj));
-
-	m_DX12ConstantBufferView = std::make_unique<DX12View>(
+	m_DX12PassConstantBufferView = std::make_unique<DX12View>(
 		m_device.Get(),
 		EViewType::EConstantBufferView,
-		m_DX12ConstantBuffer.get(),
-		m_DX12CBVHeap->GetDescHeap()->GetCPUDescriptorHandleForHeapStart(),
-		&cbvDesc
-	);
+		m_DX12PassConstantBuffer.get(),
+		descCPUAddress,
+		&passCBVDesc);
+
+	//index offset
+	//desc address offset
+	descCPUAddress.ptr += m_DX12CBVHeap->GetDescIncSize();
+	CBIndex += 1;
+	//Object Constant Buffer
+	m_DX12ObjectConstantBuffer = std::make_unique<DX12ResourceBuffer>();
+	m_DX12ObjectConstantBuffer->CreateConstantBuffer(m_device.Get(), elementByteSize[CBIndex]);
+	cbAddress = m_DX12ObjectConstantBuffer->GetResource()->GetGPUVirtualAddress();
+
+	D3D12_CONSTANT_BUFFER_VIEW_DESC objCBVDesc;
+	objCBVDesc.BufferLocation = cbAddress;
+	objCBVDesc.SizeInBytes = elementByteSize[CBIndex];
+
+	m_DX12ObjectConstantBufferView = std::make_unique<DX12View>(
+		m_device.Get(),
+		EViewType::EConstantBufferView,
+		m_DX12ObjectConstantBuffer.get(),
+		descCPUAddress,
+		&objCBVDesc);
+
+	//index offset
+	//desc address offset
+	descCPUAddress.ptr += m_DX12CBVHeap->GetDescIncSize();
+	CBIndex += 1;
+	//Material Constant Buffer
+	m_DX12MaterialConstantBuffer = std::make_unique<DX12ResourceBuffer>();
+	m_DX12MaterialConstantBuffer->CreateConstantBuffer(m_device.Get(), elementByteSize[CBIndex]);
+	cbAddress = m_DX12MaterialConstantBuffer->GetResource()->GetGPUVirtualAddress();
+
+	D3D12_CONSTANT_BUFFER_VIEW_DESC matCBVDesc;
+	matCBVDesc.BufferLocation = cbAddress;
+	matCBVDesc.SizeInBytes = elementByteSize[CBIndex];
+
+	m_DX12MaterialConstantBufferView = std::make_unique<DX12View>(
+		m_device.Get(),
+		EViewType::EConstantBufferView,
+		m_DX12MaterialConstantBuffer.get(),
+		descCPUAddress,
+		&matCBVDesc);
 }
 
 void DX12Device::UpdateConstantBuffer()
 {
-	ObjectConstants obj;
-	obj.view = m_camera->GetViewMatrix();
-	obj.proj = m_camera->GetProjectionMatrix(obj.aspect);
-	obj.WorldViewProj = XMMatrixTranspose(obj.world * obj.view * obj.proj);
+	//PassConstants passConstant;
+	//passConstant.View = m_camera->GetViewMatrix();
+	//passConstant.Proj = m_camera->GetProjectionMatrix(passConstant.aspect);
+	//passConstant.WorldViewProj = XMMatrixTranspose(passConstant.world * passConstant.view * passConstant.proj);
 
-	XMFLOAT4X4 matrix;
-	XMStoreFloat4x4(&matrix, obj.WorldViewProj);
-	m_DX12ConstantBuffer->CopyAndUploadResource(
-		m_DX12ConstantBuffer->GetResource(),
-		&matrix,
-		sizeof(ObjectConstants::WorldViewProj));
+	XMFLOAT4X4 WorldViewProj = {
+		1, 0, 0, 0,
+		0, 1, 0, 0,
+		0, 0, 1, 0,
+		0, 0, 0, 1
+	};
+	//XMStoreFloat4x4(&matrix, WorldViewProj);
+	m_DX12ObjectConstantBuffer->CopyAndUploadResource(
+		m_DX12ObjectConstantBuffer->GetResource(),
+		&WorldViewProj,
+		sizeof(ObjectConstants));
 }
 
 void DX12Device::InitMeshFromOBJ(const std::wstring& filename)
