@@ -6,7 +6,8 @@
 
 cbuffer cbPerObject : register(b1)
 {
-	float4x4 gWorldViewProj; 
+	float4x4 gWorldViewProj;
+	float4x4 tmpMat;
 };
 
 struct VertexIn

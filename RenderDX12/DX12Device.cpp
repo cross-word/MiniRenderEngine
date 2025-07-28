@@ -227,21 +227,11 @@ void DX12Device::InitConstantBuffer()
 
 void DX12Device::UpdateConstantBuffer()
 {
-	//PassConstants passConstant;
-	//passConstant.View = m_camera->GetViewMatrix();
-	//passConstant.Proj = m_camera->GetProjectionMatrix(passConstant.aspect);
-	//passConstant.WorldViewProj = XMMatrixTranspose(passConstant.world * passConstant.view * passConstant.proj);
-
-	XMFLOAT4X4 WorldViewProj = {
-		1, 0, 0, 0,
-		0, 1, 0, 0,
-		0, 0, 1, 0,
-		0, 0, 0, 1
-	};
-	//XMStoreFloat4x4(&matrix, WorldViewProj);
+	ObjectConstants objConst;
+	objConst.World = XMMatrixTranspose(XMMatrixIdentity() * m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix(float(800/600))); //TMP CODE FOR TEST CBV TABLE
 	m_DX12ObjectConstantBuffer->CopyAndUploadResource(
 		m_DX12ObjectConstantBuffer->GetResource(),
-		&WorldViewProj,
+		&objConst,
 		sizeof(ObjectConstants));
 }
 

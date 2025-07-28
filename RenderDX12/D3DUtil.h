@@ -95,7 +95,7 @@ struct PassConstants // to slot b0 (per camera)
 
 struct ObjectConstants // to slot b1 (per draw call)
 {
-    XMFLOAT4X4 World = XMMatIdentity();
+    XMMATRIX World = XMMatrixIdentity();
     XMFLOAT4X4 TexTransform = XMMatIdentity();
 };
 
