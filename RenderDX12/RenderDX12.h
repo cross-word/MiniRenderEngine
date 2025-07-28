@@ -18,7 +18,7 @@ using namespace DirectX;
 
 #include "DX12device.h"
 #include "DX12FrameBuffer.h"
-
+#include "D3DCamera.h"
 /*
 CLASS RENDERDX12
 MAIN WORK:
@@ -42,7 +42,7 @@ public:
     void InitializeDX12(HWND hWnd);
     void OnResize();
     void Draw();
-
+    D3DCamera* GetD3DCamera() const noexcept { return m_DX12Device.GetD3DCamera(); }
 private:
     ComPtr<ID3D12Debug> m_debugController;
     DX12Device m_DX12Device;

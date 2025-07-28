@@ -4,6 +4,8 @@
 #ifndef _BASEWIN_H
 #define _BASEWIN_H
 
+#include "../RenderDX12/RenderDX12.h"
+
 template <class DERIVED_TYPE>
 class BaseWindow
 {
@@ -86,10 +88,13 @@ public:
     void UpdateFPS();
     void DrawFPS();
     HWND GetMainHWND();
-
+    void SetRenderer(RenderDX12* Renderer) { MainRenderer = Renderer; }
 private:
+    RenderDX12* MainRenderer;
     HWND m_fpsLabel;
     wchar_t m_fpsText[32];
+    POINT m_lastMousePos{};
+    bool m_mouseDown{ false };
 };
 
 class DPIScale

@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "DX12Device.h"
+#include "D3DCamera.h"
 #include "../FileLoader/SimpleLoader.h"
 
 DX12Device::DX12Device()
@@ -184,11 +185,17 @@ void DX12Device::InitConstantBuffer()
 
 void DX12Device::UpdateConstantBuffer()
 {
-	//copy constant value to constant buffer (temp code)
-	XMFLOAT4X4 objConstants;
 	ObjectConstants obj;
-	XMStoreFloat4x4(&objConstants, obj.WorldViewProj);
-	m_DX12ConstantBuffer->CopyAndUploadResource(m_DX12ConstantBuffer->GetResource(), &objConstants, sizeof(ObjectConstants::WorldViewProj));
+	obj.view = m_camera->GetViewMatrix();
+	obj.proj = m_camera->GetProjectionMatrix(obj.aspect);
+	obj.WorldViewProj = XMMatrixTranspose(obj.world * obj.view * obj.proj);
+
+	XMFLOAT4X4 matrix;
+	XMStoreFloat4x4(&matrix, obj.WorldViewProj);
+	m_DX12ConstantBuffer->CopyAndUploadResource(
+		m_DX12ConstantBuffer->GetResource(),
+		&matrix,
+		sizeof(ObjectConstants::WorldViewProj));
 }
 
 void DX12Device::InitMeshFromOBJ(const std::wstring& filename)

@@ -9,6 +9,7 @@
 #include "DX12DescriptorHeap.h"
 #include "DX12SwapChain.h"
 
+#include "D3DCamera.h"
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 
@@ -44,6 +45,7 @@ public:
 		start.ptr += SIZE_T(index) * handleIncrementSize;
 		return start;
 	}
+	inline D3DCamera* GetD3DCamera() const noexcept { return m_camera.get(); }
 
 	void CreateDX12PSO();
 	void PrepareInitialResource();
@@ -83,4 +85,6 @@ private:
 	ComPtr<ID3DBlob> m_vertexShader = nullptr;
 	ComPtr<ID3DBlob> m_pixelShader = nullptr;
 	std::vector<D3D12_INPUT_ELEMENT_DESC> m_inputLayout;
+
+	std::unique_ptr <D3DCamera> m_camera = std::make_unique<D3DCamera>();
 };

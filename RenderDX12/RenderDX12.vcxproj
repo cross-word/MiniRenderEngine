@@ -21,6 +21,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="D3DUtil.cpp" />
+    <ClCompile Include="D3DCamera.cpp" />
     <ClCompile Include="DX12CommandList.cpp" />
     <ClCompile Include="DX12DescriptorHeap.cpp" />
     <ClCompile Include="DX12Device.cpp" />
@@ -37,6 +38,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3DUtil.h" />
+    <ClInclude Include="D3DCamera.h" />
     <ClInclude Include="DX12CommandList.h" />
     <ClInclude Include="DX12DescriptorHeap.h" />
     <ClInclude Include="DX12Device.h" />

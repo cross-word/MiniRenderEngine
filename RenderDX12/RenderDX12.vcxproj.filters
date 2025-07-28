@@ -51,6 +51,9 @@
     <ClCompile Include="DX12FrameBuffer.cpp">
       <Filter>Resource Files</Filter>
     </ClCompile>
+    <ClCompile Include="D3DCamera.cpp">
+      <Filter>Resource Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RenderDX12.h">
@@ -87,6 +90,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DX12FrameBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="D3DCamera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

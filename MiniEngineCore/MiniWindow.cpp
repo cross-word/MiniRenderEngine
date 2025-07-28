@@ -15,8 +15,6 @@
 #include "MiniTimer.h"
 #include "EngineConfig.h"
 
-#include "../RenderDX12/RenderDX12.h"
-
 using namespace std;
 
 template <class T> void SafeRelease(T** ppT)
@@ -39,6 +37,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
         return 0;
     RenderDX12 MainRenderer;
     MainRenderer.InitializeDX12(win.GetMainHWND());
+    win.SetRenderer(&MainRenderer);
 
     HACCEL hAccel = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDR_ACCEL1));
     ShowWindow(win.Window(), nCmdShow);
@@ -122,23 +121,44 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
         
         case WM_LBUTTONDOWN:
         {
-            wchar_t title[100];
-            swprintf(title, 100, L"%lld", m_timer.GetTime());
-
-            int x = GET_X_LPARAM(lParam);
-            int y = GET_Y_LPARAM(lParam);
-
-            HWND hChild = CreateWindowEx(
-                0,
-                L"STATIC",
-                title,
-                WS_CHILD | WS_VISIBLE | SS_CENTER,
-                x, y, 120, 30,
-                m_hwnd,
-                NULL,
-                GetModuleHandle(NULL),
-                NULL
-            );
+            m_mouseDown = true;
+            m_lastMousePos.x = GET_X_LPARAM(lParam);
+            m_lastMousePos.y = GET_Y_LPARAM(lParam);
+            SetCapture(m_hwnd);
+            return 0;
+        }
+        case WM_LBUTTONUP:
+        {
+            m_mouseDown = false;
+            ReleaseCapture();
+            return 0;
+        }
+        case WM_MOUSEMOVE:
+        {
+            if (m_mouseDown)
+            {
+                int x = GET_X_LPARAM(lParam);
+                int y = GET_Y_LPARAM(lParam);
+                float dx = float(x - m_lastMousePos.x) * 0.005f;
+                float dy = float(y - m_lastMousePos.y) * 0.005f;
+                MainRenderer->GetD3DCamera()->Rotate(dx, dy);
+                m_lastMousePos.x = x;
+                m_lastMousePos.y = y;
+            }
+            return 0;
+        }
+        case WM_KEYDOWN:
+        {
+            const float step = 0.1f;
+            switch (wParam)
+            {
+            case 'W': MainRenderer->GetD3DCamera()->Move(XMFLOAT3{ 0.f, 0.f, step }); break;
+            case 'S': MainRenderer->GetD3DCamera()->Move(XMFLOAT3{ 0.f, 0.f, -step }); break;
+            case 'A': MainRenderer->GetD3DCamera()->Move(XMFLOAT3{ -step, 0.f, 0.f }); break;
+            case 'D': MainRenderer->GetD3DCamera()->Move(XMFLOAT3{ step, 0.f, 0.f }); break;
+            case 'Q': MainRenderer->GetD3DCamera()->Move(XMFLOAT3{ 0.f, step, 0.f }); break;
+            case 'E': MainRenderer->GetD3DCamera()->Move(XMFLOAT3{ 0.f, -step, 0.f }); break;
+            }
             return 0;
         }
         case WM_DESTROY:
