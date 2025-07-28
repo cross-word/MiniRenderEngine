@@ -29,10 +29,8 @@ void DX12Resource::TransitionState(ID3D12GraphicsCommandList* commandList, D3D12
 	return;
 }
 
-void DX12ResourceBuffer::CreateConstantBuffer(ID3D12Device* device)
+void DX12ResourceBuffer::CreateConstantBuffer(ID3D12Device* device, UINT elementByteSize)
 {
-	UINT elementByteSize = CalcConstantBufferByteSize(sizeof(ObjectConstants::WorldViewProj));
-
 	CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_UPLOAD);
 	CD3DX12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(elementByteSize);
 	ThrowIfFailed(device->CreateCommittedResource(

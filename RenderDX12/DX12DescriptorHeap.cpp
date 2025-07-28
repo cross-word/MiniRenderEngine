@@ -26,5 +26,5 @@ void DX12DescriptorHeap::Initialize(
 	ThrowIfFailed(device->CreateDescriptorHeap(
 		&cbvHeapDesc, IID_PPV_ARGS(m_descHeap.GetAddressOf())
 	));
-	m_descriptorSize = device->GetDescriptorHandleIncrementSize(descHeapType);
+	m_descriptorIncrementSize = device->GetDescriptorHandleIncrementSize(descHeapType);
 }
