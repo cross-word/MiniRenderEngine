@@ -62,7 +62,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
             }
         }
 
-        static UINT frameIndex = 0;
+        UINT frameIndex = 0;
         PIXBeginEvent(0, L"Frame %u", frameIndex++);
 
         win.UpdateFPS();

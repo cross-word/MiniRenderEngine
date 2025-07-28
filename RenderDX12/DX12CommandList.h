@@ -23,22 +23,19 @@ public:
 	DX12CommandList();
 	~DX12CommandList();
 	void Initialize(ID3D12Device* device, ID3D12CommandAllocator* commandAllocator);
-	//inline ID3D12CommandAllocator* GetCommandAllocator() const noexcept { return m_commandAllocator.Get(); }
 	inline ID3D12GraphicsCommandList* GetCommandList() const noexcept { return m_commandList.Get(); }
 	inline ID3D12CommandQueue* GetCommandQueue() const noexcept { return m_commandQueue.Get(); }
 	inline ID3D12Fence* GetFence() const noexcept { return m_fence.Get(); }
 
-	void FlushCommandQueue();
-	//void ResetAllocator();
+	void FlushCommandQueue(UINT currentFenceValue);
 	void ResetList(ID3D12CommandAllocator* commandAllocator);
 	void ResetList(ID3D12PipelineState* pInitiaState, ID3D12CommandAllocator* commandAllocator);
 	void ExecuteCommandLists(UINT NumCommandLists, ID3D12CommandList** ppCommandLists);
-	void SubmitAndWait();
+	void SubmitAndWait(UINT currentFenceValue);
 private:
-	//ComPtr<ID3D12CommandAllocator> m_commandAllocator;
 	ComPtr<ID3D12GraphicsCommandList> m_commandList;
 	ComPtr<ID3D12CommandQueue> m_commandQueue;
 	ComPtr<ID3D12Fence> m_fence;
 
-	UINT m_currentFenceValue = 0;
+	HANDLE m_fenceEvent = nullptr;
 };

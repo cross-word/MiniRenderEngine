@@ -5,11 +5,11 @@
 
 DX12Device::DX12Device()
 {
-
+	m_fenceEvent = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
 }
 DX12Device::~DX12Device()
 {
-
+	if (m_fenceEvent) CloseHandle(m_fenceEvent);
 }
 
 void DX12Device::Initialize(HWND hWnd)
@@ -89,7 +89,7 @@ void DX12Device::InitDX12ConstantBufferDescHeap()
 	m_DX12CBVHeap = std::make_unique<DX12DescriptorHeap>();
 	m_DX12CBVHeap->Initialize(
 		m_device.Get(),
-		3,
+		3* EngineConfig::SwapChainBufferCount, // 3 views * 3 swap chains
 		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
 		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
 	);
@@ -152,16 +152,16 @@ void DX12Device::InitShader()
 	};
 }
 
-void DX12Device::PrepareInitialResource()
+void DX12Device::PrepareInitialResource(UINT currentFenceValue)
 {
-	InitMeshFromOBJ(EngineConfig::ModelObjFilePath);
+	InitMeshFromOBJ(EngineConfig::ModelObjFilePath, currentFenceValue);
 }
 
 void DX12Device::InitDX12FrameResource()
 {
 	for (int i = 0; i < EngineConfig::SwapChainBufferCount; i++)
 	{
-		m_DX12FrameResource.push_back(std::make_unique<DX12FrameResource>(m_device.Get(), m_DX12CBVHeap.get()));
+		m_DX12FrameResource.push_back(std::make_unique<DX12FrameResource>(m_device.Get(), m_DX12CBVHeap.get(), i));
 	}
 }
 
@@ -173,10 +173,9 @@ void DX12Device::UpdateFrameResource()
 	// If not, wait until the GPU has completed commands up to this fence point.
 	if (m_DX12CurrFrameResource->GetFenceValue() != 0 && m_DX12CommandList->GetFence()->GetCompletedValue() < m_DX12CurrFrameResource->GetFenceValue())
 	{
-		HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
-		ThrowIfFailed(m_DX12CommandList->GetFence()->SetEventOnCompletion(m_DX12CurrFrameResource->GetFenceValue(), eventHandle));
-		WaitForSingleObject(eventHandle, INFINITE);
-		CloseHandle(eventHandle);
+		ThrowIfFailed(m_DX12CommandList->GetFence()->SetEventOnCompletion(
+			m_DX12CurrFrameResource->GetFenceValue(), m_fenceEvent));
+		WaitForSingleObject(m_fenceEvent, INFINITE);
 	}
 
 	ObjectConstants objConst;
@@ -187,7 +186,7 @@ void DX12Device::UpdateFrameResource()
 		sizeof(ObjectConstants));
 }
 
-void DX12Device::InitMeshFromOBJ(const std::wstring& filename)
+void DX12Device::InitMeshFromOBJ(const std::wstring& filename, UINT currentFenceValue)
 {
 	MeshData mesh = LoadOBJ(filename);
 	if (mesh.vertices.empty() || mesh.indices.empty())
@@ -207,7 +206,7 @@ void DX12Device::InitMeshFromOBJ(const std::wstring& filename)
 	m_DX12IndexBuffer = std::make_unique<DX12ResourceBuffer>();
 	m_DX12IndexBuffer->CreateIndexBuffer(m_device.Get(), mesh.indices, m_DX12CommandList->GetCommandList());
 
-	m_DX12CommandList->SubmitAndWait();
+	m_DX12CommandList->SubmitAndWait(currentFenceValue);
 	m_DX12VertexBuffer->ResetUploadBuffer();
 	m_DX12IndexBuffer->ResetUploadBuffer();
 

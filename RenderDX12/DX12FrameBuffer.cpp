@@ -23,7 +23,7 @@ void DX12FrameBuffer::Initialize(DX12Device* DX12Device)
 	}
 }
 
-void DX12FrameBuffer::Resize(DX12Device* DX12Device)
+void DX12FrameBuffer::Resize(DX12Device* DX12Device, UINT currentFenceValue)
 {
 	// Release the previous resources we will be recreating.
 	for (int i = 0; i < DX12Device->GetDX12SwapChain()->GetSwapChainBufferCount(); ++i)
@@ -49,7 +49,7 @@ void DX12FrameBuffer::Resize(DX12Device* DX12Device)
 	SetViewPortAndScissor(DX12Device);
 
 	// Execute the resize commands.
-	DX12Device->GetDX12CommandList()->SubmitAndWait();
+	DX12Device->GetDX12CommandList()->SubmitAndWait(currentFenceValue);
 }
 
 void DX12FrameBuffer::CreateRenderTargetsAndViews(DX12Device* DX12Device)

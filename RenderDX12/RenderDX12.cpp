@@ -3,6 +3,10 @@
 
 #include <d3d12sdklayers.h>
 
+namespace {
+	UINT64 fenceCounter = 0;
+}
+
 RenderDX12::RenderDX12()
 {
 
@@ -33,7 +37,7 @@ void RenderDX12::InitializeDX12(HWND hWnd)
 	m_DX12Device.Initialize(hWnd);
 	m_DX12FrameBuffer.Initialize(&m_DX12Device);
 	OnResize();
-	m_DX12Device.PrepareInitialResource();
+	m_DX12Device.PrepareInitialResource(++fenceCounter);
 }
 
 void RenderDX12::OnResize()
@@ -43,10 +47,10 @@ void RenderDX12::OnResize()
 	for(int i = 0; i < EngineConfig::SwapChainBufferCount; i++) assert(m_DX12Device.GetFrameResource(i)->GetCommandAllocator());
 
 	// Flush before changing any resources.
-	m_DX12Device.GetDX12CommandList()->FlushCommandQueue();
+	m_DX12Device.GetDX12CommandList()->FlushCommandQueue(++fenceCounter);
 	m_DX12Device.GetDX12CommandList()->ResetList(m_DX12Device.GetFrameResource(m_DX12Device.GetCurrentBackBufferIndex())->GetCommandAllocator());
 
-	m_DX12FrameBuffer.Resize(&m_DX12Device);
+	m_DX12FrameBuffer.Resize(&m_DX12Device, ++fenceCounter);
 }
 
 void RenderDX12::Draw()
@@ -63,8 +67,9 @@ void RenderDX12::Draw()
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootSignature(m_DX12Device.GetDX12RootSignature()->GetRootSignature());
 	ID3D12DescriptorHeap* descriptorHeaps[] = { m_DX12Device.GetDX12CBVHeap()->GetDescHeap()};
 	auto descGPUAddress = m_DX12Device.GetDX12CBVHeap()->GetDescHeap()->GetGPUDescriptorHandleForHeapStart();
+	descGPUAddress.ptr += SIZE_T(currBackBufferIndex) * 3 * m_DX12Device.GetDX12CBVHeap()->GetDescIncSize();
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
-	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootDescriptorTable(0, { descGPUAddress.ptr + 0 * m_DX12Device.GetDX12CBVHeap()->GetDescIncSize() });
+	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootDescriptorTable(0, descGPUAddress);
 
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetVertexBuffers(0, 1, m_DX12Device.GetDX12VertexBufferView()->GetVertexBufferView());
@@ -87,5 +92,5 @@ void RenderDX12::Draw()
 
 void RenderDX12::ShutDown()
 {
-	m_DX12Device.GetDX12CommandList()->FlushCommandQueue();
+
 }

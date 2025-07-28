@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "DX12FrameResource.h"
 
-DX12FrameResource::DX12FrameResource(ID3D12Device* device, DX12DescriptorHeap* cbvHeap)
+DX12FrameResource::DX12FrameResource(ID3D12Device* device, DX12DescriptorHeap* cbvHeap, UINT frameIndex)
 {
 	//CREATE CMD ALLOC
 	ThrowIfFailed(device->CreateCommandAllocator(
@@ -17,6 +17,7 @@ DX12FrameResource::DX12FrameResource(ID3D12Device* device, DX12DescriptorHeap* c
 		CalcConstantBufferByteSize(sizeof(MaterialConstants)) };
 	int CBIndex = 0;
 	auto descCPUAddress = cbvHeap->GetDescHeap()->GetCPUDescriptorHandleForHeapStart();
+	descCPUAddress.ptr += SIZE_T(frameIndex) * 3 * cbvHeap->GetDescIncSize(); // cpu address adjust
 
 	//PassConstantBuffer
 	m_DX12PassConstantBuffer = std::make_unique<DX12ResourceBuffer>();

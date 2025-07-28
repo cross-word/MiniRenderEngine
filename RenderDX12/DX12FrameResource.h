@@ -14,7 +14,7 @@ struct DX12FrameResource
 {
 public:
 
-    DX12FrameResource(ID3D12Device* device, DX12DescriptorHeap* cbvHeap);
+    DX12FrameResource(ID3D12Device* device, DX12DescriptorHeap* cbvHeap, UINT frameIndex);
     DX12FrameResource(const DX12FrameResource& rhs) = delete;
     DX12FrameResource& operator=(const DX12FrameResource& rhs) = delete;
     ~DX12FrameResource();

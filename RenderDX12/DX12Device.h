@@ -41,6 +41,7 @@ public:
 	inline DX12View* GetDX12VertexBufferView() const { return m_DX12VertexView.get(); }
 	inline DX12View* GetDX12IndexBufferView() const { return m_DX12IndexView.get(); }
 	inline DX12SwapChain* GetDX12SwapChain() const noexcept { return m_DX12SwapChain.get(); }
+	inline HANDLE GetFenceEvent() const noexcept { return m_fenceEvent; }
 	inline D3D12_CPU_DESCRIPTOR_HANDLE GetOffsetCPUHandle(D3D12_CPU_DESCRIPTOR_HANDLE start, UINT index, UINT handleIncrementSize)
 	{
 		start.ptr += SIZE_T(index) * handleIncrementSize;
@@ -52,7 +53,7 @@ public:
 
 	inline void SetCurrentBackBufferIndex(UINT newIndex) { m_currBackBufferIndex = newIndex; }
 	void CreateDX12PSO();
-	void PrepareInitialResource();
+	void PrepareInitialResource(UINT currentFenceValue);
 	void UpdateFrameResource();
 private:
 	void InitDX12CommandList(ID3D12CommandAllocator* commandAllocator);
@@ -63,7 +64,7 @@ private:
 	void InitDX12RootSignature();
 	void InitShader(); //temp func
 	//void InitConstantBuffer();
-	void InitMeshFromOBJ(const std::wstring& filename);
+	void InitMeshFromOBJ(const std::wstring& filename, UINT currentFenceValue);
 	void InitDX12FrameResource();
 private:
 	ComPtr<IDXGIFactory4> m_factory;
@@ -94,4 +95,5 @@ private:
 	std::vector<D3D12_INPUT_ELEMENT_DESC> m_inputLayout;
 
 	std::unique_ptr <D3DCamera> m_camera = std::make_unique<D3DCamera>();
+	HANDLE m_fenceEvent = nullptr;
 };

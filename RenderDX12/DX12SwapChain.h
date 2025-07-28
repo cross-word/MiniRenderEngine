@@ -42,7 +42,4 @@ private:
 
 	UINT m_8xMsaaQuality = 0;
 	UINT m_8xMsaaSampleCount = EngineConfig::MsaaSampleCount;
-
-	UINT m_msaaRenderTargetCount = 1;
-	UINT m_msaaDepthStencilCount = 1;
 };
