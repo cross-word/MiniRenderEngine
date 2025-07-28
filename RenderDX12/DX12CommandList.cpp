@@ -12,7 +12,7 @@ DX12CommandList::~DX12CommandList()
 	FlushCommandQueue();
 }
 
-void DX12CommandList::Initialize(ID3D12Device* device)
+void DX12CommandList::Initialize(ID3D12Device* device, ID3D12CommandAllocator* commandAllocator)
 {
 	//create command queue/allocator
 	D3D12_COMMAND_QUEUE_DESC m_queueDesc = {};
@@ -22,14 +22,10 @@ void DX12CommandList::Initialize(ID3D12Device* device)
 	ThrowIfFailed(device->CreateCommandQueue(
 		&m_queueDesc, IID_PPV_ARGS(&m_commandQueue)
 	));
-	ThrowIfFailed(device->CreateCommandAllocator(
-		D3D12_COMMAND_LIST_TYPE_DIRECT,
-		IID_PPV_ARGS(m_commandAllocator.GetAddressOf())
-	));
 	ThrowIfFailed(device->CreateCommandList(
 		0,
 		D3D12_COMMAND_LIST_TYPE_DIRECT,
-		m_commandAllocator.Get(),
+		commandAllocator,
 		nullptr,
 		IID_PPV_ARGS(m_commandList.GetAddressOf())
 	));
@@ -66,21 +62,21 @@ void DX12CommandList::FlushCommandQueue()
 	}
 }
 
-void DX12CommandList::ResetAllocator()
+//void DX12CommandList::ResetAllocator()
+//{
+//	ThrowIfFailed(m_commandAllocator->Reset());
+//	return;
+//}
+
+void DX12CommandList::ResetList(ID3D12CommandAllocator* commandAllocator)
 {
-	ThrowIfFailed(m_commandAllocator->Reset());
+	ThrowIfFailed(m_commandList->Reset(commandAllocator, nullptr));
 	return;
 }
 
-void DX12CommandList::ResetList()
+void DX12CommandList::ResetList(ID3D12PipelineState* pInitiaState, ID3D12CommandAllocator* commandAllocator)
 {
-	ThrowIfFailed(m_commandList->Reset(m_commandAllocator.Get(), nullptr));
-	return;
-}
-
-void DX12CommandList::ResetList(ID3D12PipelineState* pInitiaState)
-{
-	ThrowIfFailed(m_commandList->Reset(m_commandAllocator.Get(), pInitiaState));
+	ThrowIfFailed(m_commandList->Reset(commandAllocator, pInitiaState));
 	return;
 }
 

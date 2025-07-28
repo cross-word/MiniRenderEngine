@@ -163,6 +163,7 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
         }
         case WM_DESTROY:
         {
+            MainRenderer->ShutDown();
             PostQuitMessage(0);
             return 0;
         }

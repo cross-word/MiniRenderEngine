@@ -27,8 +27,8 @@ public:
 
     void Initialize(DX12Device* DX12Device);
     void Resize(DX12Device* DX12Device);
-    void BeginFrame(DX12Device* DX12Device);
-    void EndFrame(DX12Device* DX12Device);
+    void BeginFrame(DX12Device* DX12Device, UINT currBackBufferIndex);
+    void EndFrame(DX12Device* DX12Device, UINT currBackBufferIndex);
     void Present(DX12Device* DX12Device);
 
 private:
@@ -38,7 +38,6 @@ private:
     void CreateMsaaDepthStencilAndView(DX12Device* DX12Device);
     void SetViewPortAndScissor(DX12Device* DX12Device);
 
-    UINT m_currBackBufferIndex = 0;
     std::unique_ptr<DX12Resource> m_DX12RenderTargets[EngineConfig::SwapChainBufferCount];
     std::unique_ptr<DX12View> m_DX12RenderTargetViews[EngineConfig::SwapChainBufferCount];
     std::unique_ptr<DX12ResourceTexture> m_DX12DepthStencils[EngineConfig::SwapChainBufferCount];

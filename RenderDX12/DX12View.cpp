@@ -43,7 +43,7 @@ DX12View::DX12View(
         device->CreateUnorderedAccessView(DX12Resource->GetResource(), nullptr, &m_resourceView.m_unorederedAccessViewDesc, m_cpuHandle);
         break;
     case EViewType::EDepthStencilView:
-        if (rtvDesc != nullptr)
+        if (dsvDesc != nullptr)
         {
             m_resourceView.m_depthStencilViewDesc = *dsvDesc;
             device->CreateDepthStencilView(DX12Resource->GetResource(), &m_resourceView.m_depthStencilViewDesc, m_cpuHandle);

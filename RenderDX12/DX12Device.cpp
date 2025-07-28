@@ -37,20 +37,21 @@ void DX12Device::Initialize(HWND hWnd)
 			IID_PPV_ARGS(&m_device)
 		));
 	}
-	InitDX12CommandList();
-	InitDX12SwapChain(hWnd);
 	InitDX12RTVDescHeap();
 	InitDX12DSVDescHeap();
 	InitDX12ConstantBufferDescHeap();
+	InitDX12FrameResource();
+	InitDX12CommandList(m_DX12FrameResource[0]->GetCommandAllocator());
+	InitDX12SwapChain(hWnd);
 	InitDX12RootSignature();
 	CreateDX12PSO();
 }
 
-void DX12Device::InitDX12CommandList()
+void DX12Device::InitDX12CommandList(ID3D12CommandAllocator* commandAllocator)
 {
-	//create command queue/allocator/fence
+	//create command queue/list/fence
 	m_DX12CommandList = std::make_unique<DX12CommandList>();
-	m_DX12CommandList->Initialize(m_device.Get());
+	m_DX12CommandList->Initialize(m_device.Get(), commandAllocator);
 }
 
 void DX12Device::InitDX12SwapChain(HWND hWnd)
@@ -66,7 +67,7 @@ void DX12Device::InitDX12RTVDescHeap()
 	m_DX12RTVHeap = std::make_unique<DX12DescriptorHeap>();
 	m_DX12RTVHeap->Initialize(
 		m_device.Get(),
-		m_DX12SwapChain->GetSwapChainBufferCount() + m_DX12SwapChain->GetSwapChainBufferCount(),
+		EngineConfig::SwapChainBufferCount + EngineConfig::SwapChainBufferCount,
 		D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
 		D3D12_DESCRIPTOR_HEAP_FLAG_NONE
 	);
@@ -77,7 +78,7 @@ void DX12Device::InitDX12DSVDescHeap()
 	m_DX12DSVHeap = std::make_unique<DX12DescriptorHeap>();
 	m_DX12DSVHeap->Initialize(
 		m_device.Get(),
-		m_DX12SwapChain->GetSwapChainBufferCount() + m_DX12SwapChain->GetSwapChainBufferCount(),
+		EngineConfig::SwapChainBufferCount + EngineConfig::SwapChainBufferCount,
 		D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
 		D3D12_DESCRIPTOR_HEAP_FLAG_NONE
 	);
@@ -153,84 +154,35 @@ void DX12Device::InitShader()
 
 void DX12Device::PrepareInitialResource()
 {
-	InitConstantBuffer();
 	InitMeshFromOBJ(EngineConfig::ModelObjFilePath);
 }
 
-void DX12Device::InitConstantBuffer()
+void DX12Device::InitDX12FrameResource()
 {
-	//CREATE BUFFER
-	//ALLOCATE GPU ADDRESS
-	UINT elementByteSize[3] = 
-	{	CalcConstantBufferByteSize(sizeof(PassConstants)),
-		CalcConstantBufferByteSize(sizeof(ObjectConstants)),
-		CalcConstantBufferByteSize(sizeof(MaterialConstants)) };
-	int CBIndex = 0;
-	auto descCPUAddress = m_DX12CBVHeap->GetDescHeap()->GetCPUDescriptorHandleForHeapStart();
-
-	//PassConstantBuffer
-	m_DX12PassConstantBuffer = std::make_unique<DX12ResourceBuffer>();
-	m_DX12PassConstantBuffer->CreateConstantBuffer(m_device.Get(), elementByteSize[CBIndex]);
-	D3D12_GPU_VIRTUAL_ADDRESS cbAddress = m_DX12PassConstantBuffer->GetResource()->GetGPUVirtualAddress();
-
-	D3D12_CONSTANT_BUFFER_VIEW_DESC passCBVDesc;
-	passCBVDesc.BufferLocation = cbAddress;
-	passCBVDesc.SizeInBytes = elementByteSize[CBIndex];
-
-	m_DX12PassConstantBufferView = std::make_unique<DX12View>(
-		m_device.Get(),
-		EViewType::EConstantBufferView,
-		m_DX12PassConstantBuffer.get(),
-		descCPUAddress,
-		&passCBVDesc);
-
-	//index offset
-	//desc address offset
-	descCPUAddress.ptr += m_DX12CBVHeap->GetDescIncSize();
-	CBIndex += 1;
-	//Object Constant Buffer
-	m_DX12ObjectConstantBuffer = std::make_unique<DX12ResourceBuffer>();
-	m_DX12ObjectConstantBuffer->CreateConstantBuffer(m_device.Get(), elementByteSize[CBIndex]);
-	cbAddress = m_DX12ObjectConstantBuffer->GetResource()->GetGPUVirtualAddress();
-
-	D3D12_CONSTANT_BUFFER_VIEW_DESC objCBVDesc;
-	objCBVDesc.BufferLocation = cbAddress;
-	objCBVDesc.SizeInBytes = elementByteSize[CBIndex];
-
-	m_DX12ObjectConstantBufferView = std::make_unique<DX12View>(
-		m_device.Get(),
-		EViewType::EConstantBufferView,
-		m_DX12ObjectConstantBuffer.get(),
-		descCPUAddress,
-		&objCBVDesc);
-
-	//index offset
-	//desc address offset
-	descCPUAddress.ptr += m_DX12CBVHeap->GetDescIncSize();
-	CBIndex += 1;
-	//Material Constant Buffer
-	m_DX12MaterialConstantBuffer = std::make_unique<DX12ResourceBuffer>();
-	m_DX12MaterialConstantBuffer->CreateConstantBuffer(m_device.Get(), elementByteSize[CBIndex]);
-	cbAddress = m_DX12MaterialConstantBuffer->GetResource()->GetGPUVirtualAddress();
-
-	D3D12_CONSTANT_BUFFER_VIEW_DESC matCBVDesc;
-	matCBVDesc.BufferLocation = cbAddress;
-	matCBVDesc.SizeInBytes = elementByteSize[CBIndex];
-
-	m_DX12MaterialConstantBufferView = std::make_unique<DX12View>(
-		m_device.Get(),
-		EViewType::EConstantBufferView,
-		m_DX12MaterialConstantBuffer.get(),
-		descCPUAddress,
-		&matCBVDesc);
+	for (int i = 0; i < EngineConfig::SwapChainBufferCount; i++)
+	{
+		m_DX12FrameResource.push_back(std::make_unique<DX12FrameResource>(m_device.Get(), m_DX12CBVHeap.get()));
+	}
 }
 
-void DX12Device::UpdateConstantBuffer()
+void DX12Device::UpdateFrameResource()
 {
+	m_DX12CurrFrameResource = m_DX12FrameResource[m_currBackBufferIndex].get();
+
+	// Has the GPU finished processing the commands of the current frame resource?
+	// If not, wait until the GPU has completed commands up to this fence point.
+	if (m_DX12CurrFrameResource->GetFenceValue() != 0 && m_DX12CommandList->GetFence()->GetCompletedValue() < m_DX12CurrFrameResource->GetFenceValue())
+	{
+		HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
+		ThrowIfFailed(m_DX12CommandList->GetFence()->SetEventOnCompletion(m_DX12CurrFrameResource->GetFenceValue(), eventHandle));
+		WaitForSingleObject(eventHandle, INFINITE);
+		CloseHandle(eventHandle);
+	}
+
 	ObjectConstants objConst;
-	objConst.World = XMMatrixTranspose(XMMatrixIdentity() * m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix(float(800/600))); //TMP CODE FOR TEST CBV TABLE
-	m_DX12ObjectConstantBuffer->CopyAndUploadResource(
-		m_DX12ObjectConstantBuffer->GetResource(),
+	objConst.World = XMMatrixTranspose(XMMatrixIdentity() * m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix(float(800 / 600))); //TMP CODE FOR TEST CBV TABLE
+	m_DX12CurrFrameResource->GetDX12ObjectConstantBuffer()->CopyAndUploadResource(
+		m_DX12CurrFrameResource->GetDX12ObjectConstantBuffer()->GetResource(),
 		&objConst,
 		sizeof(ObjectConstants));
 }
@@ -246,8 +198,8 @@ void DX12Device::InitMeshFromOBJ(const std::wstring& filename)
 	const UINT vertexStride = sizeof(Vertex);
 	const UINT indexBufferSize = (UINT)mesh.indices.size() * sizeof(uint32_t);
 
-	m_DX12CommandList->ResetAllocator();
-	m_DX12CommandList->ResetList();
+	m_DX12FrameResource[m_currBackBufferIndex]->ResetAllocator();
+	m_DX12CommandList->ResetList(m_DX12FrameResource[m_currBackBufferIndex]->GetCommandAllocator());
 
 	m_DX12VertexBuffer = std::make_unique<DX12ResourceBuffer>();
 	m_DX12VertexBuffer->CreateVertexBuffer(m_device.Get(), mesh.vertices, m_DX12CommandList->GetCommandList());

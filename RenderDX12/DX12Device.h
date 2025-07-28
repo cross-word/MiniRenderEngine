@@ -8,6 +8,7 @@
 #include "DX12View.h"
 #include "DX12DescriptorHeap.h"
 #include "DX12SwapChain.h"
+#include "DX12FrameResource.h"
 
 #include "D3DCamera.h"
 using Microsoft::WRL::ComPtr;
@@ -46,20 +47,24 @@ public:
 		return start;
 	}
 	inline D3DCamera* GetD3DCamera() const noexcept { return m_camera.get(); }
+	inline UINT GetCurrentBackBufferIndex() const noexcept { return m_currBackBufferIndex; }
+	inline DX12FrameResource* GetFrameResource(UINT currBackBufferIndex) const noexcept { return m_DX12FrameResource[currBackBufferIndex].get(); }
 
+	inline void SetCurrentBackBufferIndex(UINT newIndex) { m_currBackBufferIndex = newIndex; }
 	void CreateDX12PSO();
 	void PrepareInitialResource();
-	void UpdateConstantBuffer();
+	void UpdateFrameResource();
 private:
-	void InitDX12CommandList();
+	void InitDX12CommandList(ID3D12CommandAllocator* commandAllocator);
 	void InitDX12SwapChain(HWND hWnd);
 	void InitDX12RTVDescHeap();
 	void InitDX12DSVDescHeap();
 	void InitDX12ConstantBufferDescHeap();
 	void InitDX12RootSignature();
 	void InitShader(); //temp func
-	void InitConstantBuffer();
+	//void InitConstantBuffer();
 	void InitMeshFromOBJ(const std::wstring& filename);
+	void InitDX12FrameResource();
 private:
 	ComPtr<IDXGIFactory4> m_factory;
 	ComPtr<ID3D12Device> m_device;
@@ -68,14 +73,9 @@ private:
 	std::unique_ptr<DX12PSO> m_DX12PSO;
 
 	//initial resources
-	std::unique_ptr<DX12ResourceBuffer> m_DX12PassConstantBuffer;
-	std::unique_ptr<DX12View> m_DX12PassConstantBufferView;
-	std::unique_ptr<DX12ResourceBuffer> m_DX12ObjectConstantBuffer;
-	std::unique_ptr<DX12View> m_DX12ObjectConstantBufferView;
-	std::unique_ptr<DX12ResourceBuffer> m_DX12MaterialConstantBuffer;
-	std::unique_ptr<DX12View> m_DX12MaterialConstantBufferView;
-
-
+	UINT m_currBackBufferIndex = 0;
+	DX12FrameResource* m_DX12CurrFrameResource;
+	std::vector<std::unique_ptr<DX12FrameResource>> m_DX12FrameResource;
 
 	std::unique_ptr<DX12ResourceBuffer> m_DX12VertexBuffer;
 	std::unique_ptr<DX12View> m_DX12VertexView;

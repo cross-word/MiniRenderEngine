@@ -42,9 +42,11 @@ public:
     void InitializeDX12(HWND hWnd);
     void OnResize();
     void Draw();
+    void ShutDown();
     D3DCamera* GetD3DCamera() const noexcept { return m_DX12Device.GetD3DCamera(); }
 private:
     ComPtr<ID3D12Debug> m_debugController;
     DX12Device m_DX12Device;
     DX12FrameBuffer m_DX12FrameBuffer;
 };
+static UINT64 fenceCounter = 0;

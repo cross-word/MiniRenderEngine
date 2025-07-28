@@ -8,7 +8,7 @@ struct EngineConfig
     static constexpr float DefaultClearColor[4] = { 0.1f, 0.2f, 0.3f, 1.0f };
     static constexpr UINT MsaaSampleCount = 8;
     static constexpr LONGLONG TargetFrameTime = 16666; // 16.666ms
-    static constexpr UINT SwapChainBufferCount = 2;
+    static constexpr UINT SwapChainBufferCount = 3;
     static inline constexpr const wchar_t* ModelObjFilePath = LR"(..\Models\Cube.obj)"; // tmp
     static inline constexpr const wchar_t* ShaderFilePath = LR"(..\\Shaders\\color.hlsl)"; // tmp
 };

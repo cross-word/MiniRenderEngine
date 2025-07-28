@@ -26,6 +26,7 @@
     <ClCompile Include="DX12DescriptorHeap.cpp" />
     <ClCompile Include="DX12Device.cpp" />
     <ClCompile Include="DX12FrameBuffer.cpp" />
+    <ClCompile Include="DX12FrameResource.cpp" />
     <ClCompile Include="DX12PSO.cpp" />
     <ClCompile Include="DX12Resource.cpp" />
     <ClCompile Include="DX12RootSignature.cpp" />
@@ -43,6 +44,7 @@
     <ClInclude Include="DX12DescriptorHeap.h" />
     <ClInclude Include="DX12Device.h" />
     <ClInclude Include="DX12FrameBuffer.h" />
+    <ClInclude Include="DX12FrameResource.h" />
     <ClInclude Include="DX12PSO.h" />
     <ClInclude Include="DX12Resource.h" />
     <ClInclude Include="DX12RootSignature.h" />
