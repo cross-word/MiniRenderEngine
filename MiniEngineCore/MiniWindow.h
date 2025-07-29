@@ -1,11 +1,12 @@
 #pragma once
 #include "MiniTimer.h"
-
+#include <d2d1.h>
 #ifndef _BASEWIN_H
 #define _BASEWIN_H
 
 #include "../RenderDX12/RenderDX12.h"
 
+extern "C" IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 template <class DERIVED_TYPE>
 class BaseWindow
 {

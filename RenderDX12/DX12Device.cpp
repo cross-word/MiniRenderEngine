@@ -10,6 +10,7 @@ DX12Device::DX12Device()
 DX12Device::~DX12Device()
 {
 	if (m_fenceEvent) CloseHandle(m_fenceEvent);
+	m_DX12FrameResource.clear(); ////wt
 }
 
 void DX12Device::Initialize(HWND hWnd)

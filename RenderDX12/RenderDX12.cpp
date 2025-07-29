@@ -14,7 +14,7 @@ RenderDX12::RenderDX12()
 
 RenderDX12::~RenderDX12()
 {
-	
+	ShutDown();
 }
 
 void RenderDX12::InitializeDX12(HWND hWnd)
@@ -36,8 +36,11 @@ void RenderDX12::InitializeDX12(HWND hWnd)
 #endif
 	m_DX12Device.Initialize(hWnd);
 	m_DX12FrameBuffer.Initialize(&m_DX12Device);
+	m_gpuTimer.Initialize(m_DX12Device.GetDevice(), m_DX12Device.GetDX12CommandList()->GetCommandQueue(), EngineConfig::SwapChainBufferCount);
+	InitializeImGui(hWnd);
 	OnResize();
 	m_DX12Device.PrepareInitialResource(++fenceCounter);
+
 }
 
 void RenderDX12::OnResize()
@@ -59,13 +62,17 @@ void RenderDX12::Draw()
 	UINT currBackBufferIndex = m_DX12Device.GetDX12SwapChain()->GetSwapChain()->GetCurrentBackBufferIndex();
 	m_DX12Device.UpdateFrameResource();
 
+	//LONGLONG cpuBegin = m_cpuTimer.GetTime();
+	m_gpuTimer.Begin(m_DX12Device.GetDX12CommandList()->GetCommandList(), currBackBufferIndex);
+
 	m_DX12Device.GetFrameResource(currBackBufferIndex)->ResetAllocator();
 	m_DX12Device.GetDX12CommandList()->ResetList(m_DX12Device.GetDX12PSO()->GetPipelineState(), m_DX12Device.GetFrameResource(currBackBufferIndex)->GetCommandAllocator()); //tmpcode
 
 	m_DX12FrameBuffer.BeginFrame(&m_DX12Device, currBackBufferIndex);
 
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootSignature(m_DX12Device.GetDX12RootSignature()->GetRootSignature());
-	ID3D12DescriptorHeap* descriptorHeaps[] = { m_DX12Device.GetDX12CBVHeap()->GetDescHeap()};
+	ID3D12DescriptorHeap* descriptorHeaps[] = { m_DX12Device.GetDX12CBVHeap()->GetDescHeap(), m_imguiSrvDescHeap.Get() };
+
 	auto descGPUAddress = m_DX12Device.GetDX12CBVHeap()->GetDescHeap()->GetGPUDescriptorHandleForHeapStart();
 	descGPUAddress.ptr += SIZE_T(currBackBufferIndex) * 3 * m_DX12Device.GetDX12CBVHeap()->GetDescIncSize();
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
@@ -75,6 +82,24 @@ void RenderDX12::Draw()
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetVertexBuffers(0, 1, m_DX12Device.GetDX12VertexBufferView()->GetVertexBufferView());
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetIndexBuffer(m_DX12Device.GetDX12IndexBufferView()->GetIndexBufferView());
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->DrawIndexedInstanced(36, 1, 0, 0, 0);
+
+	m_DX12FrameBuffer.EndFrame(&m_DX12Device, currBackBufferIndex);
+
+	m_gpuTimer.End(m_DX12Device.GetDX12CommandList()->GetCommandList(), currBackBufferIndex);
+
+	ImGui_ImplDX12_NewFrame();
+	ImGui_ImplWin32_NewFrame();
+	ImGui::NewFrame();
+
+	float gpuMS = m_gpuTimer.GetElapsedMS(currBackBufferIndex);
+	//m_cpuFrameTime[currBackBufferIndex] = float(m_cpuTimer.GetTime() - cpuBegin) / 1000.0f;
+
+	ImGui::Begin("Frame Times");
+	ImGui::Text("CPU: %.3f ms", m_cpuFrameTime[currBackBufferIndex]);
+	ImGui::Text("GPU: %.3f ms", gpuMS);
+	ImGui::End();
+	ImGui::Render();
+	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_DX12Device.GetDX12CommandList()->GetCommandList());
 
 	m_DX12FrameBuffer.EndFrame(&m_DX12Device, currBackBufferIndex);
 
@@ -92,5 +117,33 @@ void RenderDX12::Draw()
 
 void RenderDX12::ShutDown()
 {
+	// Cleanup
+	ShutdownImGui();
+	m_DX12Device.GetDX12CommandList()->FlushCommandQueue(++fenceCounter);
+}
 
+void RenderDX12::InitializeImGui(HWND hWnd)
+{
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGui::StyleColorsDark();
+
+	D3D12_DESCRIPTOR_HEAP_DESC desc = {};
+	desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	desc.NumDescriptors = 1;
+	desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	m_DX12Device.GetDevice()->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&m_imguiSrvDescHeap));
+
+	ImGui_ImplWin32_Init(hWnd);
+	ImGui_ImplDX12_Init(m_DX12Device.GetDevice(), EngineConfig::SwapChainBufferCount,
+		DXGI_FORMAT_R8G8B8A8_UNORM, m_imguiSrvDescHeap.Get(),
+		m_imguiSrvDescHeap->GetCPUDescriptorHandleForHeapStart(),
+		m_imguiSrvDescHeap->GetGPUDescriptorHandleForHeapStart());
+}
+
+void RenderDX12::ShutdownImGui()
+{
+	ImGui_ImplDX12_Shutdown();
+	ImGui_ImplWin32_Shutdown();
+	ImGui::DestroyContext();
 }

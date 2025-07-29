@@ -7,6 +7,9 @@
 #endif
 
 #include "stdafx.h"
+#include "../external/imgui/imgui.h"
+#include "../external/imgui/backends/imgui_impl_win32.h"
+#include "../external/imgui/backends/imgui_impl_dx12.h"
 
 // Link necessary d3d12 libraries.
 #pragma comment(lib,"d3dcompiler.lib")
@@ -19,6 +22,7 @@ using namespace DirectX;
 #include "DX12device.h"
 #include "DX12FrameBuffer.h"
 #include "D3DCamera.h"
+#include "D3DTimer.h"
 /*
 CLASS RENDERDX12
 MAIN WORK:
@@ -48,4 +52,10 @@ private:
     ComPtr<ID3D12Debug> m_debugController;
     DX12FrameBuffer m_DX12FrameBuffer;
     DX12Device m_DX12Device;
+    std::array<float, EngineConfig::SwapChainBufferCount> m_cpuFrameTime{};
+    D3DTimer m_gpuTimer;
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_imguiSrvDescHeap;
+
+    void InitializeImGui(HWND hWnd);
+    void ShutdownImGui();
 };
