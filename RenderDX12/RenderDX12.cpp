@@ -150,12 +150,15 @@ void RenderDX12::Draw()
 	//timer set
 	float gpuMS = m_timer.GetElapsedGPUMS(currBackBufferIndex);
 	float cpuMS = m_timer.GetElapsedCPUMS(currBackBufferIndex);
-	m_timer.BeginCPU(currBackBufferIndex);
+	m_DX12FrameBuffer.CheckFence(&m_DX12Device, currBackBufferIndex); // << GPU WAIT
+
+	m_timer.BeginCPU(currBackBufferIndex); // << CPU TIMER START
 
 	m_DX12Device.GetFrameResource(currBackBufferIndex)->ResetAllocator();
 	m_DX12Device.GetDX12CommandList()->ResetList(m_DX12Device.GetDX12PSO()->GetPipelineState(), m_DX12Device.GetFrameResource(currBackBufferIndex)->GetCommandAllocator()); //tmpcode
 
-	m_timer.BeginGPU(m_DX12Device.GetDX12CommandList()->GetCommandList(), currBackBufferIndex);
+	m_timer.BeginGPU(m_DX12Device.GetDX12CommandList()->GetCommandList(), currBackBufferIndex); // << GPU TIMER START
+
 	m_DX12FrameBuffer.BeginFrame(&m_DX12Device, currBackBufferIndex);
 
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootSignature(m_DX12Device.GetDX12RootSignature()->GetRootSignature());
@@ -172,9 +175,9 @@ void RenderDX12::Draw()
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->DrawIndexedInstanced(36, 1, 0, 0, 0);
 
 	m_DX12FrameBuffer.EndFrame(&m_DX12Device, currBackBufferIndex);
+	m_timer.EndGPU(m_DX12Device.GetDX12CommandList()->GetCommandList(), currBackBufferIndex); // << GPU TIMER END
 	//////////////////////////////////////////////////////////////////////////////////
 	// imgui render block
-	m_timer.EndGPU(m_DX12Device.GetDX12CommandList()->GetCommandList(), currBackBufferIndex);
 	ImGui_ImplDX12_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
@@ -195,7 +198,7 @@ void RenderDX12::Draw()
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetDescriptorHeaps(1, heaps);
 
 	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_DX12Device.GetDX12CommandList()->GetCommandList());
-	m_DX12FrameBuffer.SetRTVPresent(&m_DX12Device, currBackBufferIndex);
+	m_DX12FrameBuffer.SetBackBufferPresent(&m_DX12Device, currBackBufferIndex);
 	//////////////////////////////////////////////////////////////////////////////////
 
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->Close();
@@ -207,7 +210,7 @@ void RenderDX12::Draw()
 	m_DX12Device.GetDX12CommandList()->GetCommandQueue()->Signal(m_DX12Device.GetDX12CommandList()->GetFence(), fenceValue);
 	m_DX12Device.GetFrameResource(currBackBufferIndex)->SetFenceValue(fenceValue);
 
-	m_timer.EndCPU(currBackBufferIndex);
+	m_timer.EndCPU(currBackBufferIndex); // << CPU TIMER END
 	m_DX12FrameBuffer.Present(&m_DX12Device);
 }
 

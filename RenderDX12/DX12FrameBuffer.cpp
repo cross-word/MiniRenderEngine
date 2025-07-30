@@ -169,16 +169,20 @@ void DX12FrameBuffer::SetViewPortAndScissor(DX12Device* DX12Device)
 	m_scissor = { 0, 0, DX12Device->GetDX12SwapChain()->GetClientWidth(), DX12Device->GetDX12SwapChain()->GetClientHeight() };
 }
 
+void DX12FrameBuffer::CheckFence(DX12Device* DX12Device, UINT currBackBufferIndex)
+{
+	if (DX12Device->GetDX12CommandList()->GetFence()->GetCompletedValue()
+		< DX12Device->GetFrameResource(currBackBufferIndex)->GetFenceValue()) {
+		HANDLE h = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
+		DX12Device->GetDX12CommandList()->GetFence()->SetEventOnCompletion(
+			DX12Device->GetFrameResource(currBackBufferIndex)->GetFenceValue(), h);
+		WaitForSingleObject(h, INFINITE);
+		CloseHandle(h);
+	}
+}
+
 void DX12FrameBuffer::BeginFrame(DX12Device* DX12Device, UINT currBackBufferIndex)
 {
-
-	if (DX12Device->GetDX12CommandList()->GetFence()->GetCompletedValue() < DX12Device->GetFrameResource(currBackBufferIndex)->GetFenceValue()) {
-		HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
-		DX12Device->GetDX12CommandList()->GetFence()->SetEventOnCompletion(DX12Device->GetFrameResource(currBackBufferIndex)->GetFenceValue(), eventHandle);
-		WaitForSingleObject(eventHandle, INFINITE);
-		CloseHandle(eventHandle);
-	}
-
 	DX12Device->GetDX12CommandList()->GetCommandList()->RSSetViewports(1, &m_viewport);
 	DX12Device->GetDX12CommandList()->GetCommandList()->RSSetScissorRects(1, &m_scissor);
 
@@ -208,7 +212,7 @@ void DX12FrameBuffer::EndFrame(DX12Device* DX12Device, UINT currBackBufferIndex)
 	m_DX12RenderTargets[currBackBufferIndex]->TransitionState(DX12Device->GetDX12CommandList()->GetCommandList(), D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
-void DX12FrameBuffer::SetRTVPresent(DX12Device* DX12Device, UINT currBackBufferIndex)
+void DX12FrameBuffer::SetBackBufferPresent(DX12Device* DX12Device, UINT currBackBufferIndex)
 {
 	m_DX12RenderTargets[currBackBufferIndex]->TransitionState(DX12Device->GetDX12CommandList()->GetCommandList(), D3D12_RESOURCE_STATE_PRESENT);
 }

@@ -27,9 +27,10 @@ public:
 
     void Initialize(DX12Device* DX12Device);
     void Resize(DX12Device* DX12Device, UINT currentFenceValue);
+    void CheckFence(DX12Device* DX12Device, UINT currBackBufferIndex);
     void BeginFrame(DX12Device* DX12Device, UINT currBackBufferIndex);
     void EndFrame(DX12Device* DX12Device, UINT currBackBufferIndex);
-    void SetRTVPresent(DX12Device* DX12Device, UINT currBackBufferIndex);
+    void SetBackBufferPresent(DX12Device* DX12Device, UINT currBackBufferIndex);
     void Present(DX12Device* DX12Device);
 private:
     void CreateRenderTargetsAndViews(DX12Device* DX12Device);
