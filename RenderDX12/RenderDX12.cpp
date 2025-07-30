@@ -3,9 +3,60 @@
 
 #include <d3d12sdklayers.h>
 
+#include "../external/imgui/imgui.h"
+#include "../external/imgui/backends/imgui_impl_win32.h"
+#include "../external/imgui/backends/imgui_impl_dx12.h"
+
 namespace {
 	UINT64 fenceCounter = 0;
-}
+};
+
+struct ExampleDescriptorHeapAllocator
+{
+	ID3D12DescriptorHeap* Heap = nullptr;
+	D3D12_DESCRIPTOR_HEAP_TYPE  HeapType = D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES;
+	D3D12_CPU_DESCRIPTOR_HANDLE HeapStartCpu;
+	D3D12_GPU_DESCRIPTOR_HANDLE HeapStartGpu;
+	UINT                        HeapHandleIncrement;
+	ImVector<int>               FreeIndices;
+
+	void Create(ID3D12Device* device, ID3D12DescriptorHeap* heap)
+	{
+		IM_ASSERT(Heap == nullptr && FreeIndices.empty());
+		Heap = heap;
+		D3D12_DESCRIPTOR_HEAP_DESC desc = heap->GetDesc();
+		HeapType = desc.Type;
+		HeapStartCpu = Heap->GetCPUDescriptorHandleForHeapStart();
+		HeapStartGpu = Heap->GetGPUDescriptorHandleForHeapStart();
+		HeapHandleIncrement = device->GetDescriptorHandleIncrementSize(HeapType);
+		FreeIndices.reserve((int)desc.NumDescriptors);
+		for (int n = desc.NumDescriptors; n > 0; n--)
+			FreeIndices.push_back(n - 1);
+	}
+	void Destroy()
+	{
+		Heap = nullptr;
+		FreeIndices.clear();
+	}
+	void Alloc(D3D12_CPU_DESCRIPTOR_HANDLE* out_cpu_desc_handle, D3D12_GPU_DESCRIPTOR_HANDLE* out_gpu_desc_handle)
+	{
+		IM_ASSERT(FreeIndices.Size > 0);
+		int idx = FreeIndices.back();
+		FreeIndices.pop_back();
+		out_cpu_desc_handle->ptr = HeapStartCpu.ptr + (idx * HeapHandleIncrement);
+		out_gpu_desc_handle->ptr = HeapStartGpu.ptr + (idx * HeapHandleIncrement);
+	}
+	void Free(D3D12_CPU_DESCRIPTOR_HANDLE out_cpu_desc_handle, D3D12_GPU_DESCRIPTOR_HANDLE out_gpu_desc_handle)
+	{
+		int cpu_idx = (int)((out_cpu_desc_handle.ptr - HeapStartCpu.ptr) / HeapHandleIncrement);
+		int gpu_idx = (int)((out_gpu_desc_handle.ptr - HeapStartGpu.ptr) / HeapHandleIncrement);
+		IM_ASSERT(cpu_idx == gpu_idx);
+		FreeIndices.push_back(cpu_idx);
+	}
+};
+
+static ID3D12DescriptorHeap* g_SrvHeap = nullptr;
+static ExampleDescriptorHeapAllocator g_SrvAllocator;
 
 RenderDX12::RenderDX12()
 {
@@ -37,10 +88,45 @@ void RenderDX12::InitializeDX12(HWND hWnd)
 	m_DX12Device.Initialize(hWnd);
 	m_DX12FrameBuffer.Initialize(&m_DX12Device);
 	m_gpuTimer.Initialize(m_DX12Device.GetDevice(), m_DX12Device.GetDX12CommandList()->GetCommandQueue(), EngineConfig::SwapChainBufferCount);
-	InitializeImGui(hWnd);
+	//////////////////////////////////////////
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGui::StyleColorsDark();
+
+	ImGui_ImplWin32_Init(hWnd);
+
+	D3D12_DESCRIPTOR_HEAP_DESC desc = {};
+	desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	desc.NumDescriptors = 128;
+	desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	desc.NodeMask = 0;
+
+	ThrowIfFailed(m_DX12Device.GetDevice()->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&g_SrvHeap)));
+	g_SrvAllocator.Create(m_DX12Device.GetDevice(), g_SrvHeap);
+
+	ImGui_ImplDX12_InitInfo info = {};
+	info.Device = m_DX12Device.GetDevice();
+	info.CommandQueue = m_DX12Device.GetDX12CommandList()->GetCommandQueue();
+	info.NumFramesInFlight = EngineConfig::SwapChainBufferCount;
+	info.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+	info.DSVFormat = DXGI_FORMAT_UNKNOWN;
+	info.SrvDescriptorHeap = g_SrvHeap;
+	info.SrvDescriptorAllocFn = [](ImGui_ImplDX12_InitInfo*, D3D12_CPU_DESCRIPTOR_HANDLE* outCPU, D3D12_GPU_DESCRIPTOR_HANDLE* outGPU) {
+		return g_SrvAllocator.Alloc(outCPU, outGPU);
+		};
+	info.SrvDescriptorFreeFn = [](ImGui_ImplDX12_InitInfo*, D3D12_CPU_DESCRIPTOR_HANDLE cpu, D3D12_GPU_DESCRIPTOR_HANDLE gpu) {
+		return g_SrvAllocator.Free(cpu, gpu);
+		};
+	ImGui_ImplDX12_Init(&info);
+	ImGui_ImplDX12_CreateDeviceObjects();
+
+	//////////////////////////////////////////
+	m_DX12Device.GetDX12CommandList()->ResetList(
+		m_DX12Device.GetFrameResource(m_DX12Device.GetCurrentBackBufferIndex())->GetCommandAllocator());
+	m_DX12Device.GetDX12CommandList()->SubmitAndWait(++fenceCounter);
+
 	OnResize();
 	m_DX12Device.PrepareInitialResource(++fenceCounter);
-
 }
 
 void RenderDX12::OnResize()
@@ -63,15 +149,15 @@ void RenderDX12::Draw()
 	m_DX12Device.UpdateFrameResource();
 
 	//LONGLONG cpuBegin = m_cpuTimer.GetTime();
-	m_gpuTimer.Begin(m_DX12Device.GetDX12CommandList()->GetCommandList(), currBackBufferIndex);
 
 	m_DX12Device.GetFrameResource(currBackBufferIndex)->ResetAllocator();
 	m_DX12Device.GetDX12CommandList()->ResetList(m_DX12Device.GetDX12PSO()->GetPipelineState(), m_DX12Device.GetFrameResource(currBackBufferIndex)->GetCommandAllocator()); //tmpcode
 
+	m_gpuTimer.Begin(m_DX12Device.GetDX12CommandList()->GetCommandList(), currBackBufferIndex);
 	m_DX12FrameBuffer.BeginFrame(&m_DX12Device, currBackBufferIndex);
 
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootSignature(m_DX12Device.GetDX12RootSignature()->GetRootSignature());
-	ID3D12DescriptorHeap* descriptorHeaps[] = { m_DX12Device.GetDX12CBVHeap()->GetDescHeap(), m_imguiSrvDescHeap.Get() };
+	ID3D12DescriptorHeap* descriptorHeaps[] = { m_DX12Device.GetDX12CBVHeap()->GetDescHeap() };
 
 	auto descGPUAddress = m_DX12Device.GetDX12CBVHeap()->GetDescHeap()->GetGPUDescriptorHandleForHeapStart();
 	descGPUAddress.ptr += SIZE_T(currBackBufferIndex) * 3 * m_DX12Device.GetDX12CBVHeap()->GetDescIncSize();
@@ -83,24 +169,23 @@ void RenderDX12::Draw()
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetIndexBuffer(m_DX12Device.GetDX12IndexBufferView()->GetIndexBufferView());
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->DrawIndexedInstanced(36, 1, 0, 0, 0);
 
-	m_DX12FrameBuffer.EndFrame(&m_DX12Device, currBackBufferIndex);
-
+	//m_DX12FrameBuffer.EndFrame(&m_DX12Device, currBackBufferIndex);
+	//////////////////////////////////////////////////////////////////////////////////
 	m_gpuTimer.End(m_DX12Device.GetDX12CommandList()->GetCommandList(), currBackBufferIndex);
-
 	ImGui_ImplDX12_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 
 	float gpuMS = m_gpuTimer.GetElapsedMS(currBackBufferIndex);
-	//m_cpuFrameTime[currBackBufferIndex] = float(m_cpuTimer.GetTime() - cpuBegin) / 1000.0f;
 
 	ImGui::Begin("Frame Times");
-	ImGui::Text("CPU: %.3f ms", m_cpuFrameTime[currBackBufferIndex]);
+	//ImGui::Text("CPU: %.3f ms", m_cpuFrameTime[currBackBufferIndex]);
 	ImGui::Text("GPU: %.3f ms", gpuMS);
 	ImGui::End();
 	ImGui::Render();
 	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_DX12Device.GetDX12CommandList()->GetCommandList());
 
+	//////////////////////////////////////////////////////////////////////////////////
 	m_DX12FrameBuffer.EndFrame(&m_DX12Device, currBackBufferIndex);
 
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->Close();
@@ -118,32 +203,8 @@ void RenderDX12::Draw()
 void RenderDX12::ShutDown()
 {
 	// Cleanup
-	ShutdownImGui();
-	m_DX12Device.GetDX12CommandList()->FlushCommandQueue(++fenceCounter);
-}
-
-void RenderDX12::InitializeImGui(HWND hWnd)
-{
-	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
-	ImGui::StyleColorsDark();
-
-	D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-	desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-	desc.NumDescriptors = 1;
-	desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-	m_DX12Device.GetDevice()->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&m_imguiSrvDescHeap));
-
-	ImGui_ImplWin32_Init(hWnd);
-	ImGui_ImplDX12_Init(m_DX12Device.GetDevice(), EngineConfig::SwapChainBufferCount,
-		DXGI_FORMAT_R8G8B8A8_UNORM, m_imguiSrvDescHeap.Get(),
-		m_imguiSrvDescHeap->GetCPUDescriptorHandleForHeapStart(),
-		m_imguiSrvDescHeap->GetGPUDescriptorHandleForHeapStart());
-}
-
-void RenderDX12::ShutdownImGui()
-{
 	ImGui_ImplDX12_Shutdown();
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
+	m_DX12Device.GetDX12CommandList()->FlushCommandQueue(++fenceCounter);
 }

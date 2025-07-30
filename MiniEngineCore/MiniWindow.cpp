@@ -14,8 +14,6 @@
 #include "resource.h"
 #include "MiniTimer.h"
 #include "EngineConfig.h"
-#include "../external/imgui/imgui.h"
-#include "../external/imgui/backends/imgui_impl_win32.h"
 
 using namespace std;
 
@@ -102,8 +100,6 @@ PCWSTR MainWindow::ClassName() const
 
 LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    if (ImGui_ImplWin32_WndProcHandler(m_hwnd, uMsg, wParam, lParam))
-        return true;
     switch (uMsg)
     {
         case WM_CREATE:

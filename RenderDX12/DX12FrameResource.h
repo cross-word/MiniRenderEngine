@@ -20,7 +20,7 @@ public:
     ~DX12FrameResource();
 
     inline ID3D12CommandAllocator* GetCommandAllocator() const noexcept { return m_commandAllocator.Get(); }
-    inline UINT GetFenceValue() { return m_fence; }
+    inline UINT64 GetFenceValue() { return m_fence; }
     inline void SetFenceValue(UINT newFenceValue) { m_fence = newFenceValue; }
     inline DX12ResourceBuffer* GetDX12PassConstantBuffer() const noexcept { return m_DX12PassConstantBuffer.get(); }
     inline DX12View* GetDX12PassConstantBufferView() const noexcept { return m_DX12PassConstantBufferView.get(); }

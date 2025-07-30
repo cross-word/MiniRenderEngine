@@ -6,7 +6,6 @@
 
 #include "../RenderDX12/RenderDX12.h"
 
-extern "C" IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 template <class DERIVED_TYPE>
 class BaseWindow
 {
