@@ -147,10 +147,10 @@ void RenderDX12::Draw()
 	UINT currBackBufferIndex = m_DX12Device.GetDX12SwapChain()->GetSwapChain()->GetCurrentBackBufferIndex();
 	m_DX12Device.UpdateFrameResource();
 
+	m_DX12FrameBuffer.CheckFence(&m_DX12Device, currBackBufferIndex); // << GPU WAIT
 	//timer set
 	float gpuMS = m_timer.GetElapsedGPUMS(currBackBufferIndex);
 	float cpuMS = m_timer.GetElapsedCPUMS(currBackBufferIndex);
-	m_DX12FrameBuffer.CheckFence(&m_DX12Device, currBackBufferIndex); // << GPU WAIT
 
 	m_timer.BeginCPU(currBackBufferIndex); // << CPU TIMER START
 
@@ -175,7 +175,6 @@ void RenderDX12::Draw()
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->DrawIndexedInstanced(36, 1, 0, 0, 0);
 
 	m_DX12FrameBuffer.EndFrame(&m_DX12Device, currBackBufferIndex);
-	m_timer.EndGPU(m_DX12Device.GetDX12CommandList()->GetCommandList(), currBackBufferIndex); // << GPU TIMER END
 	//////////////////////////////////////////////////////////////////////////////////
 	// imgui render block
 	ImGui_ImplDX12_NewFrame();
@@ -199,6 +198,7 @@ void RenderDX12::Draw()
 
 	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_DX12Device.GetDX12CommandList()->GetCommandList());
 	m_DX12FrameBuffer.SetBackBufferPresent(&m_DX12Device, currBackBufferIndex);
+	m_timer.EndGPU(m_DX12Device.GetDX12CommandList()->GetCommandList(), currBackBufferIndex); // << GPU TIMER END
 	//////////////////////////////////////////////////////////////////////////////////
 
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->Close();
