@@ -90,7 +90,7 @@ void DX12Device::InitDX12ConstantBufferDescHeap()
 	m_DX12CBVHeap = std::make_unique<DX12DescriptorHeap>();
 	m_DX12CBVHeap->Initialize(
 		m_device.Get(),
-		3* EngineConfig::SwapChainBufferCount, // 3 views * 3 swap chains
+		3* EngineConfig::SwapChainBufferCount + 1, // 3 views * 3 swap chains + 1 imgui
 		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
 		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
 	);

@@ -25,6 +25,7 @@ CLASS RENDERDX12
 MAIN WORK:
 1. initialize dx12Device, dx12FrameBuffer (start point of DX12 RENDERING)
 2. comunicate with MainWindow
+3. ImGUI management
 IMPORTANT MEMBER:
 1. m_DX12Device
 2. m_FrameBuffer
@@ -49,5 +50,5 @@ private:
     ComPtr<ID3D12Debug> m_debugController;
     DX12FrameBuffer m_DX12FrameBuffer;
     DX12Device m_DX12Device;
-    D3DTimer m_gpuTimer;
+    D3DTimer m_timer;
 };

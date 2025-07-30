@@ -203,8 +203,13 @@ void DX12FrameBuffer::EndFrame(DX12Device* DX12Device, UINT currBackBufferIndex)
 		DX12Device->GetDX12SwapChain()->GetRenderTargetFormat());
 	
 	//MsaaRTv : ResolveSource->RT
-	//BackBuffer : ResolveDest->PRESENT
+	//BackBuffer : ResolveDest->RT // FOR TIMER
 	m_DX12MsaaRenderTargets[currBackBufferIndex]->TransitionState(DX12Device->GetDX12CommandList()->GetCommandList(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+	m_DX12RenderTargets[currBackBufferIndex]->TransitionState(DX12Device->GetDX12CommandList()->GetCommandList(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+}
+
+void DX12FrameBuffer::SetRTVPresent(DX12Device* DX12Device, UINT currBackBufferIndex)
+{
 	m_DX12RenderTargets[currBackBufferIndex]->TransitionState(DX12Device->GetDX12CommandList()->GetCommandList(), D3D12_RESOURCE_STATE_PRESENT);
 }
 

@@ -7,6 +7,10 @@ void D3DTimer::Initialize(ID3D12Device* device, ID3D12CommandQueue* queue, UINT 
 {
     m_frameCount = frameCount;
 
+    m_cpuBegin.resize(frameCount);
+    m_cpuElapsedMS.resize(frameCount, 0.0f);
+    QueryPerformanceFrequency(&m_cpuFreq);
+
     D3D12_QUERY_HEAP_DESC heapDesc = {};
     heapDesc.Count = frameCount * 2;
     heapDesc.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
@@ -21,12 +25,12 @@ void D3DTimer::Initialize(ID3D12Device* device, ID3D12CommandQueue* queue, UINT 
     queue->GetTimestampFrequency(&m_frequency);
 }
 
-void D3DTimer::Begin(ID3D12GraphicsCommandList* cmdList, UINT frameIndex)
+void D3DTimer::BeginGPU(ID3D12GraphicsCommandList* cmdList, UINT frameIndex)
 {
     cmdList->EndQuery(m_queryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, frameIndex * 2);
 }
 
-void D3DTimer::End(ID3D12GraphicsCommandList* cmdList, UINT frameIndex)
+void D3DTimer::EndGPU(ID3D12GraphicsCommandList* cmdList, UINT frameIndex)
 {
     cmdList->EndQuery(m_queryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, frameIndex * 2 + 1);
     cmdList->ResolveQueryData(m_queryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP,
@@ -34,7 +38,7 @@ void D3DTimer::End(ID3D12GraphicsCommandList* cmdList, UINT frameIndex)
         frameIndex * sizeof(UINT64) * 2);
 }
 
-float D3DTimer::GetElapsedMS(UINT frameIndex)
+float D3DTimer::GetElapsedGPUMS(UINT frameIndex)
 {
     UINT64* data = nullptr;
     D3D12_RANGE range{ frameIndex * 2 * sizeof(UINT64), (frameIndex * 2 + 2) * sizeof(UINT64) };
@@ -49,5 +53,26 @@ float D3DTimer::GetElapsedMS(UINT frameIndex)
             return float(end - start) / static_cast<float>(m_frequency) * 1000.0f;
         }
     }
+    return 0.0f;
+}
+
+void D3DTimer::BeginCPU(UINT frameIndex)
+{
+    QueryPerformanceCounter(&m_cpuBegin[frameIndex]);
+}
+
+void D3DTimer::EndCPU(UINT frameIndex)
+{
+    LARGE_INTEGER end;
+    QueryPerformanceCounter(&end);
+    m_cpuElapsedMS[frameIndex] =
+        static_cast<float>(end.QuadPart - m_cpuBegin[frameIndex].QuadPart) * 1000.0f /
+        static_cast<float>(m_cpuFreq.QuadPart);
+}
+
+float D3DTimer::GetElapsedCPUMS(UINT frameIndex) const
+{
+    if (frameIndex < m_cpuElapsedMS.size())
+        return m_cpuElapsedMS[frameIndex];
     return 0.0f;
 }

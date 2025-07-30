@@ -33,7 +33,7 @@ void DX12PSO::CreatePSO(
 	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	psoDesc.NumRenderTargets = 1;
 	psoDesc.RTVFormats[0] = renderTargetFormat;
-	psoDesc.SampleDesc.Count = 8;
+	psoDesc.SampleDesc.Count = EngineConfig::MsaaSampleCount;
 	psoDesc.SampleDesc.Quality = 0;
 	psoDesc.RasterizerState.MultisampleEnable = TRUE;
 
