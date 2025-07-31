@@ -12,16 +12,18 @@ DX12RenderItem::~DX12RenderItem()
 
 }
 
-void DX12RenderItem::InitMeshFromFile(
+bool DX12RenderItem::InitMeshFromFile(
 	ID3D12Device* device,
 	DX12FrameResource* DX12FrameResource,
 	DX12CommandList* dx12CommandList,
 	const std::wstring& filename,
-	uint32_t currentFenceValue)
+	UINT prevIndexCount,
+	UINT prevVertexCount,
+	D3D12_PRIMITIVE_TOPOLOGY vertexPrimitiveType)
 {
 	MeshData mesh = LoadOBJ(filename);
 	if (mesh.vertices.empty() || mesh.indices.empty())
-		return;
+		return false;
 
 	D3D12_CPU_DESCRIPTOR_HANDLE nullHandle = {};
 	const uint32_t vertexBufferSize = (uint32_t)mesh.vertices.size() * sizeof(Vertex);
@@ -37,7 +39,7 @@ void DX12RenderItem::InitMeshFromFile(
 	m_DX12IndexBuffer = std::make_unique<DX12ResourceBuffer>();
 	m_DX12IndexBuffer->CreateIndexBuffer(device, mesh.indices, dx12CommandList->GetCommandList());
 
-	dx12CommandList->SubmitAndWait(currentFenceValue); //should hold for uploading
+	dx12CommandList->SubmitAndWait(); //should hold for uploading
 	m_DX12VertexBuffer->ResetUploadBuffer();
 	m_DX12IndexBuffer->ResetUploadBuffer();
 
@@ -61,4 +63,12 @@ void DX12RenderItem::InitMeshFromFile(
 		0U,
 		m_indexFormat
 	);
+
+	m_primitiveTopologyType = vertexPrimitiveType;
+	m_IndexCount = (UINT)mesh.indices.size();
+	m_VertexCount = (UINT)mesh.vertices.size();
+	m_StartIndexLocation = prevIndexCount; // + previous index size
+	m_BaseVertexLocation = prevVertexCount; // + previous vertex size
+
+	return true;
 }

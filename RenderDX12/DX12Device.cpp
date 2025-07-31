@@ -166,23 +166,28 @@ void DX12Device::InitShader()
 	};
 }
 
-void DX12Device::PrepareInitialResource(UINT currentFenceValue)
+void DX12Device::PrepareInitialResource()
 {
-	m_DX12RenderItem = std::make_unique<DX12RenderItem>();
-	m_DX12RenderItem->InitMeshFromFile(
-		m_device.Get(),
-		m_DX12FrameResource[m_currBackBufferIndex].get(),
-		m_DX12CommandList.get(),
-		EngineConfig::ModelObjFilePath,
-		currentFenceValue
-	);
+	for (auto fileName : EngineConfig::ModelObjFilePath)
+	{
+		auto renderItem = std::make_unique<DX12RenderItem>();
+		if (renderItem->InitMeshFromFile(
+			m_device.Get(),
+			m_DX12FrameResource[m_currBackBufferIndex].get(),
+			m_DX12CommandList.get(),
+			fileName
+		))
+		{
+			m_DX12RenderItem.push_back(std::move(renderItem));
+		}
+	}
 }
 
 void DX12Device::InitDX12FrameResource()
 {
 	for (int i = 0; i < EngineConfig::SwapChainBufferCount; i++)
 	{
-		m_DX12FrameResource.push_back(std::make_unique<DX12FrameResource>(m_device.Get(), m_DX12CBVHeap.get(), i));
+		m_DX12FrameResource.push_back(std::move(std::make_unique<DX12FrameResource>(m_device.Get(), m_DX12CBVHeap.get(), i)));
 	}
 }
 

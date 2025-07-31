@@ -123,9 +123,9 @@ void RenderDX12::InitializeDX12(HWND hWnd)
 	//////////////////////////////////////////
 	m_DX12Device.GetDX12CommandList()->ResetList(
 		m_DX12Device.GetFrameResource(m_DX12Device.GetCurrentBackBufferIndex())->GetCommandAllocator());
-	m_DX12Device.GetDX12CommandList()->SubmitAndWait(++fenceCounter);
+	m_DX12Device.GetDX12CommandList()->SubmitAndWait();
 	OnResize();
-	m_DX12Device.PrepareInitialResource(++fenceCounter);
+	m_DX12Device.PrepareInitialResource();
 }
 
 void RenderDX12::OnResize()
@@ -135,10 +135,10 @@ void RenderDX12::OnResize()
 	for(int i = 0; i < EngineConfig::SwapChainBufferCount; i++) assert(m_DX12Device.GetFrameResource(i)->GetCommandAllocator());
 
 	// Flush before changing any resources.
-	m_DX12Device.GetDX12CommandList()->FlushCommandQueue(++fenceCounter);
+	m_DX12Device.GetDX12CommandList()->FlushCommandQueue();
 	m_DX12Device.GetDX12CommandList()->ResetList(m_DX12Device.GetFrameResource(m_DX12Device.GetCurrentBackBufferIndex())->GetCommandAllocator());
 
-	m_DX12FrameBuffer.Resize(&m_DX12Device, ++fenceCounter);
+	m_DX12FrameBuffer.Resize(&m_DX12Device);
 }
 
 void RenderDX12::Draw() {
@@ -187,10 +187,18 @@ void RenderDX12::RecordAndSubmit_Single()
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootDescriptorTable(0, slice.gpuDescHandle);
 
-	m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetVertexBuffers(0, 1, m_DX12Device.GetDX12RenderItem()->GetDX12VertexBufferView()->GetVertexBufferView());
-	m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetIndexBuffer(m_DX12Device.GetDX12RenderItem()->GetDX12IndexBufferView()->GetIndexBufferView());
-	m_DX12Device.GetDX12CommandList()->GetCommandList()->DrawIndexedInstanced(3*1850, 1, 0, 0, 0); // 여러 모델 들여올때를 대비해 수정 필요
+	for (int renderItemIndex = 0; renderItemIndex < m_DX12Device.GetRenderItemSize(); renderItemIndex++)
+	{
+		m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetPrimitiveTopology(m_DX12Device.GetDX12RenderItem(renderItemIndex)->GetPrimitiveTopologyType());
+		m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetVertexBuffers(0, 1, m_DX12Device.GetDX12RenderItem(renderItemIndex)->GetDX12VertexBufferView()->GetVertexBufferView());
+		m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetIndexBuffer(m_DX12Device.GetDX12RenderItem(renderItemIndex)->GetDX12IndexBufferView()->GetIndexBufferView());
+		m_DX12Device.GetDX12CommandList()->GetCommandList()->DrawIndexedInstanced(
+			m_DX12Device.GetDX12RenderItem(renderItemIndex)->GetIndexCount(),
+			1,
+			m_DX12Device.GetDX12RenderItem(renderItemIndex)->GetStartIndexLocation(),
+			m_DX12Device.GetDX12RenderItem(renderItemIndex)->GetBaseVertexLocation(),
+			0);
+	}
 
 	m_DX12FrameBuffer.EndFrame(&m_DX12Device, currBackBufferIndex);
 	//////////////////////////////////////////////////////////////////////////////////
@@ -238,5 +246,5 @@ void RenderDX12::ShutDown()
 	ImGui_ImplDX12_Shutdown();
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
-	m_DX12Device.GetDX12CommandList()->FlushCommandQueue(++fenceCounter);
+	m_DX12Device.GetDX12CommandList()->FlushCommandQueue();
 }

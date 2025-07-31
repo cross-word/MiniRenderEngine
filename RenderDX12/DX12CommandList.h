@@ -26,16 +26,18 @@ public:
 	inline ID3D12GraphicsCommandList* GetCommandList() const noexcept { return m_commandList.Get(); }
 	inline ID3D12CommandQueue* GetCommandQueue() const noexcept { return m_commandQueue.Get(); }
 	inline ID3D12Fence* GetFence() const noexcept { return m_fence.Get(); }
+	inline UINT64 GetFenceValue() const noexcept { return m_fenceValue; }
 
-	void FlushCommandQueue(UINT currentFenceValue);
+	void FlushCommandQueue();
 	void ResetList(ID3D12CommandAllocator* commandAllocator);
 	void ResetList(ID3D12PipelineState* pInitiaState, ID3D12CommandAllocator* commandAllocator);
 	void ExecuteCommandLists(UINT NumCommandLists, ID3D12CommandList** ppCommandLists);
-	void SubmitAndWait(UINT currentFenceValue);
+	void SubmitAndWait();
 private:
 	ComPtr<ID3D12GraphicsCommandList> m_commandList;
 	ComPtr<ID3D12CommandQueue> m_commandQueue;
 	ComPtr<ID3D12Fence> m_fence;
 
 	HANDLE m_fenceEvent = nullptr;
+	UINT64 m_fenceValue = 0;
 };

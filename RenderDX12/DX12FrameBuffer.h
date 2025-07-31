@@ -26,7 +26,7 @@ public:
 
 
     void Initialize(DX12Device* DX12Device);
-    void Resize(DX12Device* DX12Device, UINT currentFenceValue);
+    void Resize(DX12Device* DX12Device);
     void CheckFence(DX12Device* DX12Device, UINT currBackBufferIndex);
     void BeginFrame(DX12Device* DX12Device, UINT currBackBufferIndex);
     void EndFrame(DX12Device* DX12Device, UINT currBackBufferIndex);

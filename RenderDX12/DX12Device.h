@@ -40,7 +40,8 @@ public:
 	inline DX12CommandList* GetDX12CommandList() const noexcept { return m_DX12CommandList.get(); }
 	inline DX12RootSignature* GetDX12RootSignature() const noexcept { return m_DX12RootSignature.get(); }
 	inline DX12PSO* GetDX12PSO() const noexcept { return m_DX12PSO.get(); }
-	inline DX12RenderItem* GetDX12RenderItem() const noexcept { return m_DX12RenderItem.get(); }
+	inline DX12RenderItem* GetDX12RenderItem(uint32_t index) const noexcept { return m_DX12RenderItem[index].get() ; }
+	inline size_t GetRenderItemSize() const noexcept { return m_DX12RenderItem.size(); }
 	inline DX12SwapChain* GetDX12SwapChain() const noexcept { return m_DX12SwapChain.get(); }
 	inline HANDLE GetFenceEvent() const noexcept { return m_fenceEvent; }
 	inline D3D12_CPU_DESCRIPTOR_HANDLE GetOffsetCPUHandle(D3D12_CPU_DESCRIPTOR_HANDLE start, UINT index, UINT handleIncrementSize)
@@ -54,7 +55,7 @@ public:
 
 	inline void SetCurrentBackBufferIndex(UINT newIndex) { m_currBackBufferIndex = newIndex; }
 	void CreateDX12PSO();
-	void PrepareInitialResource(UINT currentFenceValue);
+	void PrepareInitialResource();
 	void UpdateFrameResource();
 private:
 	void InitDX12CommandList(ID3D12CommandAllocator* commandAllocator);
@@ -78,7 +79,7 @@ private:
 	uint32_t m_currBackBufferIndex = 0;
 	DX12FrameResource* m_DX12CurrFrameResource;
 	std::vector<std::unique_ptr<DX12FrameResource>> m_DX12FrameResource;
-	std::unique_ptr<DX12RenderItem> m_DX12RenderItem;
+	std::vector<std::unique_ptr<DX12RenderItem>> m_DX12RenderItem;
 
 	std::unique_ptr<DX12SwapChain> m_DX12SwapChain;
 

@@ -38,23 +38,23 @@ void DX12CommandList::Initialize(ID3D12Device* device, ID3D12CommandAllocator* c
 	return;
 }
 
-void DX12CommandList::FlushCommandQueue(UINT currentFenceValue)
+void DX12CommandList::FlushCommandQueue()
 {
 	// Advance the fence value to mark commands up to this fence point.
-	currentFenceValue++;
+	++m_fenceValue;
 
 	// Add an instruction to the command queue to set a new fence point.  Because we 
 	// are on the GPU timeline, the new fence point won't be set until the GPU finishes
 	// processing all the commands prior to this Signal().
-	ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), currentFenceValue));
+	ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), m_fenceValue));
 
 	// Wait until the GPU has completed commands up to this fence point.
-	if (m_fence->GetCompletedValue() < currentFenceValue)
+	if (m_fence->GetCompletedValue() < m_fenceValue)
 	{
 		HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
 
 		// Fire event when GPU hits current fence.  
-		ThrowIfFailed(m_fence->SetEventOnCompletion(currentFenceValue, eventHandle));
+		ThrowIfFailed(m_fence->SetEventOnCompletion(m_fenceValue, eventHandle));
 
 		// Wait until the GPU hits current fence event is fired.
 		WaitForSingleObject(eventHandle, INFINITE);
@@ -81,10 +81,10 @@ void DX12CommandList::ExecuteCommandLists(UINT NumCommandLists, ID3D12CommandLis
 	return;
 }
 
-void DX12CommandList::SubmitAndWait(UINT currentFenceValue)
+void DX12CommandList::SubmitAndWait()
 {
 	m_commandList->Close();
 	ID3D12CommandList* cmdsLists[] = { m_commandList.Get()};
 	m_commandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
-	FlushCommandQueue(currentFenceValue);
+	FlushCommandQueue();
 }
