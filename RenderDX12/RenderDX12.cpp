@@ -7,10 +7,6 @@
 #include "../external/imgui/backends/imgui_impl_win32.h"
 #include "../external/imgui/backends/imgui_impl_dx12.h"
 
-namespace {
-	uint64_t fenceCounter = 0;
-};
-
 //struct for imgui (see : https://github.com/ocornut/imgui/blob/master/examples/example_win32_directx12/main.cpp#L113 )
 struct ExampleDescriptorHeapAllocator
 {
@@ -232,10 +228,8 @@ void RenderDX12::RecordAndSubmit_Single()
 	m_DX12Device.GetDX12CommandList()->GetCommandQueue()->ExecuteCommandLists(1, lists);
 
 	// 프레임 펜스 기록(대기는 다음 프레임 Begin에서만)
-	const uint64_t fenceValue = ++fenceCounter;
-	m_DX12Device.GetDX12CommandList()->GetCommandQueue()->Signal(m_DX12Device.GetDX12CommandList()->GetFence(), fenceValue);
+	const uint64_t fenceValue = m_DX12Device.GetDX12CommandList()->Signal();
 	m_DX12Device.GetFrameResource(currBackBufferIndex)->SetFenceValue(fenceValue);
-
 	m_timer.EndCPU(currBackBufferIndex); // << CPU TIMER END
 	m_DX12FrameBuffer.Present(&m_DX12Device);
 }

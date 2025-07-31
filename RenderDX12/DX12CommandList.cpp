@@ -88,3 +88,10 @@ void DX12CommandList::SubmitAndWait()
 	m_commandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
 	FlushCommandQueue();
 }
+
+UINT64 DX12CommandList::Signal()
+{
+	++m_fenceValue;
+	ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), m_fenceValue));
+	return m_fenceValue;
+}
