@@ -24,7 +24,6 @@ class DX12Resource
 {
 public:
 	DX12Resource();
-	DX12Resource(D3D12_RESOURCE_STATES  newInitialState);
 	~DX12Resource();
 
 	ID3D12Resource* GetResource() const noexcept { return m_resource.Get(); }
@@ -44,7 +43,7 @@ class DX12ResourceBuffer : public DX12Resource
 {
 public:
 	void ResetUploadBuffer() noexcept { m_uploadBuffer.Reset(); m_uploadBufferCurrentState = D3D12_RESOURCE_STATE_COMMON; }
-	void CreateConstantBuffer(ID3D12Device* device, UINT elementByteSize);
+	void CreateConstantBuffer(ID3D12Device* device, uint32_t elementByteSize);
     void CreateVertexBuffer(ID3D12Device* device, std::span<const Vertex> vertices, ID3D12GraphicsCommandList* cmdList);
 	void CreateIndexBuffer(ID3D12Device* device, std::span<const uint32_t> indices, ID3D12GraphicsCommandList* cmdList);
 	void CopyAndUploadResource(ID3D12Resource* uploadBuffer, const void* sourceAddress, size_t dataSize, CD3DX12_RANGE* readRange = nullptr);
@@ -61,15 +60,15 @@ private:
 public:
 	void CreateDepthStencil(
 		ID3D12Device* device,
-		UINT clientWidth,
-		UINT clientHeight,
-		UINT multiSampleDescCount,
+		uint32_t clientWidth,
+		uint32_t clientHeight,
+		uint32_t multiSampleDescCount,
 		DXGI_FORMAT depthStencilFormat);
 
 	void CreateRenderTarget(
 		ID3D12Device* device,
-		UINT clientWidth,
-		UINT clientHeight,
-		UINT multiSampleDescCount,
+		uint32_t clientWidth,
+		uint32_t clientHeight,
+		uint32_t multiSampleDescCount,
 		DXGI_FORMAT renderTargetFormat);
 };

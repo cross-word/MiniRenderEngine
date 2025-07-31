@@ -8,6 +8,7 @@
 
 using namespace DirectX;
 
+//role of main camera
 class RenderDX12_API D3DCamera
 {
 public:

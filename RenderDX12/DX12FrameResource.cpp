@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "DX12FrameResource.h"
 
-DX12FrameResource::DX12FrameResource(ID3D12Device* device, DX12DescriptorHeap* cbvHeap, UINT frameIndex)
+DX12FrameResource::DX12FrameResource(ID3D12Device* device, DX12DescriptorHeap* cbvHeap, uint32_t frameIndex)
 {
 	//CREATE CMD ALLOC
 	ThrowIfFailed(device->CreateCommandAllocator(
@@ -9,15 +9,17 @@ DX12FrameResource::DX12FrameResource(ID3D12Device* device, DX12DescriptorHeap* c
 		IID_PPV_ARGS(m_commandAllocator.GetAddressOf())
 	));
 
-	//CREATE BUFFER
+	//SET HEAP VAR
+	//NEED FrameIndex, ThreadIndex, public descNum per frame, private descNum per thread, maxworker // in multi-thread env
+	
+	//CREATE CONSTANT BUFFER
 	//ALLOCATE GPU ADDRESS
-	UINT elementByteSize[3] =
+	uint32_t elementByteSize[3] =
 	{ CalcConstantBufferByteSize(sizeof(PassConstants)),
 		CalcConstantBufferByteSize(sizeof(ObjectConstants)),
 		CalcConstantBufferByteSize(sizeof(MaterialConstants)) };
 	int CBIndex = 0;
-	auto descCPUAddress = cbvHeap->GetDescHeap()->GetCPUDescriptorHandleForHeapStart();
-	descCPUAddress.ptr += SIZE_T(frameIndex) * 3 * cbvHeap->GetDescIncSize(); // cpu address adjust
+	auto descCPUAddress = cbvHeap->Offset(cbvHeap->CalcHeapSliceShareBlock(frameIndex, 0, EngineConfig::SwapChainBufferCount, 0, 0)).cpuDescHandle;
 
 	//PassConstantBuffer
 	m_DX12PassConstantBuffer = std::make_unique<DX12ResourceBuffer>();
@@ -79,4 +81,15 @@ DX12FrameResource::DX12FrameResource(ID3D12Device* device, DX12DescriptorHeap* c
 DX12FrameResource::~DX12FrameResource()
 {
 
+}
+
+void DX12FrameResource::EnsureWorkerCapacity(ID3D12Device* device, uint32_t n) {
+	if (m_workerAlloc.size() >= n) return;
+
+	size_t old = m_workerAlloc.size();
+	m_workerAlloc.resize(n);
+	for (size_t i = old; i < n; ++i)
+		ThrowIfFailed(device->CreateCommandAllocator(
+			D3D12_COMMAND_LIST_TYPE_DIRECT,
+			IID_PPV_ARGS(m_workerAlloc[i].GetAddressOf())));
 }

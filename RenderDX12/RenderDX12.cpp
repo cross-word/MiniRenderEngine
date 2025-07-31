@@ -8,7 +8,7 @@
 #include "../external/imgui/backends/imgui_impl_dx12.h"
 
 namespace {
-	UINT64 fenceCounter = 0;
+	uint64_t fenceCounter = 0;
 };
 
 //struct for imgui (see : https://github.com/ocornut/imgui/blob/master/examples/example_win32_directx12/main.cpp#L113 )
@@ -87,7 +87,7 @@ void RenderDX12::InitializeDX12(HWND hWnd)
 #endif
 	m_DX12Device.Initialize(hWnd);
 	m_DX12FrameBuffer.Initialize(&m_DX12Device);
-	m_timer.Initialize(m_DX12Device.GetDevice(), m_DX12Device.GetDX12CommandList()->GetCommandQueue(), EngineConfig::SwapChainBufferCount);
+	m_timer.Initialize(m_DX12Device.GetDevice(), m_DX12Device.GetDX12CommandList()->GetCommandQueue());
 	//////////////////////////////////////////
 	// imgui initialization block
 	IMGUI_CHECKVERSION();
@@ -141,10 +141,18 @@ void RenderDX12::OnResize()
 	m_DX12FrameBuffer.Resize(&m_DX12Device, ++fenceCounter);
 }
 
-void RenderDX12::Draw()
+void RenderDX12::Draw() {
+	if (Submit == SubmitMode::Multi && WorkerCount > 0)
+		RecordAndSubmit_Single();
+		//RecordAndSubmit_Multi();
+	else
+		RecordAndSubmit_Single();
+}
+
+void RenderDX12::RecordAndSubmit_Single()
 {
 	m_DX12Device.SetCurrentBackBufferIndex(m_DX12Device.GetDX12SwapChain()->GetSwapChain()->GetCurrentBackBufferIndex());
-	UINT currBackBufferIndex = m_DX12Device.GetDX12SwapChain()->GetSwapChain()->GetCurrentBackBufferIndex();
+	uint32_t currBackBufferIndex = m_DX12Device.GetDX12SwapChain()->GetSwapChain()->GetCurrentBackBufferIndex();
 	m_DX12Device.UpdateFrameResource();
 
 	m_DX12FrameBuffer.CheckFence(&m_DX12Device, currBackBufferIndex); // << GPU WAIT
@@ -164,10 +172,20 @@ void RenderDX12::Draw()
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootSignature(m_DX12Device.GetDX12RootSignature()->GetRootSignature());
 	ID3D12DescriptorHeap* descriptorHeaps[] = { m_DX12Device.GetDX12CBVHeap()->GetDescHeap() };
 
-	auto descGPUAddress = m_DX12Device.GetDX12CBVHeap()->GetDescHeap()->GetGPUDescriptorHandleForHeapStart();
-	descGPUAddress.ptr += SIZE_T(currBackBufferIndex) * EngineConfig::SwapChainBufferCount * m_DX12Device.GetDX12CBVHeap()->GetDescIncSize();
+	auto* cbvHeap = m_DX12Device.GetDX12CBVHeap();
+
+	constexpr uint32_t numDescPerFrame = 3;
+	constexpr uint32_t numDescPerThread = 0;
+	constexpr uint32_t maxWorkers = 0;
+
+	const uint32_t frameIndex = currBackBufferIndex;
+	const uint32_t threadIndex = 0;
+
+	uint32_t sliceIndex = cbvHeap->CalcHeapSliceShareBlock(frameIndex, threadIndex, numDescPerFrame, numDescPerThread, maxWorkers);
+	HeapSlice slice = cbvHeap->Offset(sliceIndex);
+
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
-	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootDescriptorTable(0, descGPUAddress);
+	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootDescriptorTable(0, slice.gpuDescHandle);
 
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetVertexBuffers(0, 1, m_DX12Device.GetDX12VertexBufferView()->GetVertexBufferView());
@@ -206,7 +224,7 @@ void RenderDX12::Draw()
 	m_DX12Device.GetDX12CommandList()->GetCommandQueue()->ExecuteCommandLists(1, lists);
 
 	// 프레임 펜스 기록(대기는 다음 프레임 Begin에서만)
-	const UINT64 fenceValue = ++fenceCounter;
+	const uint64_t fenceValue = ++fenceCounter;
 	m_DX12Device.GetDX12CommandList()->GetCommandQueue()->Signal(m_DX12Device.GetDX12CommandList()->GetFence(), fenceValue);
 	m_DX12Device.GetFrameResource(currBackBufferIndex)->SetFenceValue(fenceValue);
 

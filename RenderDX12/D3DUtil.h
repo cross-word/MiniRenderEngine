@@ -125,3 +125,8 @@ static UINT CalcConstantBufferByteSize(UINT byteSize)
     // 512
     return (byteSize + 255) & ~255;
 }
+
+struct HeapSlice {
+    D3D12_CPU_DESCRIPTOR_HANDLE cpuDescHandle{};
+    D3D12_GPU_DESCRIPTOR_HANDLE gpuDescHandle{};
+};

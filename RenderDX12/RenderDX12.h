@@ -20,6 +20,11 @@ using namespace DirectX;
 #include "DX12FrameBuffer.h"
 #include "D3DCamera.h"
 #include "D3DTimer.h"
+
+
+enum class SubmitMode { Single, Multi };
+
+
 /*
 CLASS RENDERDX12
 MAIN WORK:
@@ -33,6 +38,8 @@ IMPORTANT MEMBER:
 Variable Naming Rule in RenderDX12 project:
 1. d3d12 API variable && member variable -> m_~
 2. custom class DX12 valibale && member variable -> m_DX12~
+
+** var type : uintXX for engine var, UINT for DX API **
 */
 class RenderDX12_API RenderDX12
 {
@@ -51,4 +58,9 @@ private:
     DX12FrameBuffer m_DX12FrameBuffer;
     DX12Device m_DX12Device;
     D3DTimer m_timer;
+
+    SubmitMode Submit = SubmitMode::Single;
+    uint32_t   WorkerCount = 0;
+    void RecordAndSubmit_Single();
+    void RecordAndSubmit_Multi(); // for multi-thread
 };

@@ -1,6 +1,7 @@
 #pragma once
 #include "stdafx.h"
 
+using Microsoft::WRL::ComPtr;
 /*
 CLASS D3DTIMER
 MAIN WORK:
@@ -11,22 +12,21 @@ IMPORTANT MEMBER:
 class D3DTimer
 {
 public:
-    void Initialize(ID3D12Device* device, ID3D12CommandQueue* queue, UINT frameCount);
+    void Initialize(ID3D12Device* device, ID3D12CommandQueue* commandQueue);
     // GPU timing -----------------------------------------------------------
-    void BeginGPU(ID3D12GraphicsCommandList* cmdList, UINT frameIndex);
-    void EndGPU(ID3D12GraphicsCommandList* cmdList, UINT frameIndex);
-    float GetElapsedGPUMS(UINT frameIndex);
+    void BeginGPU(ID3D12GraphicsCommandList* commandList, uint32_t frameIndex);
+    void EndGPU(ID3D12GraphicsCommandList* commandList, uint32_t frameIndex);
+    float GetElapsedGPUMS(uint32_t frameIndex);
 
     // CPU timing -----------------------------------------------------------
-    void BeginCPU(UINT frameIndex);
-    void EndCPU(UINT frameIndex);
-    float GetElapsedCPUMS(UINT frameIndex) const;
+    void BeginCPU(uint32_t frameIndex);
+    void EndCPU(uint32_t frameIndex);
+    float GetElapsedCPUMS(uint32_t frameIndex) const;
 
 private:
     Microsoft::WRL::ComPtr<ID3D12QueryHeap> m_queryHeap;
     Microsoft::WRL::ComPtr<ID3D12Resource> m_readbackBuffer;
     UINT64 m_frequency = 0;
-    UINT m_frameCount = 0;
 
     std::vector<LARGE_INTEGER> m_cpuBegin;
     std::vector<float>        m_cpuElapsedMS;

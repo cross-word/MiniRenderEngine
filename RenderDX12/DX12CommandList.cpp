@@ -62,12 +62,6 @@ void DX12CommandList::FlushCommandQueue(UINT currentFenceValue)
 	}
 }
 
-//void DX12CommandList::ResetAllocator()
-//{
-//	ThrowIfFailed(m_commandAllocator->Reset());
-//	return;
-//}
-
 void DX12CommandList::ResetList(ID3D12CommandAllocator* commandAllocator)
 {
 	ThrowIfFailed(m_commandList->Reset(commandAllocator, nullptr));

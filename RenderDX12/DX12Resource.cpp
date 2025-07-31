@@ -7,11 +7,6 @@ DX12Resource::DX12Resource()
 
 }
 
-DX12Resource::DX12Resource(D3D12_RESOURCE_STATES  newInitialState)
-{
-	m_currentState = newInitialState;
-}
-
 DX12Resource::~DX12Resource()
 {
 
@@ -29,7 +24,7 @@ void DX12Resource::TransitionState(ID3D12GraphicsCommandList* commandList, D3D12
 	return;
 }
 
-void DX12ResourceBuffer::CreateConstantBuffer(ID3D12Device* device, UINT elementByteSize)
+void DX12ResourceBuffer::CreateConstantBuffer(ID3D12Device* device, uint32_t elementByteSize)
 {
 	CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_UPLOAD);
 	CD3DX12_RESOURCE_DESC bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(elementByteSize);
@@ -126,9 +121,9 @@ void DX12ResourceBuffer::CopyAndUploadResource(ID3D12Resource* uploadBuffer, con
 
 void DX12ResourceTexture::CreateDepthStencil(
 	ID3D12Device* device,
-	UINT clientWidth,
-	UINT clientHeight,
-	UINT multiSampleDescCount,
+	uint32_t clientWidth,
+	uint32_t clientHeight,
+	uint32_t multiSampleDescCount,
 	DXGI_FORMAT depthStencilFormat)
 {
 	//create DSDesc
@@ -164,9 +159,9 @@ void DX12ResourceTexture::CreateDepthStencil(
 
 void DX12ResourceTexture::CreateRenderTarget(
 	ID3D12Device* device,
-	UINT clientWidth,
-	UINT clientHeight,
-	UINT multiSampleDescCount,
+	uint32_t clientWidth,
+	uint32_t clientHeight,
+	uint32_t multiSampleDescCount,
 	DXGI_FORMAT renderTargetFormat)
 {
 	//create RTVDesc

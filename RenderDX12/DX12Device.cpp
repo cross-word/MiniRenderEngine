@@ -40,7 +40,7 @@ void DX12Device::Initialize(HWND hWnd)
 	}
 	InitDX12RTVDescHeap();
 	InitDX12DSVDescHeap();
-	InitDX12ConstantBufferDescHeap();
+	InitDX12CBVSRVHeap();
 	InitDX12FrameResource();
 	InitDX12CommandList(m_DX12FrameResource[0]->GetCommandAllocator());
 	InitDX12SwapChain(hWnd);
@@ -68,7 +68,7 @@ void DX12Device::InitDX12RTVDescHeap()
 	m_DX12RTVHeap = std::make_unique<DX12DescriptorHeap>();
 	m_DX12RTVHeap->Initialize(
 		m_device.Get(),
-		EngineConfig::SwapChainBufferCount + EngineConfig::SwapChainBufferCount,
+		EngineConfig::SwapChainBufferCount + EngineConfig::SwapChainBufferCount, // back buffer + msaa buffer
 		D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
 		D3D12_DESCRIPTOR_HEAP_FLAG_NONE
 	);
@@ -79,18 +79,18 @@ void DX12Device::InitDX12DSVDescHeap()
 	m_DX12DSVHeap = std::make_unique<DX12DescriptorHeap>();
 	m_DX12DSVHeap->Initialize(
 		m_device.Get(),
-		EngineConfig::SwapChainBufferCount + EngineConfig::SwapChainBufferCount,
+		EngineConfig::SwapChainBufferCount + EngineConfig::SwapChainBufferCount, // back buffer + msaa buffer
 		D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
 		D3D12_DESCRIPTOR_HEAP_FLAG_NONE
 	);
 }
 
-void DX12Device::InitDX12ConstantBufferDescHeap()
+void DX12Device::InitDX12CBVSRVHeap()
 {
-	m_DX12CBVHeap = std::make_unique<DX12DescriptorHeap>();
-	m_DX12CBVHeap->Initialize(
+	m_DX12CBVSRVHeap = std::make_unique<DX12DescriptorHeap>();
+	m_DX12CBVSRVHeap->Initialize(
 		m_device.Get(),
-		3* EngineConfig::SwapChainBufferCount + 1, // 3 views * 3 swap chains + 1 imgui
+		3* EngineConfig::SwapChainBufferCount + 1, // 3 constant(b0 b1 b2) * 3 frames + 1 imgui
 		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
 		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
 	);
@@ -162,7 +162,7 @@ void DX12Device::InitDX12FrameResource()
 {
 	for (int i = 0; i < EngineConfig::SwapChainBufferCount; i++)
 	{
-		m_DX12FrameResource.push_back(std::make_unique<DX12FrameResource>(m_device.Get(), m_DX12CBVHeap.get(), i));
+		m_DX12FrameResource.push_back(std::make_unique<DX12FrameResource>(m_device.Get(), m_DX12CBVSRVHeap.get(), i));
 	}
 }
 
@@ -180,7 +180,7 @@ void DX12Device::UpdateFrameResource()
 	}
 
 	ObjectConstants objConst;
-	objConst.World = XMMatrixTranspose(XMMatrixIdentity() * m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix(float(800 / 600))); //TMP CODE FOR TEST CBV TABLE
+	objConst.World = XMMatrixTranspose(XMMatrixIdentity() * m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix(float(EngineConfig::DefaultWidth / EngineConfig::DefaultHeight))); //TMP CODE FOR TEST CBV TABLE
 	m_DX12CurrFrameResource->GetDX12ObjectConstantBuffer()->CopyAndUploadResource(
 		m_DX12CurrFrameResource->GetDX12ObjectConstantBuffer()->GetResource(),
 		&objConst,
