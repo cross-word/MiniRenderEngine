@@ -40,7 +40,8 @@ void DX12Device::Initialize(HWND hWnd)
 	}
 	InitDX12RTVDescHeap();
 	InitDX12DSVDescHeap();
-	InitDX12CBVSRVHeap();
+	InitDX12CBVHeap();
+	InitDX12SRVHeap();
 	InitDX12FrameResource();
 	InitDX12CommandList(m_DX12FrameResource[0]->GetCommandAllocator());
 	InitDX12SwapChain(hWnd);
@@ -85,12 +86,23 @@ void DX12Device::InitDX12DSVDescHeap()
 	);
 }
 
-void DX12Device::InitDX12CBVSRVHeap()
+void DX12Device::InitDX12CBVHeap()
 {
-	m_DX12CBVSRVHeap = std::make_unique<DX12DescriptorHeap>();
-	m_DX12CBVSRVHeap->Initialize(
+	m_DX12CBVHeap = std::make_unique<DX12DescriptorHeap>();
+	m_DX12CBVHeap->Initialize(
 		m_device.Get(),
-		3* EngineConfig::SwapChainBufferCount + 1, // 3 constant(b0 b1 b2) * 3 frames + 1 imgui
+		3* EngineConfig::SwapChainBufferCount, // 3 constant(b0 b1 b2) * 3 frames + 1 imgui
+		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
+	);
+}
+
+void DX12Device::InitDX12SRVHeap()
+{
+	m_DX12SRVHeap = std::make_unique<DX12DescriptorHeap>();
+	m_DX12SRVHeap->Initialize(
+		m_device.Get(),
+		1, //  1 imgui
 		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
 		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
 	);
@@ -128,7 +140,7 @@ void DX12Device::InitShader()
 	HRESULT hr = S_OK;
 	ID3DBlob* errorBlob = nullptr;
 
-	hr = D3DCompileFromFile(EngineConfig::ShaderFilePath, nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &m_vertexShader, &errorBlob);
+	hr = D3DCompileFromFile(EngineConfig::ShaderFilePath, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &m_vertexShader, &errorBlob);
 	if (FAILED(hr))
 	{
 		if (errorBlob)
@@ -137,7 +149,7 @@ void DX12Device::InitShader()
 			errorBlob->Release();
 		}
 	}
-	hr = D3DCompileFromFile(EngineConfig::ShaderFilePath, nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &m_pixelShader, &errorBlob);
+	hr = D3DCompileFromFile(EngineConfig::ShaderFilePath, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", compileFlags, 0, &m_pixelShader, &errorBlob);
 	if (FAILED(hr))
 	{
 		if (errorBlob)
@@ -149,20 +161,28 @@ void DX12Device::InitShader()
 	m_inputLayout =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 	};
 }
 
 void DX12Device::PrepareInitialResource(UINT currentFenceValue)
 {
-	InitMeshFromOBJ(EngineConfig::ModelObjFilePath, currentFenceValue);
+	m_DX12RenderItem = std::make_unique<DX12RenderItem>();
+	m_DX12RenderItem->InitMeshFromFile(
+		m_device.Get(),
+		m_DX12FrameResource[m_currBackBufferIndex].get(),
+		m_DX12CommandList.get(),
+		EngineConfig::ModelObjFilePath,
+		currentFenceValue
+	);
 }
 
 void DX12Device::InitDX12FrameResource()
 {
 	for (int i = 0; i < EngineConfig::SwapChainBufferCount; i++)
 	{
-		m_DX12FrameResource.push_back(std::make_unique<DX12FrameResource>(m_device.Get(), m_DX12CBVSRVHeap.get(), i));
+		m_DX12FrameResource.push_back(std::make_unique<DX12FrameResource>(m_device.Get(), m_DX12CBVHeap.get(), i));
 	}
 }
 
@@ -179,56 +199,7 @@ void DX12Device::UpdateFrameResource()
 		WaitForSingleObject(m_fenceEvent, INFINITE);
 	}
 
-	ObjectConstants objConst;
-	objConst.World = XMMatrixTranspose(XMMatrixIdentity() * m_camera->GetViewMatrix() * m_camera->GetProjectionMatrix(float(EngineConfig::DefaultWidth / EngineConfig::DefaultHeight))); //TMP CODE FOR TEST CBV TABLE
-	m_DX12CurrFrameResource->GetDX12ObjectConstantBuffer()->CopyAndUploadResource(
-		m_DX12CurrFrameResource->GetDX12ObjectConstantBuffer()->GetResource(),
-		&objConst,
-		sizeof(ObjectConstants));
-}
-
-void DX12Device::InitMeshFromOBJ(const std::wstring& filename, UINT currentFenceValue)
-{
-	MeshData mesh = LoadOBJ(filename);
-	if (mesh.vertices.empty() || mesh.indices.empty())
-		return;
-
-	D3D12_CPU_DESCRIPTOR_HANDLE nullHandle = {};
-	const UINT vertexBufferSize = (UINT)mesh.vertices.size() * sizeof(Vertex);
-	const UINT vertexStride = sizeof(Vertex);
-	const UINT indexBufferSize = (UINT)mesh.indices.size() * sizeof(uint32_t);
-
-	m_DX12FrameResource[m_currBackBufferIndex]->ResetAllocator();
-	m_DX12CommandList->ResetList(m_DX12FrameResource[m_currBackBufferIndex]->GetCommandAllocator());
-
-	m_DX12VertexBuffer = std::make_unique<DX12ResourceBuffer>();
-	m_DX12VertexBuffer->CreateVertexBuffer(m_device.Get(), mesh.vertices, m_DX12CommandList->GetCommandList());
-
-	m_DX12IndexBuffer = std::make_unique<DX12ResourceBuffer>();
-	m_DX12IndexBuffer->CreateIndexBuffer(m_device.Get(), mesh.indices, m_DX12CommandList->GetCommandList());
-
-	m_DX12CommandList->SubmitAndWait(currentFenceValue);
-	m_DX12VertexBuffer->ResetUploadBuffer();
-	m_DX12IndexBuffer->ResetUploadBuffer();
-
-	m_DX12VertexView = std::make_unique<DX12View>(
-		m_device.Get(),
-		EViewType::EVertexView,
-		m_DX12VertexBuffer.get(),
-		nullHandle,
-		m_DX12VertexBuffer.get()->GetGPUVAdress(),
-		vertexBufferSize,
-		vertexStride
-	);
-
-	m_DX12IndexView = std::make_unique<DX12View>(
-		m_device.Get(),
-		EViewType::EIndexView,
-		m_DX12IndexBuffer.get(),
-		nullHandle,
-		m_DX12IndexBuffer.get()->GetGPUVAdress(),
-		indexBufferSize,
-		0U,
-		m_indexFormat
-	);
+	m_DX12CurrFrameResource->UploadPassConstant();
+	m_DX12CurrFrameResource->UploadObjectConstant(m_camera.get());
+	m_DX12CurrFrameResource->UploadMaterialConstat();
 }

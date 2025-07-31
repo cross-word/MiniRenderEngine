@@ -102,7 +102,7 @@ void RenderDX12::InitializeDX12(HWND hWnd)
 
 	ImGui_ImplWin32_Init(hWnd);
 
-	g_SrvAllocator.Create(m_DX12Device.GetDevice(), m_DX12Device.GetDX12CBVHeap()->GetDescHeap());
+	g_SrvAllocator.Create(m_DX12Device.GetDevice(), m_DX12Device.GetDX12SRVHeap()->GetDescHeap());
 
 	ImGui_ImplDX12_InitInfo info = {};
 	info.Device = m_DX12Device.GetDevice();
@@ -110,7 +110,7 @@ void RenderDX12::InitializeDX12(HWND hWnd)
 	info.NumFramesInFlight = EngineConfig::SwapChainBufferCount;
 	info.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 	info.DSVFormat = DXGI_FORMAT_UNKNOWN;
-	info.SrvDescriptorHeap = m_DX12Device.GetDX12CBVHeap()->GetDescHeap();
+	info.SrvDescriptorHeap = m_DX12Device.GetDX12SRVHeap()->GetDescHeap();
 	info.SrvDescriptorAllocFn = [](ImGui_ImplDX12_InitInfo*, D3D12_CPU_DESCRIPTOR_HANDLE* outCPU, D3D12_GPU_DESCRIPTOR_HANDLE* outGPU) {
 		return g_SrvAllocator.Alloc(outCPU, outGPU);
 		};
@@ -142,7 +142,7 @@ void RenderDX12::OnResize()
 }
 
 void RenderDX12::Draw() {
-	if (Submit == SubmitMode::Multi && WorkerCount > 0)
+	if (submit == SubmitMode::Multi && workerCount > 0)
 		RecordAndSubmit_Single();
 		//RecordAndSubmit_Multi();
 	else
@@ -188,9 +188,9 @@ void RenderDX12::RecordAndSubmit_Single()
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootDescriptorTable(0, slice.gpuDescHandle);
 
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetVertexBuffers(0, 1, m_DX12Device.GetDX12VertexBufferView()->GetVertexBufferView());
-	m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetIndexBuffer(m_DX12Device.GetDX12IndexBufferView()->GetIndexBufferView());
-	m_DX12Device.GetDX12CommandList()->GetCommandList()->DrawIndexedInstanced(36, 1, 0, 0, 0);
+	m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetVertexBuffers(0, 1, m_DX12Device.GetDX12RenderItem()->GetDX12VertexBufferView()->GetVertexBufferView());
+	m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetIndexBuffer(m_DX12Device.GetDX12RenderItem()->GetDX12IndexBufferView()->GetIndexBufferView());
+	m_DX12Device.GetDX12CommandList()->GetCommandList()->DrawIndexedInstanced(3*1850, 1, 0, 0, 0); // 여러 모델 들여올때를 대비해 수정 필요
 
 	m_DX12FrameBuffer.EndFrame(&m_DX12Device, currBackBufferIndex);
 	//////////////////////////////////////////////////////////////////////////////////
@@ -211,8 +211,8 @@ void RenderDX12::RecordAndSubmit_Single()
 	CD3DX12_CPU_DESCRIPTOR_HANDLE backbufRTV(backBufferBase, currBackBufferIndex, backBufferInc);
 
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->OMSetRenderTargets(1, &backbufRTV, FALSE, nullptr);
-	ID3D12DescriptorHeap* heaps[] = { m_DX12Device.GetDX12CBVHeap()->GetDescHeap() };
-	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetDescriptorHeaps(1, heaps);
+	ID3D12DescriptorHeap* SRVheaps[] = { m_DX12Device.GetDX12SRVHeap()->GetDescHeap() };
+	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetDescriptorHeaps(1, SRVheaps);
 
 	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_DX12Device.GetDX12CommandList()->GetCommandList());
 	m_DX12FrameBuffer.SetBackBufferPresent(&m_DX12Device, currBackBufferIndex);

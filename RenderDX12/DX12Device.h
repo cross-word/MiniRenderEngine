@@ -9,6 +9,7 @@
 #include "DX12DescriptorHeap.h"
 #include "DX12SwapChain.h"
 #include "DX12FrameResource.h"
+#include "DX12RenderItem.h"
 
 #include "D3DCamera.h"
 using Microsoft::WRL::ComPtr;
@@ -33,13 +34,13 @@ public:
 
 	inline ID3D12Device* GetDevice() const noexcept { return m_device.Get(); }
 	inline DX12DescriptorHeap* GetDX12RTVHeap() const noexcept { return m_DX12RTVHeap.get(); }
-	inline DX12DescriptorHeap* GetDX12CBVHeap() const noexcept { return m_DX12CBVSRVHeap.get(); }
+	inline DX12DescriptorHeap* GetDX12CBVHeap() const noexcept { return m_DX12CBVHeap.get(); }
+	inline DX12DescriptorHeap* GetDX12SRVHeap() const noexcept { return m_DX12SRVHeap.get(); }
 	inline DX12DescriptorHeap* GetDX12DSVHeap() const noexcept { return m_DX12DSVHeap.get(); }
 	inline DX12CommandList* GetDX12CommandList() const noexcept { return m_DX12CommandList.get(); }
 	inline DX12RootSignature* GetDX12RootSignature() const noexcept { return m_DX12RootSignature.get(); }
 	inline DX12PSO* GetDX12PSO() const noexcept { return m_DX12PSO.get(); }
-	inline DX12View* GetDX12VertexBufferView() const { return m_DX12VertexView.get(); }
-	inline DX12View* GetDX12IndexBufferView() const { return m_DX12IndexView.get(); }
+	inline DX12RenderItem* GetDX12RenderItem() const noexcept { return m_DX12RenderItem.get(); }
 	inline DX12SwapChain* GetDX12SwapChain() const noexcept { return m_DX12SwapChain.get(); }
 	inline HANDLE GetFenceEvent() const noexcept { return m_fenceEvent; }
 	inline D3D12_CPU_DESCRIPTOR_HANDLE GetOffsetCPUHandle(D3D12_CPU_DESCRIPTOR_HANDLE start, UINT index, UINT handleIncrementSize)
@@ -60,11 +61,11 @@ private:
 	void InitDX12SwapChain(HWND hWnd);
 	void InitDX12RTVDescHeap();
 	void InitDX12DSVDescHeap();
-	void InitDX12CBVSRVHeap();
+	void InitDX12CBVHeap();
+	void InitDX12SRVHeap();
 	void InitDX12RootSignature();
 	void InitShader(); //temp func
-	//void InitConstantBuffer();
-	void InitMeshFromOBJ(const std::wstring& filename, UINT currentFenceValue);
+
 	void InitDX12FrameResource();
 private:
 	ComPtr<IDXGIFactory4> m_factory;
@@ -74,19 +75,16 @@ private:
 	std::unique_ptr<DX12PSO> m_DX12PSO;
 
 	//initial resources
-	UINT m_currBackBufferIndex = 0;
+	uint32_t m_currBackBufferIndex = 0;
 	DX12FrameResource* m_DX12CurrFrameResource;
 	std::vector<std::unique_ptr<DX12FrameResource>> m_DX12FrameResource;
+	std::unique_ptr<DX12RenderItem> m_DX12RenderItem;
 
-	std::unique_ptr<DX12ResourceBuffer> m_DX12VertexBuffer;
-	std::unique_ptr<DX12View> m_DX12VertexView;
-	std::unique_ptr<DX12ResourceBuffer> m_DX12IndexBuffer;
-	std::unique_ptr<DX12View> m_DX12IndexView;
-	DXGI_FORMAT m_indexFormat = DXGI_FORMAT_R32_UINT;
 	std::unique_ptr<DX12SwapChain> m_DX12SwapChain;
 
 	std::unique_ptr<DX12DescriptorHeap> m_DX12RTVHeap;
-	std::unique_ptr<DX12DescriptorHeap> m_DX12CBVSRVHeap;
+	std::unique_ptr<DX12DescriptorHeap> m_DX12CBVHeap;
+	std::unique_ptr<DX12DescriptorHeap> m_DX12SRVHeap;
 	std::unique_ptr<DX12DescriptorHeap> m_DX12DSVHeap;
 
 	///tmp variable

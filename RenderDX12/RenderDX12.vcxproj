@@ -47,6 +47,7 @@
     <ClCompile Include="DX12FrameBuffer.cpp" />
     <ClCompile Include="DX12FrameResource.cpp" />
     <ClCompile Include="DX12PSO.cpp" />
+    <ClCompile Include="DX12RenderItem.cpp" />
     <ClCompile Include="DX12Resource.cpp" />
     <ClCompile Include="DX12RootSignature.cpp" />
     <ClCompile Include="DX12SwapChain.cpp" />
@@ -66,6 +67,7 @@
     <ClInclude Include="DX12FrameBuffer.h" />
     <ClInclude Include="DX12FrameResource.h" />
     <ClInclude Include="DX12PSO.h" />
+    <ClInclude Include="DX12RenderItem.h" />
     <ClInclude Include="DX12Resource.h" />
     <ClInclude Include="DX12RootSignature.h" />
     <ClInclude Include="DX12SwapChain.h" />

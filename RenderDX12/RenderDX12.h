@@ -59,8 +59,8 @@ private:
     DX12Device m_DX12Device;
     D3DTimer m_timer;
 
-    SubmitMode Submit = SubmitMode::Single;
-    uint32_t   WorkerCount = 0;
+    SubmitMode submit = SubmitMode::Single;
+    uint32_t   workerCount = 0;
     void RecordAndSubmit_Single();
     void RecordAndSubmit_Multi(); // for multi-thread
 };

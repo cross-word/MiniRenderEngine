@@ -83,6 +83,45 @@ DX12FrameResource::~DX12FrameResource()
 
 }
 
+void DX12FrameResource::UploadPassConstant()
+{
+	PassConstants passConst;
+	passConst.AmbientLight = { 0.25f, 0.25f, 0.35f, 1.0f };
+	passConst.Lights[0].Direction = { 0.57735f, -0.57735f, 0.57735f };
+	passConst.Lights[0].Strength = { 0.6f, 0.6f, 0.6f };
+	passConst.Lights[1].Direction = { -0.57735f, -0.57735f, 0.57735f };
+	passConst.Lights[1].Strength = { 0.3f, 0.3f, 0.3f };
+	passConst.Lights[2].Direction = { 0.0f, -0.707f, -0.707f };
+	passConst.Lights[2].Strength = { 0.15f, 0.15f, 0.15f };
+	m_DX12PassConstantBuffer->CopyAndUploadResource(
+		m_DX12PassConstantBuffer->GetResource(),
+		&passConst,
+		sizeof(PassConstants));
+}
+
+void DX12FrameResource::UploadObjectConstant(D3DCamera* d3dCamera)
+{
+	ObjectConstants objConst;
+	objConst.World = XMMatrixTranspose(XMMatrixIdentity() * d3dCamera->GetViewMatrix() * d3dCamera->GetProjectionMatrix(float(EngineConfig::DefaultWidth / EngineConfig::DefaultHeight))); //TMP CODE FOR TEST CBV TABLE
+	m_DX12ObjectConstantBuffer->CopyAndUploadResource(
+		m_DX12ObjectConstantBuffer->GetResource(),
+		&objConst,
+		sizeof(ObjectConstants));
+}
+
+void DX12FrameResource::UploadMaterialConstat()
+{
+	MaterialConstants matConst;
+
+	matConst.DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	matConst.FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05);
+	matConst.Roughness = 0.3f;
+	m_DX12MaterialConstantBuffer->CopyAndUploadResource(
+		m_DX12MaterialConstantBuffer->GetResource(),
+		&matConst,
+		sizeof(MaterialConstants));
+}
+
 void DX12FrameResource::EnsureWorkerCapacity(ID3D12Device* device, uint32_t n) {
 	if (m_workerAlloc.size() >= n) return;
 

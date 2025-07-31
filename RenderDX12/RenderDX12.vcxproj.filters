@@ -78,6 +78,9 @@
     <ClCompile Include="D3DTimer.cpp">
       <Filter>Resource Files</Filter>
     </ClCompile>
+    <ClCompile Include="DX12RenderItem.cpp">
+      <Filter>Resource Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RenderDX12.h">
@@ -123,6 +126,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="D3DTimer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DX12RenderItem.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

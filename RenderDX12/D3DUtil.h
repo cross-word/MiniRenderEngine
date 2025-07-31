@@ -96,18 +96,39 @@ struct PassConstants // to slot b0 (per camera)
 struct ObjectConstants // to slot b1 (per draw call)
 {
     XMMATRIX World = XMMatrixIdentity();
-    XMFLOAT4X4 TexTransform = XMMatIdentity();
 };
 
-
-struct MaterialConstants // to slot b2 (per object)
+struct MaterialConstants
 {
-    XMFLOAT4 DiffuseAlbedo = XMFLOAT4{ 1.0f, 1.0f, 1.0f, 1.0f };
-    XMFLOAT3 FresnelR0 = XMFLOAT3{ 0.01f, 0.01f, 0.01f };
+    DirectX::XMFLOAT4 DiffuseAlbedo = { 1.0f, 1.0f, 1.0f, 1.0f };
+    DirectX::XMFLOAT3 FresnelR0 = { 0.01f, 0.01f, 0.01f };
     float Roughness = 0.25f;
 
     // Used in texture mapping.
-    XMFLOAT4X4 MatTransform = XMMatIdentity();
+    DirectX::XMFLOAT4X4 MatTransform = XMMatIdentity();
+};
+
+struct Material // to slot b2 (per object)
+{
+    // Unique material name for lookup.
+    std::string Name;
+
+    // Index into constant buffer corresponding to this material.
+    int MatCBIndex = -1;
+
+    // Index into SRV heap for diffuse texture.
+    int DiffuseSrvHeapIndex = -1;
+
+    // Index into SRV heap for normal texture.
+    int NormalSrvHeapIndex = -1;
+
+    // Dirty flag indicating the material has changed and we need to update the constant buffer.
+    // Because we have a material constant buffer for each FrameResource, we have to apply the
+    // update to each FrameResource.  Thus, when we modify a material we should set 
+    // NumFramesDirty = gNumFrameResources so that each frame resource gets the update.
+    int NumFramesDirty = EngineConfig::SwapChainBufferCount;
+
+    MaterialConstants matConstant;
 };
 
 static UINT CalcConstantBufferByteSize(UINT byteSize)
