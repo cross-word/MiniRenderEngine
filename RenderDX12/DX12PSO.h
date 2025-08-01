@@ -21,6 +21,7 @@ public:
 		ID3D12Device* device,
 		const std::vector<D3D12_INPUT_ELEMENT_DESC>& inputLayout,
 		ID3D12RootSignature* rootSignature,
+		DXGI_FORMAT depthStencilFormat,
 		DXGI_FORMAT renderTargetFormat,
 		ID3DBlob* vertexShader,
 		ID3DBlob* pixelShader);

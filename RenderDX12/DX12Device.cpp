@@ -91,7 +91,7 @@ void DX12Device::InitDX12CBVHeap()
 	m_DX12CBVDDSHeap = std::make_unique<DX12DescriptorHeap>();
 	m_DX12CBVDDSHeap->Initialize(
 		m_device.Get(),
-		3* EngineConfig::SwapChainBufferCount + 3, // 3 constant(b0 b1 b2) * 3 frames + 3 dds
+		3 * EngineConfig::SwapChainBufferCount + sizeof(EngineConfig::DDSFilePath), // 3 constant(b0 b1 b2) * 3 frames + dds amount
 		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
 		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
 	);
@@ -106,15 +106,6 @@ void DX12Device::InitDX12SRVHeap()
 		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
 		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
 	);
-	/*
-	m_DX12DDSHeap = std::make_unique<DX12DescriptorHeap>();
-	m_DX12DDSHeap->Initialize(
-		m_device.Get(),
-		3, //  3 DDS
-		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
-	);
-	*/
 }
 
 void DX12Device::InitDX12RootSignature()
@@ -131,6 +122,7 @@ void DX12Device::CreateDX12PSO()
 		GetDevice(),
 		m_inputLayout,
 		m_DX12RootSignature->GetRootSignature(),
+		m_DX12SwapChain->GetDepthStencilFormat(),
 		m_DX12SwapChain->GetRenderTargetFormat(),
 		m_vertexShader.Get(),
 		m_pixelShader.Get());

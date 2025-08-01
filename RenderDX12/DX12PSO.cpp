@@ -15,6 +15,7 @@ void DX12PSO::CreatePSO(
 	ID3D12Device* device,
 	const std::vector<D3D12_INPUT_ELEMENT_DESC>& inputLayout,
 	ID3D12RootSignature* rootSignature,
+	DXGI_FORMAT depthStencilFormat,
 	DXGI_FORMAT renderTargetFormat,
 	ID3DBlob* vertexShader,
 	ID3DBlob* pixelShader)
@@ -27,8 +28,10 @@ void DX12PSO::CreatePSO(
 	psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader);
 	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-	psoDesc.DepthStencilState.DepthEnable = FALSE;
-	psoDesc.DepthStencilState.StencilEnable = FALSE;
+	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+	psoDesc.DSVFormat = depthStencilFormat;
+	psoDesc.SampleDesc.Count = 1;
+	psoDesc.SampleDesc.Quality = 0;
 	psoDesc.SampleMask = UINT_MAX;
 	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	psoDesc.NumRenderTargets = 1;

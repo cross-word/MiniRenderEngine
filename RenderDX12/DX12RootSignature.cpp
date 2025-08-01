@@ -52,6 +52,7 @@ void DX12RootSignature::Initialize(ID3D12Device* device)
 	return;
 }
 
+//instance function of SampleDesc from Frank Luna
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> DX12RootSignature::GetStaticSamplers()
 {
 	// Applications usually only need a handful of samplers.  So just define them all up front

@@ -96,6 +96,7 @@ struct PassConstants // to slot b0 (per camera)
 struct ObjectConstants // to slot b1 (per draw call)
 {
     XMMATRIX World = XMMatrixIdentity();
+    XMMATRIX TexTransform = XMMatrixIdentity();
 };
 
 struct MaterialConstants

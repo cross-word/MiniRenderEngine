@@ -36,7 +36,6 @@ public:
 	inline DX12DescriptorHeap* GetDX12RTVHeap() const noexcept { return m_DX12RTVHeap.get(); }
 	inline DX12DescriptorHeap* GetDX12CBVHeap() const noexcept { return m_DX12CBVDDSHeap.get(); }
 	inline DX12DescriptorHeap* GetDX12ImGuiHeap() const noexcept { return m_DX12ImGuiHeap.get(); }
-	//inline DX12DescriptorHeap* GetDX12DDSHeap() const noexcept { return m_DX12DDSHeap.get(); }
 	inline DX12DescriptorHeap* GetDX12DSVHeap() const noexcept { return m_DX12DSVHeap.get(); }
 	inline DX12CommandList* GetDX12CommandList() const noexcept { return m_DX12CommandList.get(); }
 	inline DX12RootSignature* GetDX12RootSignature() const noexcept { return m_DX12RootSignature.get(); }
@@ -88,7 +87,6 @@ private:
 	std::unique_ptr<DX12DescriptorHeap> m_DX12RTVHeap;
 	std::unique_ptr<DX12DescriptorHeap> m_DX12CBVDDSHeap; //CBVSRV
 	std::unique_ptr<DX12DescriptorHeap> m_DX12ImGuiHeap; //SRV
-	//std::unique_ptr<DX12DescriptorHeap> m_DX12DDSHeap;
 	std::unique_ptr<DX12DescriptorHeap> m_DX12DSVHeap;
 
 	///tmp variable

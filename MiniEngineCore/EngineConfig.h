@@ -10,7 +10,9 @@ struct EngineConfig
     static constexpr LONGLONG TargetFrameTime = 16666; // 16.666ms
     static constexpr UINT SwapChainBufferCount = 3;
     static inline constexpr const wchar_t* ModelObjFilePath[] = {
-        LR"(..\Models\Cube.obj)"
+        LR"(..\Models\Cube.obj)",
+        LR"(..\Models\Skull.obj)",
+        LR"(..\Models\Car.obj)"
     }; // tmp
     static inline constexpr const wchar_t* DDSFilePath[] = {
         LR"(..\Textures\bricks.dds)",
