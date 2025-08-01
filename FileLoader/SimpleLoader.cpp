@@ -12,6 +12,7 @@ MeshData LoadOBJ(const std::wstring& filename) {
 
     std::vector<XMFLOAT3> positions;
     std::vector<XMFLOAT3> colors;
+    std::vector<XMFLOAT2> texCode;
 
     std::wstring line;
     while (std::getline(file, line)) {
@@ -22,9 +23,12 @@ MeshData LoadOBJ(const std::wstring& filename) {
             float x, y, z;
             iss >> x >> y >> z;
             positions.emplace_back(x, y, z);
-            float b, g, r, a;
+            float b, g, r;
             iss >> b >> g >> r;
             colors.emplace_back(b, g, r);
+            float tex_x, tex_y;
+            iss >> tex_x >> tex_y;
+            texCode.emplace_back(tex_x, tex_y);
         }
         else if (prefix == L"f") {
             std::wstring v1, v2, v3;
@@ -46,8 +50,8 @@ MeshData LoadOBJ(const std::wstring& filename) {
         Vertex v;
         v.position = positions[i];
         v.normal = colors[i];
+        v.texC = texCode[i];
         v.tangentU = XMFLOAT3{ 0.2,0.2,0.2 };
-        v.texC = XMFLOAT2{ 0.2,0.2 };
         mesh.vertices.push_back(v);
     }
     return mesh;

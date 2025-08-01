@@ -10,7 +10,7 @@
 #include "DX12SwapChain.h"
 #include "DX12FrameResource.h"
 #include "DX12RenderItem.h"
-
+#include "DX12DDSManager.h"
 #include "D3DCamera.h"
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
@@ -34,8 +34,9 @@ public:
 
 	inline ID3D12Device* GetDevice() const noexcept { return m_device.Get(); }
 	inline DX12DescriptorHeap* GetDX12RTVHeap() const noexcept { return m_DX12RTVHeap.get(); }
-	inline DX12DescriptorHeap* GetDX12CBVHeap() const noexcept { return m_DX12CBVHeap.get(); }
-	inline DX12DescriptorHeap* GetDX12SRVHeap() const noexcept { return m_DX12SRVHeap.get(); }
+	inline DX12DescriptorHeap* GetDX12CBVHeap() const noexcept { return m_DX12CBVDDSHeap.get(); }
+	inline DX12DescriptorHeap* GetDX12ImGuiHeap() const noexcept { return m_DX12ImGuiHeap.get(); }
+	//inline DX12DescriptorHeap* GetDX12DDSHeap() const noexcept { return m_DX12DDSHeap.get(); }
 	inline DX12DescriptorHeap* GetDX12DSVHeap() const noexcept { return m_DX12DSVHeap.get(); }
 	inline DX12CommandList* GetDX12CommandList() const noexcept { return m_DX12CommandList.get(); }
 	inline DX12RootSignature* GetDX12RootSignature() const noexcept { return m_DX12RootSignature.get(); }
@@ -80,12 +81,14 @@ private:
 	DX12FrameResource* m_DX12CurrFrameResource;
 	std::vector<std::unique_ptr<DX12FrameResource>> m_DX12FrameResource;
 	std::vector<std::unique_ptr<DX12RenderItem>> m_DX12RenderItem;
+	std::vector<std::unique_ptr<DX12DDSManager>> m_DX12DDSManager;
 
 	std::unique_ptr<DX12SwapChain> m_DX12SwapChain;
 
 	std::unique_ptr<DX12DescriptorHeap> m_DX12RTVHeap;
-	std::unique_ptr<DX12DescriptorHeap> m_DX12CBVHeap;
-	std::unique_ptr<DX12DescriptorHeap> m_DX12SRVHeap;
+	std::unique_ptr<DX12DescriptorHeap> m_DX12CBVDDSHeap; //CBVSRV
+	std::unique_ptr<DX12DescriptorHeap> m_DX12ImGuiHeap; //SRV
+	//std::unique_ptr<DX12DescriptorHeap> m_DX12DDSHeap;
 	std::unique_ptr<DX12DescriptorHeap> m_DX12DSVHeap;
 
 	///tmp variable

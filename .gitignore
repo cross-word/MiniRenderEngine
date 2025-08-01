@@ -100,6 +100,11 @@ Textures/*
 *.svclog
 *.scc
 
+external/vcpkg/buildtrees/
+external/vcpkg/packages/
+external/vcpkg/downloads/
+external/vcpkg/installed/
+vcpkg_installed/*
 # Chutzpah Test files
 _Chutzpah*
 

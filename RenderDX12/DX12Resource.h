@@ -5,7 +5,7 @@
 #include "stdafx.h"
 #include "DX12CommandList.h"
 #include "../FileLoader/SimpleLoader.h"
-
+#include <DirectXTex.h>
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 
@@ -58,6 +58,8 @@ class DX12ResourceTexture : public DX12Resource
 private:
 
 public:
+	void ResetUploadBuffer() noexcept { m_uploadBuffer.Reset(); m_uploadBufferCurrentState = D3D12_RESOURCE_STATE_COMMON; }
+	void CopyAndUploadResource(ID3D12Resource* uploadBuffer, const void* sourceAddress, size_t dataSize, CD3DX12_RANGE* readRange = nullptr);
 	void CreateDepthStencil(
 		ID3D12Device* device,
 		uint32_t clientWidth,
@@ -71,4 +73,14 @@ public:
 		uint32_t clientHeight,
 		uint32_t multiSampleDescCount,
 		DXGI_FORMAT renderTargetFormat);
+
+	void CreateDDSTexture(
+		ID3D12Device* device,
+		ID3D12GraphicsCommandList* cmdList,
+		TexMetadata* texMeta,
+		ScratchImage* img
+	);
+private:
+	ComPtr<ID3D12Resource> m_uploadBuffer;
+	D3D12_RESOURCE_STATES  m_uploadBufferCurrentState = D3D12_RESOURCE_STATE_COMMON; //default state common
 };

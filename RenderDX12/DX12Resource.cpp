@@ -119,6 +119,14 @@ void DX12ResourceBuffer::CopyAndUploadResource(ID3D12Resource* uploadBuffer, con
 	uploadBuffer->Unmap(0, nullptr);
 }
 
+void DX12ResourceTexture::CopyAndUploadResource(ID3D12Resource* uploadBuffer, const void* sourceAddress, size_t dataSize, CD3DX12_RANGE* readRange)
+{
+	void* mapped = nullptr;
+	ThrowIfFailed(uploadBuffer->Map(0, readRange, &mapped));
+	memcpy(mapped, sourceAddress, dataSize);
+	uploadBuffer->Unmap(0, nullptr);
+}
+
 void DX12ResourceTexture::CreateDepthStencil(
 	ID3D12Device* device,
 	uint32_t clientWidth,
@@ -195,4 +203,53 @@ void DX12ResourceTexture::CreateRenderTarget(
 		IID_PPV_ARGS(&m_resource))
 	);
 	m_currentState = D3D12_RESOURCE_STATE_RENDER_TARGET;
+}
+
+void DX12ResourceTexture::CreateDDSTexture(
+	ID3D12Device* device,
+	ID3D12GraphicsCommandList* cmdList,
+	TexMetadata* texMeta,
+	ScratchImage* img
+)
+{
+	D3D12_RESOURCE_DESC texDesc = {};
+	texDesc.Dimension = (texMeta->dimension == TEX_DIMENSION_TEXTURE2D)
+		? D3D12_RESOURCE_DIMENSION_TEXTURE2D : D3D12_RESOURCE_DIMENSION_TEXTURE3D;
+	texDesc.Width = (UINT)texMeta->width;
+	texDesc.Height = (UINT)texMeta->height;
+	texDesc.DepthOrArraySize = (UINT)((texMeta->dimension == TEX_DIMENSION_TEXTURE3D) ? texMeta->depth : texMeta->arraySize);
+	texDesc.MipLevels = (UINT)texMeta->mipLevels;
+	texDesc.Format = texMeta->format; // ÇÊ¿ä ½Ã MakeSRGB(meta.format)
+	texDesc.SampleDesc = { 1, 0 };
+	texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+
+	CD3DX12_HEAP_PROPERTIES defaultHeap(D3D12_HEAP_TYPE_DEFAULT);
+	ThrowIfFailed(device->CreateCommittedResource(
+		&defaultHeap, D3D12_HEAP_FLAG_NONE,
+		&texDesc, D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
+		IID_PPV_ARGS(m_resource.GetAddressOf())));
+	m_currentState = D3D12_RESOURCE_STATE_COPY_DEST;
+
+	std::vector<D3D12_SUBRESOURCE_DATA> subs;
+	subs.reserve(texMeta->mipLevels * texMeta->arraySize);
+	for (size_t a = 0; a < texMeta->arraySize; ++a)
+		for (size_t m = 0; m < texMeta->mipLevels; ++m) {
+			auto* imgLevel = img->GetImage(m, a, 0);
+			D3D12_SUBRESOURCE_DATA s{};
+			s.pData = imgLevel->pixels;
+			s.RowPitch = imgLevel->rowPitch;
+			s.SlicePitch = imgLevel->slicePitch;
+			subs.push_back(s);
+		}
+
+	UINT64 uploadBytes = GetRequiredIntermediateSize(m_resource.Get(), 0, (UINT)subs.size());
+	CD3DX12_HEAP_PROPERTIES uploadHeap(D3D12_HEAP_TYPE_UPLOAD);
+	auto uploadDesc = CD3DX12_RESOURCE_DESC::Buffer(uploadBytes);
+	ThrowIfFailed(device->CreateCommittedResource(
+		&uploadHeap, D3D12_HEAP_FLAG_NONE, &uploadDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(m_uploadBuffer.GetAddressOf())));
+
+	TransitionState(cmdList, D3D12_RESOURCE_STATE_COPY_DEST);
+	UpdateSubresources(cmdList, m_resource.Get(), m_uploadBuffer.Get(), 0, 0, (UINT)subs.size(), subs.data());
+	TransitionState(cmdList, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 }

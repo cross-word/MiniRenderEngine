@@ -88,10 +88,10 @@ void DX12Device::InitDX12DSVDescHeap()
 
 void DX12Device::InitDX12CBVHeap()
 {
-	m_DX12CBVHeap = std::make_unique<DX12DescriptorHeap>();
-	m_DX12CBVHeap->Initialize(
+	m_DX12CBVDDSHeap = std::make_unique<DX12DescriptorHeap>();
+	m_DX12CBVDDSHeap->Initialize(
 		m_device.Get(),
-		3* EngineConfig::SwapChainBufferCount, // 3 constant(b0 b1 b2) * 3 frames + 1 imgui
+		3* EngineConfig::SwapChainBufferCount + 3, // 3 constant(b0 b1 b2) * 3 frames + 3 dds
 		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
 		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
 	);
@@ -99,13 +99,22 @@ void DX12Device::InitDX12CBVHeap()
 
 void DX12Device::InitDX12SRVHeap()
 {
-	m_DX12SRVHeap = std::make_unique<DX12DescriptorHeap>();
-	m_DX12SRVHeap->Initialize(
+	m_DX12ImGuiHeap = std::make_unique<DX12DescriptorHeap>();
+	m_DX12ImGuiHeap->Initialize(
 		m_device.Get(),
 		1, //  1 imgui
 		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
 		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
 	);
+	/*
+	m_DX12DDSHeap = std::make_unique<DX12DescriptorHeap>();
+	m_DX12DDSHeap->Initialize(
+		m_device.Get(),
+		3, //  3 DDS
+		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
+	);
+	*/
 }
 
 void DX12Device::InitDX12RootSignature()
@@ -168,14 +177,31 @@ void DX12Device::InitShader()
 
 void DX12Device::PrepareInitialResource()
 {
-	for (auto fileName : EngineConfig::ModelObjFilePath)
+	m_DX12CommandList->ResetList(m_DX12FrameResource[m_currBackBufferIndex]->GetCommandAllocator());
+	int i = 0;
+	for (auto ddsFileName : EngineConfig::DDSFilePath)
+	{
+		auto cpuHandle = m_DX12CBVDDSHeap->Offset(3 * EngineConfig::SwapChainBufferCount + i).cpuDescHandle;
+		auto ddsItem = std::make_unique<DX12DDSManager>();
+		ddsItem->LoadAndCreateDDSResource(
+			m_device.Get(),
+			m_DX12CommandList->GetCommandList(),
+			&cpuHandle,
+			ddsFileName
+		);
+		m_DX12DDSManager.push_back(std::move(ddsItem));
+		i++;
+	}
+	m_DX12CommandList->SubmitAndWait(); //제출 너무 빈번함. 수정하는게 필요할듯? 멀티스레딩할때
+
+	for (auto objFileName : EngineConfig::ModelObjFilePath)
 	{
 		auto renderItem = std::make_unique<DX12RenderItem>();
 		if (renderItem->InitMeshFromFile(
 			m_device.Get(),
 			m_DX12FrameResource[m_currBackBufferIndex].get(),
 			m_DX12CommandList.get(),
-			fileName
+			objFileName
 		))
 		{
 			m_DX12RenderItem.push_back(std::move(renderItem));
@@ -187,7 +213,7 @@ void DX12Device::InitDX12FrameResource()
 {
 	for (int i = 0; i < EngineConfig::SwapChainBufferCount; i++)
 	{
-		m_DX12FrameResource.push_back(std::move(std::make_unique<DX12FrameResource>(m_device.Get(), m_DX12CBVHeap.get(), i)));
+		m_DX12FrameResource.push_back(std::move(std::make_unique<DX12FrameResource>(m_device.Get(), m_DX12CBVDDSHeap.get(), i)));
 	}
 }
 
