@@ -58,6 +58,8 @@ class DX12ResourceTexture : public DX12Resource
 private:
 
 public:
+	ID3D12Resource* GetUploadBuffer() const noexcept { return m_uploadBuffer.Get(); }
+	void CreateUploadBuffer(ID3D12Device* device, UINT byteSize);
 	void ResetUploadBuffer() noexcept { m_uploadBuffer.Reset(); m_uploadBufferCurrentState = D3D12_RESOURCE_STATE_COMMON; }
 	void CopyAndUploadResource(ID3D12Resource* uploadBuffer, const void* sourceAddress, size_t dataSize, CD3DX12_RANGE* readRange = nullptr);
 	void CreateDepthStencil(
@@ -79,6 +81,12 @@ public:
 		ID3D12GraphicsCommandList* cmdList,
 		TexMetadata* texMeta,
 		ScratchImage* img
+	);
+
+	void CreateMaterialResource(
+		ID3D12Device* device,
+		ID3D12GraphicsCommandList* cmdList,
+		UINT materialCount
 	);
 private:
 	ComPtr<ID3D12Resource> m_uploadBuffer;

@@ -15,7 +15,8 @@ void DX12DDSManager::LoadAndCreateDDSResource(
     ID3D12Device* device, 
     ID3D12GraphicsCommandList* cmdList, 
     const D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle, 
-    const wchar_t* filename)
+    const wchar_t* filename,
+    const std::string textureName)
 {
     //resource
     TexMetadata meta;
@@ -46,4 +47,7 @@ void DX12DDSManager::LoadAndCreateDDSResource(
         nullptr,
         &srvDesc
     );
+
+    m_fileName = filename;
+    m_textureName = textureName;
 }

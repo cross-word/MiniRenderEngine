@@ -91,7 +91,7 @@ void DX12Device::InitDX12CBVHeap()
 	m_DX12CBVDDSHeap = std::make_unique<DX12DescriptorHeap>();
 	m_DX12CBVDDSHeap->Initialize(
 		m_device.Get(),
-		3 * EngineConfig::SwapChainBufferCount + sizeof(EngineConfig::DDSFilePath), // 3 constant(b0 b1 b2) * 3 frames + dds amount
+		EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + std::size(EngineConfig::DDSFilePath) + 1, // 2 constant(b0 b1) * 3 frames + dds amount + 1 material vectors
 		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
 		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
 	);
@@ -141,7 +141,7 @@ void DX12Device::InitShader()
 	HRESULT hr = S_OK;
 	ID3DBlob* errorBlob = nullptr;
 
-	hr = D3DCompileFromFile(EngineConfig::ShaderFilePath, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_0", compileFlags, 0, &m_vertexShader, &errorBlob);
+	hr = D3DCompileFromFile(EngineConfig::ShaderFilePath, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_1", compileFlags, 0, &m_vertexShader, &errorBlob);
 	if (FAILED(hr))
 	{
 		if (errorBlob)
@@ -150,7 +150,7 @@ void DX12Device::InitShader()
 			errorBlob->Release();
 		}
 	}
-	hr = D3DCompileFromFile(EngineConfig::ShaderFilePath, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_0", compileFlags, 0, &m_pixelShader, &errorBlob);
+	hr = D3DCompileFromFile(EngineConfig::ShaderFilePath, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_1", compileFlags, 0, &m_pixelShader, &errorBlob);
 	if (FAILED(hr))
 	{
 		if (errorBlob)
@@ -173,32 +173,104 @@ void DX12Device::PrepareInitialResource()
 	int i = 0;
 	for (auto ddsFileName : EngineConfig::DDSFilePath)
 	{
-		auto cpuHandle = m_DX12CBVDDSHeap->Offset(3 * EngineConfig::SwapChainBufferCount + i).cpuDescHandle;
+		auto cpuHandle = m_DX12CBVDDSHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + i).cpuDescHandle;
+		std::string texName = "texture" + std::to_string(i);
 		auto ddsItem = std::make_unique<DX12DDSManager>();
 		ddsItem->LoadAndCreateDDSResource(
 			m_device.Get(),
 			m_DX12CommandList->GetCommandList(),
 			&cpuHandle,
-			ddsFileName
+			ddsFileName,
+			texName
 		);
-		m_DX12DDSManager.push_back(std::move(ddsItem));
+		m_DX12DDSManager.emplace_back(std::move(ddsItem));
 		i++;
 	}
 	m_DX12CommandList->SubmitAndWait(); //제출 너무 빈번함. 수정하는게 필요할듯? 멀티스레딩할때
 
 	for (auto objFileName : EngineConfig::ModelObjFilePath)
 	{
-		auto renderItem = std::make_unique<DX12RenderItem>();
-		if (renderItem->InitMeshFromFile(
+		auto geomeryItem = std::make_unique<DX12RenderGeometry>();
+		if (geomeryItem->InitMeshFromFile(
 			m_device.Get(),
 			m_DX12FrameResource[m_currBackBufferIndex].get(),
 			m_DX12CommandList.get(),
 			objFileName
 		))
 		{
-			m_DX12RenderItem.push_back(std::move(renderItem));
+			m_DX12RenderGeometry.emplace_back(std::move(geomeryItem));
 		}
 	}
+
+	////////////////////////////////////////////////////////
+	///tmp code
+	auto bricks0 = std::make_unique<Material>();
+	bricks0->Name = "bricks0";
+	bricks0->MatCBIndex = 0;
+	bricks0->DiffuseSrvHeapIndex = 0;
+	MaterialConstants brickConst;
+	brickConst.DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	brickConst.FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
+	brickConst.Roughness = 0.1f;
+	bricks0->matConstant = brickConst;
+
+	auto stone0 = std::make_unique<Material>();
+	stone0->Name = "stone0";
+	stone0->MatCBIndex = 1;
+	stone0->DiffuseSrvHeapIndex = 1;
+	MaterialConstants stoneConst;
+	stoneConst.DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	stoneConst.FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05f);
+	stoneConst.Roughness = 0.3f;
+	stone0->matConstant = stoneConst;
+
+	auto tile0 = std::make_unique<Material>();
+	tile0->Name = "tile0";
+	tile0->MatCBIndex = 2;
+	tile0->DiffuseSrvHeapIndex = 2;
+	MaterialConstants tileConst;
+	tileConst.DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	tileConst.FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
+	tileConst.Roughness = 0.3f;
+	tile0->matConstant = tileConst;
+
+	m_DX12MaterialManager = std::make_unique<DX12MaterialManager>();
+
+	m_DX12MaterialManager->PushMaterialVector(std::move(bricks0));
+	m_DX12MaterialManager->PushMaterialVector(std::move(stone0));
+	m_DX12MaterialManager->PushMaterialVector(std::move(tile0));
+	m_DX12MaterialManager->InitialzieUploadBuffer(m_device.Get(), m_DX12CommandList->GetCommandList());
+	auto matCPUHandle = m_DX12CBVDDSHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + std::size(EngineConfig::DDSFilePath)).cpuDescHandle;
+	m_DX12MaterialManager->InitializeSRV(m_device.Get(), &matCPUHandle);
+	m_DX12FrameResource[m_currBackBufferIndex]->ResetAllocator();
+	m_DX12CommandList->ResetList(m_DX12FrameResource[m_currBackBufferIndex]->GetCommandAllocator());
+
+	m_DX12MaterialManager->UploadMaterial(m_device.Get(), m_DX12CommandList.get());
+
+	RenderItem newRenderItem;
+	newRenderItem.SetRenderGeometry(m_DX12RenderGeometry[0].get());
+	newRenderItem.SetTextureIndex(GetTextureIndexAsTextureName("texture1"));
+	newRenderItem.SetMaterialIndex(GetMaterialIndexAsMaterialName("stone0"));
+	newRenderItem.SetBaseVertexLocation(0);
+	newRenderItem.SetStartIndexLocation(0);
+	m_renderItems.push_back(newRenderItem);
+
+	RenderItem newRenderItem1;
+	newRenderItem1.SetRenderGeometry(m_DX12RenderGeometry[1].get());
+	newRenderItem1.SetTextureIndex(GetTextureIndexAsTextureName("texture0"));
+	newRenderItem1.SetMaterialIndex(GetMaterialIndexAsMaterialName("tile0"));
+	newRenderItem1.SetBaseVertexLocation(0);
+	newRenderItem1.SetStartIndexLocation(0);
+	m_renderItems.push_back(newRenderItem1);
+
+	RenderItem newRenderItem2;
+	newRenderItem2.SetRenderGeometry(m_DX12RenderGeometry[0].get());
+	newRenderItem2.SetTextureIndex(GetTextureIndexAsTextureName("texture2"));
+	newRenderItem2.SetMaterialIndex(GetMaterialIndexAsMaterialName("bricks0"));
+	newRenderItem2.SetBaseVertexLocation(0);
+	newRenderItem2.SetStartIndexLocation(0);
+	m_renderItems.push_back(newRenderItem2);
+	////////////////////////////////////////////////////////
 }
 
 void DX12Device::InitDX12FrameResource()
@@ -224,5 +296,43 @@ void DX12Device::UpdateFrameResource()
 
 	m_DX12CurrFrameResource->UploadPassConstant();
 	m_DX12CurrFrameResource->UploadObjectConstant(m_camera.get());
-	m_DX12CurrFrameResource->UploadMaterialConstat();
+	//m_DX12CurrFrameResource->UploadMaterialConstat();
+}
+
+UINT DX12Device::GetTextureIndexAsTextureName(const std::string textureName)
+{
+	if (m_DX12DDSManager.empty())
+	{
+		::OutputDebugStringA("No Texture was Loaded in DDS Manager!");
+		assert(false);
+	}
+
+	for (int i = 0; i < m_DX12DDSManager.size(); i++)
+	{
+		if (m_DX12DDSManager[i]->GetDDSTextureName() == textureName) return i;
+	}
+
+	std::string msg = "Texture Name '" + textureName + "' was not found in DX12DDSManager. Automatically return 0.\n";
+	::OutputDebugStringA(msg.c_str());
+
+	return 0;
+}
+
+UINT DX12Device::GetMaterialIndexAsMaterialName(const std::string materialName)
+{
+	if (m_DX12MaterialManager->IsMaterailEmpty())
+	{
+		::OutputDebugStringA("No Material was Loaded in Material Manager!");
+		assert(false);
+	}
+
+	for (int i = 0; i < m_DX12MaterialManager->GetMaterialCount(); i++)
+	{
+		if (m_DX12MaterialManager->GetMaterial(i)->Name == materialName) return i;
+	}
+
+	std::string msg = "Material Name '" + materialName + "' was not found in DX12MaterialManager. Automatically return 0.\n";
+	::OutputDebugStringA(msg.c_str());
+
+	return 0;
 }

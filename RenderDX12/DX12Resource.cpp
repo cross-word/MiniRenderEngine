@@ -253,3 +253,55 @@ void DX12ResourceTexture::CreateDDSTexture(
 	UpdateSubresources(cmdList, m_resource.Get(), m_uploadBuffer.Get(), 0, 0, (UINT)subs.size(), subs.data());
 	TransitionState(cmdList, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 }
+
+void DX12ResourceTexture::CreateMaterialResource(
+	ID3D12Device* device,
+	ID3D12GraphicsCommandList* cmdList,
+	UINT materialCount
+)
+{
+	UINT64 byteSize = UINT64(materialCount) * sizeof(MaterialConstants);
+
+	CD3DX12_HEAP_PROPERTIES defaultHeap(D3D12_HEAP_TYPE_DEFAULT);
+
+	CD3DX12_RESOURCE_DESC matDesc{};
+	matDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	matDesc.Width = byteSize;
+	matDesc.Height = 1;
+	matDesc.DepthOrArraySize = 1;
+	matDesc.MipLevels = 1;
+	matDesc.SampleDesc.Count = 1;
+	matDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	matDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+	ThrowIfFailed(device->CreateCommittedResource(
+		&defaultHeap,
+		D3D12_HEAP_FLAG_NONE,
+		&matDesc,
+		D3D12_RESOURCE_STATE_COMMON,
+		nullptr,
+		IID_PPV_ARGS(&m_resource)));
+
+	m_currentState = D3D12_RESOURCE_STATE_COMMON;
+}
+
+void DX12ResourceTexture::CreateUploadBuffer(ID3D12Device* device, UINT byteSize)
+{
+	CD3DX12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+	CD3DX12_RESOURCE_DESC descBuffer = CD3DX12_RESOURCE_DESC::Buffer(byteSize);
+	descBuffer.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	descBuffer.Width = byteSize;
+	descBuffer.Height = 1;
+	descBuffer.DepthOrArraySize = 1;
+	descBuffer.MipLevels = 1;
+	descBuffer.SampleDesc.Count = 1;
+	descBuffer.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+	ThrowIfFailed(device->CreateCommittedResource(
+		&heapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&descBuffer,
+		D3D12_RESOURCE_STATE_GENERIC_READ, 
+		nullptr,
+		IID_PPV_ARGS(&m_uploadBuffer)));
+}

@@ -54,7 +54,7 @@ public:
     void ShutDown();
     D3DCamera* GetD3DCamera() const noexcept { return m_DX12Device.GetD3DCamera(); }
 private:
-    ComPtr<ID3D12Debug> m_debugController;
+    ComPtr<ID3D12Debug3> m_debugController;
     DX12FrameBuffer m_DX12FrameBuffer;
     DX12Device m_DX12Device;
     D3DTimer m_timer;

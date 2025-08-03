@@ -27,8 +27,6 @@ public:
     inline DX12View* GetDX12PassConstantBufferView() const noexcept { return m_DX12PassConstantBufferView.get(); }
     inline DX12ResourceBuffer* GetDX12ObjectConstantBuffer() const noexcept { return m_DX12ObjectConstantBuffer.get(); }
     inline DX12View* GetDX12ObjectConstantBufferView() const noexcept { return m_DX12ObjectConstantBufferView.get(); }
-    inline DX12ResourceBuffer* GetDX12MaterialConstantBuffer() const noexcept { return m_DX12MaterialConstantBuffer.get(); }
-    inline DX12View* GetDX12MaterialConstantBufferView() const noexcept { return m_DX12MaterialConstantBufferView.get(); }
     void ResetAllocator() { ThrowIfFailed(m_commandAllocator->Reset()); }
 
     //prepare for multi-thread
@@ -37,11 +35,9 @@ public:
 
     void UpdatePassConstant();
     void UpdateObjectConstant();
-    void UpdateMaterialConstat();
 
     void UploadPassConstant();
     void UploadObjectConstant(D3DCamera* d3dCamera);
-    void UploadMaterialConstat();
 
 private:
     // 명령 할당자는 GPU가 명령들을 다 처리한 후 재설정해야한다.
@@ -55,12 +51,9 @@ private:
     std::unique_ptr<DX12View> m_DX12PassConstantBufferView;
     std::unique_ptr<DX12ResourceBuffer> m_DX12ObjectConstantBuffer; //b1
     std::unique_ptr<DX12View> m_DX12ObjectConstantBufferView;
-    std::unique_ptr<DX12ResourceBuffer> m_DX12MaterialConstantBuffer; //b2
-    std::unique_ptr<DX12View> m_DX12MaterialConstantBufferView;
 
     PassConstants m_passConstant;
     ObjectConstants m_objectConstant;
-    Material m_material;
 
     // Fence는 현재 울타리 지점까지의 명령들을 표시하는 값이다.
     // 이 값은 GPU가 이 프레임의 자원들을 사용하고 있는지 판정한다. 따라서 FrameResource에서 GPU의 명령 할당자를 바꾸는 척도가 된다.

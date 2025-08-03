@@ -18,8 +18,17 @@
 // Include structures and functions for lighting.
 #include "LightingUtil.hlsl"
 
-Texture2D    gDiffuseMap : register(t0);
+Texture2D    gDiffuseMap : register(t0, space0);
 
+struct MaterialParam
+{
+    float4   gDiffuseAlbedo;
+    float3   gFresnelR0;
+    float    gRoughness;
+    float4x4 gMatTransform;
+};
+
+StructuredBuffer<MaterialParam> gMaterials : register(t0, space1);
 
 SamplerState gsamPointWrap        : register(s0);
 SamplerState gsamPointClamp       : register(s1);
@@ -61,13 +70,17 @@ cbuffer cbPerObject : register(b1)
 	float4x4 gTexTransform;
 };
 
-cbuffer cbMaterial : register(b2)
-{
-	float4   gDiffuseAlbedo;
-    float3   gFresnelR0;
-    float    gRoughness;
-	float4x4 gMatTransform;
+cbuffer cbMaterialIndex : register(b2) {
+    uint gMaterialIndex;
 };
+
+//cbuffer cbMaterial : register(b2)
+//{
+//	float4   gDiffuseAlbedo;
+ //   float3   gFresnelR0;
+ //   float    gRoughness;
+//	float4x4 gMatTransform;
+//};
 
 struct VertexIn
 {
@@ -100,14 +113,14 @@ VertexOut VSMain(VertexIn vin)
 	
 	// Output vertex attributes for interpolation across triangle.
 	float4 texC = mul(float4(vin.TexC, 0.0f, 1.0f), gTexTransform);
-	vout.TexC = mul(texC, gMatTransform).xy;
+	vout.TexC = mul(texC, gMaterials[gMaterialIndex].gMatTransform).xy;
 	
     return vout;
 }
 
 float4 PSMain(VertexOut pin) : SV_Target
 {
-    float4 diffuseAlbedo = gDiffuseMap.Sample(gsamAnisotropicWrap, pin.TexC) * gDiffuseAlbedo;
+    float4 diffuseAlbedo = gDiffuseMap.Sample(gsamAnisotropicWrap, pin.TexC) * gMaterials[gMaterialIndex].gDiffuseAlbedo;
 	
     // Interpolating normal can unnormalize it, so renormalize it.
     pin.NormalW = normalize(pin.NormalW);
@@ -118,8 +131,8 @@ float4 PSMain(VertexOut pin) : SV_Target
     // Light terms.
     float4 ambient = gAmbientLight*diffuseAlbedo;
 
-    const float shininess = 1.0f - gRoughness;
-    Material mat = { diffuseAlbedo, gFresnelR0, shininess };
+    const float shininess = 1.0f - gMaterials[gMaterialIndex].gRoughness;
+    Material mat = { diffuseAlbedo, gMaterials[gMaterialIndex].gFresnelR0, shininess };
     float3 shadowFactor = 1.0f;
     float4 directLight = ComputeLighting(gLights, mat, pin.PosW,
         pin.NormalW, toEyeW, shadowFactor);

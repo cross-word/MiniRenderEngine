@@ -7,6 +7,7 @@
 #include "../external/imgui/backends/imgui_impl_win32.h"
 #include "../external/imgui/backends/imgui_impl_dx12.h"
 
+
 //struct for imgui (see : https://github.com/ocornut/imgui/blob/master/examples/example_win32_directx12/main.cpp#L113 )
 struct ExampleDescriptorHeapAllocator
 {
@@ -75,10 +76,10 @@ void RenderDX12::InitializeDX12(HWND hWnd)
 	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&m_debugController))))
 	{
 		m_debugController->EnableDebugLayer();
-
 		// Enable additional debug layers.
 		dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
 	}
+
 }
 #endif
 	m_DX12Device.Initialize(hWnd);
@@ -166,10 +167,10 @@ void RenderDX12::RecordAndSubmit_Single()
 	m_DX12FrameBuffer.BeginFrame(&m_DX12Device, currBackBufferIndex);
 
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootSignature(m_DX12Device.GetDX12RootSignature()->GetRootSignature());
-	ID3D12DescriptorHeap* descriptorHeaps[] = { m_DX12Device.GetDX12CBVHeap()->GetDescHeap()};
+	ID3D12DescriptorHeap* descriptorHeaps[] = { m_DX12Device.GetDX12CBVSRVHeap()->GetDescHeap()};
 
-	auto* cbvddsHeap = m_DX12Device.GetDX12CBVHeap();
-	constexpr uint32_t numDescPerFrame = 3;
+	auto* cbvddsHeap = m_DX12Device.GetDX12CBVSRVHeap();
+	constexpr uint32_t numDescPerFrame = EngineConfig::ConstantBufferCount;
 	constexpr uint32_t numDescPerThread = 0;
 	constexpr uint32_t maxWorkers = 0;
 
@@ -178,23 +179,29 @@ void RenderDX12::RecordAndSubmit_Single()
 
 	uint32_t cbvSliceIndex = cbvddsHeap->CalcHeapSliceShareBlock(frameIndex, threadIndex, numDescPerFrame, numDescPerThread, maxWorkers);
 	HeapSlice cbvSlice = cbvddsHeap->Offset(cbvSliceIndex);
-	HeapSlice ddsSlice = cbvddsHeap->Offset(3 * EngineConfig::SwapChainBufferCount);
-
+	HeapSlice matSlice = cbvddsHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + std::size(EngineConfig::DDSFilePath));
+	
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootDescriptorTable(0, cbvSlice.gpuDescHandle);
-	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootDescriptorTable(1, ddsSlice.gpuDescHandle);
-
+	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootDescriptorTable(2, matSlice.gpuDescHandle);
 	for (int renderItemIndex = 0; renderItemIndex < m_DX12Device.GetRenderItemSize(); renderItemIndex++)
 	{
-		m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetPrimitiveTopology(m_DX12Device.GetDX12RenderItem(renderItemIndex)->GetPrimitiveTopologyType());
-		m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetVertexBuffers(0, 1, m_DX12Device.GetDX12RenderItem(renderItemIndex)->GetDX12VertexBufferView()->GetVertexBufferView());
-		m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetIndexBuffer(m_DX12Device.GetDX12RenderItem(renderItemIndex)->GetDX12IndexBufferView()->GetIndexBufferView());
+		UINT texIndex = m_DX12Device.GetDX12RenderItem(renderItemIndex).GetTextureIndex();
+		UINT matIndex = m_DX12Device.GetDX12RenderItem(renderItemIndex).GetMaterialIndex();
+		HeapSlice ddsSlice = cbvddsHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + texIndex);
+		m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootDescriptorTable(1, ddsSlice.gpuDescHandle);
+
+		m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRoot32BitConstants(3, 1, &matIndex, 0);
+		m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetPrimitiveTopology(m_DX12Device.GetDX12RenderItem(renderItemIndex).GetRenderGeometry()->GetPrimitiveTopologyType());
+		m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetVertexBuffers(0, 1, m_DX12Device.GetDX12RenderItem(renderItemIndex).GetRenderGeometry()->GetDX12VertexBufferView()->GetVertexBufferView());
+		m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetIndexBuffer(m_DX12Device.GetDX12RenderItem(renderItemIndex).GetRenderGeometry()->GetDX12IndexBufferView()->GetIndexBufferView());
 		m_DX12Device.GetDX12CommandList()->GetCommandList()->DrawIndexedInstanced(
-			m_DX12Device.GetDX12RenderItem(renderItemIndex)->GetIndexCount(),
+			m_DX12Device.GetDX12RenderItem(renderItemIndex).GetRenderGeometry()->GetIndexCount(),
 			1,
-			m_DX12Device.GetDX12RenderItem(renderItemIndex)->GetStartIndexLocation(),
-			m_DX12Device.GetDX12RenderItem(renderItemIndex)->GetBaseVertexLocation(),
+			m_DX12Device.GetDX12RenderItem(renderItemIndex).GetStartIndexLocation(),
+			m_DX12Device.GetDX12RenderItem(renderItemIndex).GetBaseVertexLocation(),
 			0);
+		m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootDescriptorTable(1, ddsSlice.gpuDescHandle);
 	}
 
 	m_DX12FrameBuffer.EndFrame(&m_DX12Device, currBackBufferIndex);

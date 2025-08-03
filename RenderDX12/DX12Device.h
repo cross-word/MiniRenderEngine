@@ -9,8 +9,9 @@
 #include "DX12DescriptorHeap.h"
 #include "DX12SwapChain.h"
 #include "DX12FrameResource.h"
-#include "DX12RenderItem.h"
+#include "DX12RenderGeometry.h"
 #include "DX12DDSManager.h"
+#include "DX12MaterialManager.h"
 #include "D3DCamera.h"
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
@@ -28,20 +29,43 @@ IMPORTANT MEMBER:
 class DX12Device
 {
 public:
+	struct RenderItem
+	{
+	public:
+		void SetRenderGeometry(DX12RenderGeometry* renderGeo) { m_renderGeomery = renderGeo; }
+		void SetTextureIndex(UINT index) { m_textureIndex = index; }
+		void SetMaterialIndex(UINT index) { m_materialIndex = index; }
+		void SetStartIndexLocation(UINT index) { m_startIndexLocation = index; }
+		void SetBaseVertexLocation(UINT index) { m_baseVertexLocation = index; }
+
+		DX12RenderGeometry* GetRenderGeometry() { return m_renderGeomery; }
+		UINT GetTextureIndex() { return m_textureIndex; }
+		UINT GetMaterialIndex() { return m_materialIndex; }
+		UINT GetStartIndexLocation() { return m_startIndexLocation; }
+		UINT GetBaseVertexLocation() { return m_baseVertexLocation; }
+	private:
+		DX12RenderGeometry* m_renderGeomery;
+
+		UINT m_textureIndex = 0;
+		UINT m_materialIndex = 0;
+		UINT m_startIndexLocation = 0; // + previous index size
+		UINT m_baseVertexLocation = 0; // + previous vertex size
+	};
+
 	DX12Device();
 	~DX12Device();
 	void Initialize(HWND hWnd);
 
 	inline ID3D12Device* GetDevice() const noexcept { return m_device.Get(); }
 	inline DX12DescriptorHeap* GetDX12RTVHeap() const noexcept { return m_DX12RTVHeap.get(); }
-	inline DX12DescriptorHeap* GetDX12CBVHeap() const noexcept { return m_DX12CBVDDSHeap.get(); }
+	inline DX12DescriptorHeap* GetDX12CBVSRVHeap() const noexcept { return m_DX12CBVDDSHeap.get(); }
 	inline DX12DescriptorHeap* GetDX12ImGuiHeap() const noexcept { return m_DX12ImGuiHeap.get(); }
 	inline DX12DescriptorHeap* GetDX12DSVHeap() const noexcept { return m_DX12DSVHeap.get(); }
 	inline DX12CommandList* GetDX12CommandList() const noexcept { return m_DX12CommandList.get(); }
 	inline DX12RootSignature* GetDX12RootSignature() const noexcept { return m_DX12RootSignature.get(); }
 	inline DX12PSO* GetDX12PSO() const noexcept { return m_DX12PSO.get(); }
-	inline DX12RenderItem* GetDX12RenderItem(uint32_t index) const noexcept { return m_DX12RenderItem[index].get() ; }
-	inline size_t GetRenderItemSize() const noexcept { return m_DX12RenderItem.size(); }
+	inline RenderItem GetDX12RenderItem(UINT index) const noexcept { return m_renderItems[index]; }
+	inline size_t GetRenderItemSize() const noexcept { return m_renderItems.size(); }
 	inline DX12SwapChain* GetDX12SwapChain() const noexcept { return m_DX12SwapChain.get(); }
 	inline HANDLE GetFenceEvent() const noexcept { return m_fenceEvent; }
 	inline D3D12_CPU_DESCRIPTOR_HANDLE GetOffsetCPUHandle(D3D12_CPU_DESCRIPTOR_HANDLE start, UINT index, UINT handleIncrementSize)
@@ -54,9 +78,12 @@ public:
 	inline DX12FrameResource* GetFrameResource(UINT currBackBufferIndex) const noexcept { return m_DX12FrameResource[currBackBufferIndex].get(); }
 
 	inline void SetCurrentBackBufferIndex(UINT newIndex) { m_currBackBufferIndex = newIndex; }
+
 	void CreateDX12PSO();
 	void PrepareInitialResource();
 	void UpdateFrameResource();
+	UINT GetTextureIndexAsTextureName(const std::string textureName);
+	UINT GetMaterialIndexAsMaterialName(const std::string materialName);
 private:
 	void InitDX12CommandList(ID3D12CommandAllocator* commandAllocator);
 	void InitDX12SwapChain(HWND hWnd);
@@ -79,8 +106,9 @@ private:
 	uint32_t m_currBackBufferIndex = 0;
 	DX12FrameResource* m_DX12CurrFrameResource;
 	std::vector<std::unique_ptr<DX12FrameResource>> m_DX12FrameResource;
-	std::vector<std::unique_ptr<DX12RenderItem>> m_DX12RenderItem;
+	std::vector<std::unique_ptr<DX12RenderGeometry>> m_DX12RenderGeometry;
 	std::vector<std::unique_ptr<DX12DDSManager>> m_DX12DDSManager;
+	std::unique_ptr<DX12MaterialManager> m_DX12MaterialManager;
 
 	std::unique_ptr<DX12SwapChain> m_DX12SwapChain;
 
@@ -96,4 +124,6 @@ private:
 
 	std::unique_ptr <D3DCamera> m_camera = std::make_unique<D3DCamera>();
 	HANDLE m_fenceEvent = nullptr;
+
+	std::vector<RenderItem> m_renderItems;
 };

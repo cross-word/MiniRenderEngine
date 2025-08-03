@@ -78,10 +78,13 @@
     <ClCompile Include="D3DTimer.cpp">
       <Filter>Resource Files</Filter>
     </ClCompile>
-    <ClCompile Include="DX12RenderItem.cpp">
+    <ClCompile Include="DX12RenderGeometry.cpp">
       <Filter>Resource Files</Filter>
     </ClCompile>
     <ClCompile Include="DX12DDSManager.cpp">
+      <Filter>Resource Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DX12MaterialManager.cpp">
       <Filter>Resource Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -131,10 +134,13 @@
     <ClInclude Include="D3DTimer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DX12RenderItem.h">
+    <ClInclude Include="DX12RenderGeometry.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DX12DDSManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DX12MaterialManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

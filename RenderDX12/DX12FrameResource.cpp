@@ -14,12 +14,11 @@ DX12FrameResource::DX12FrameResource(ID3D12Device* device, DX12DescriptorHeap* c
 	
 	//CREATE CONSTANT BUFFER
 	//ALLOCATE GPU ADDRESS
-	uint32_t elementByteSize[3] =
+	uint32_t elementByteSize[2] =
 	{ CalcConstantBufferByteSize(sizeof(PassConstants)),
-		CalcConstantBufferByteSize(sizeof(ObjectConstants)),
-		CalcConstantBufferByteSize(sizeof(MaterialConstants)) };
+		CalcConstantBufferByteSize(sizeof(ObjectConstants))};
 	int CBIndex = 0;
-	auto descCPUAddress = cbvHeap->Offset(cbvHeap->CalcHeapSliceShareBlock(frameIndex, 0, EngineConfig::SwapChainBufferCount, 0, 0)).cpuDescHandle;
+	auto descCPUAddress = cbvHeap->Offset(cbvHeap->CalcHeapSliceShareBlock(frameIndex, 0, EngineConfig::ConstantBufferCount, 0, 0)).cpuDescHandle;
 
 	//PassConstantBuffer
 	m_DX12PassConstantBuffer = std::make_unique<DX12ResourceBuffer>();
@@ -56,26 +55,6 @@ DX12FrameResource::DX12FrameResource(ID3D12Device* device, DX12DescriptorHeap* c
 		m_DX12ObjectConstantBuffer.get(),
 		descCPUAddress,
 		&objCBVDesc);
-
-	//index offset
-	//desc address offset
-	descCPUAddress.ptr += cbvHeap->GetDescIncSize();
-	CBIndex += 1;
-	//Material Constant Buffer
-	m_DX12MaterialConstantBuffer = std::make_unique<DX12ResourceBuffer>();
-	m_DX12MaterialConstantBuffer->CreateConstantBuffer(device, elementByteSize[CBIndex]);
-	cbAddress = m_DX12MaterialConstantBuffer->GetResource()->GetGPUVirtualAddress();
-
-	D3D12_CONSTANT_BUFFER_VIEW_DESC matCBVDesc;
-	matCBVDesc.BufferLocation = cbAddress;
-	matCBVDesc.SizeInBytes = elementByteSize[CBIndex];
-
-	m_DX12MaterialConstantBufferView = std::make_unique<DX12View>(
-		device,
-		EViewType::EConstantBufferView,
-		m_DX12MaterialConstantBuffer.get(),
-		descCPUAddress,
-		&matCBVDesc);
 }
 
 DX12FrameResource::~DX12FrameResource()
@@ -93,6 +72,7 @@ void DX12FrameResource::UploadPassConstant()
 	passConst.Lights[1].Strength = { 0.3f, 0.3f, 0.3f };
 	passConst.Lights[2].Direction = { 0.0f, -0.707f, -0.707f };
 	passConst.Lights[2].Strength = { 0.15f, 0.15f, 0.15f };
+
 	m_DX12PassConstantBuffer->CopyAndUploadResource(
 		m_DX12PassConstantBuffer->GetResource(),
 		&passConst,
@@ -107,19 +87,6 @@ void DX12FrameResource::UploadObjectConstant(D3DCamera* d3dCamera)
 		m_DX12ObjectConstantBuffer->GetResource(),
 		&objConst,
 		sizeof(ObjectConstants));
-}
-
-void DX12FrameResource::UploadMaterialConstat()
-{
-	MaterialConstants matConst;
-
-	matConst.DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-	matConst.FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05);
-	matConst.Roughness = 0.3f;
-	m_DX12MaterialConstantBuffer->CopyAndUploadResource(
-		m_DX12MaterialConstantBuffer->GetResource(),
-		&matConst,
-		sizeof(MaterialConstants));
 }
 
 void DX12FrameResource::EnsureWorkerCapacity(ID3D12Device* device, uint32_t n) {

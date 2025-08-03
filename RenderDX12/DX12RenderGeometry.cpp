@@ -1,24 +1,22 @@
 #include "stdafx.h"
-#include "DX12RenderItem.h"
+#include "DX12RenderGeometry.h"
 #include "../FileLoader/SimpleLoader.h"
 
-DX12RenderItem::DX12RenderItem()
+DX12RenderGeometry::DX12RenderGeometry()
 {
 
 }
 
-DX12RenderItem::~DX12RenderItem()
+DX12RenderGeometry::~DX12RenderGeometry()
 {
 
 }
 
-bool DX12RenderItem::InitMeshFromFile(
+bool DX12RenderGeometry::InitMeshFromFile(
 	ID3D12Device* device,
 	DX12FrameResource* DX12FrameResource,
 	DX12CommandList* dx12CommandList,
 	const std::wstring& filename,
-	UINT prevIndexCount,
-	UINT prevVertexCount,
 	D3D12_PRIMITIVE_TOPOLOGY vertexPrimitiveType)
 {
 	MeshData mesh = LoadOBJ(filename);
@@ -67,8 +65,6 @@ bool DX12RenderItem::InitMeshFromFile(
 	m_primitiveTopologyType = vertexPrimitiveType;
 	m_IndexCount = (UINT)mesh.indices.size();
 	m_VertexCount = (UINT)mesh.vertices.size();
-	m_StartIndexLocation = prevIndexCount; // + previous index size
-	m_BaseVertexLocation = prevVertexCount; // + previous vertex size
 
 	return true;
 }

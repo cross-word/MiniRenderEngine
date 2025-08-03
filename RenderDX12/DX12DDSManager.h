@@ -20,10 +20,16 @@ public:
         ID3D12Device* device, 
         ID3D12GraphicsCommandList* cmdList, 
         const D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle, 
-        const wchar_t* filename);
+        const wchar_t* filename,
+        const std::string textureName);
     inline DX12ResourceTexture* GetDDSResource() const noexcept { return m_DDSResource.get(); }
     inline DX12View* GetDX12DDSView() const noexcept { return m_DX12DDSView.get(); }
+    inline std::string GetDDSTextureName() const noexcept { return m_textureName; }
+    inline std::wstring GetDDSFileName() const noexcept { return m_fileName; }
 private:
     std::unique_ptr<DX12ResourceTexture> m_DDSResource;
-    std::unique_ptr<DX12View> m_DX12DDSView;
+    std::unique_ptr<DX12View> m_DX12DDSView; //나중에 view들로 변경
+
+    std::string m_textureName;
+    std::wstring m_fileName;
 };
