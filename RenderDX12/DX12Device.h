@@ -11,11 +11,11 @@
 #include "DX12FrameResource.h"
 #include "DX12RenderGeometry.h"
 #include "DX12DDSManager.h"
-#include "DX12ConstantObjectManager.h"
+#include "DX12ConstantManager.h"
 #include "D3DCamera.h"
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
-
+namespace Render { struct RenderItem; }
 /*
 CLASS DX12Device
 MAIN WORK:
@@ -25,33 +25,9 @@ MAIN WORK:
 IMPORTANT MEMBER:
 1. m_DX12 members
 */
-
 class DX12Device
 {
 public:
-	struct RenderItem
-	{
-	public:
-		void SetRenderGeometry(DX12RenderGeometry* renderGeo) { m_renderGeomery = renderGeo; }
-		void SetTextureIndex(UINT index) { m_textureIndex = index; }
-		void SetMaterialIndex(UINT index) { m_materialIndex = index; }
-		void SetStartIndexLocation(UINT index) { m_startIndexLocation = index; }
-		void SetBaseVertexLocation(UINT index) { m_baseVertexLocation = index; }
-
-		DX12RenderGeometry* GetRenderGeometry() { return m_renderGeomery; }
-		UINT GetTextureIndex() { return m_textureIndex; }
-		UINT GetMaterialIndex() { return m_materialIndex; }
-		UINT GetStartIndexLocation() { return m_startIndexLocation; }
-		UINT GetBaseVertexLocation() { return m_baseVertexLocation; }
-	private:
-		DX12RenderGeometry* m_renderGeomery;
-
-		UINT m_textureIndex = 0;
-		UINT m_materialIndex = 0;
-		UINT m_startIndexLocation = 0; // + previous index size
-		UINT m_baseVertexLocation = 0; // + previous vertex size
-	};
-
 	DX12Device();
 	~DX12Device();
 	void Initialize(HWND hWnd);
@@ -64,7 +40,7 @@ public:
 	inline DX12CommandList* GetDX12CommandList() const noexcept { return m_DX12CommandList.get(); }
 	inline DX12RootSignature* GetDX12RootSignature() const noexcept { return m_DX12RootSignature.get(); }
 	inline DX12PSO* GetDX12PSO() const noexcept { return m_DX12PSO.get(); }
-	inline RenderItem GetDX12RenderItem(UINT index) const noexcept { return m_renderItems[index]; }
+	inline Render::RenderItem GetDX12RenderItem(UINT index) const noexcept { return m_renderItems[index]; }
 	inline size_t GetRenderItemSize() const noexcept { return m_renderItems.size(); }
 	inline DX12SwapChain* GetDX12SwapChain() const noexcept { return m_DX12SwapChain.get(); }
 	inline HANDLE GetFenceEvent() const noexcept { return m_fenceEvent; }
@@ -95,6 +71,7 @@ private:
 	void InitShader(); //temp func
 
 	void InitDX12FrameResource();
+	void InitDX12FrameResourceCBVRSV();
 private:
 	ComPtr<IDXGIFactory4> m_factory;
 	ComPtr<ID3D12Device> m_device;
@@ -104,12 +81,10 @@ private:
 
 	//initial resources
 	uint32_t m_currBackBufferIndex = 0;
-	DX12FrameResource* m_DX12CurrFrameResource;
 	std::vector<std::unique_ptr<DX12FrameResource>> m_DX12FrameResource;
 	std::vector<std::unique_ptr<DX12RenderGeometry>> m_DX12RenderGeometry;
 	std::vector<std::unique_ptr<DX12DDSManager>> m_DX12DDSManager;
 	std::unique_ptr<DX12MaterialConstantManager> m_DX12MaterialConstantManager;
-	std::unique_ptr<DX12ObjectConstantManager> m_DX12ObjectConstantManager;
 
 	std::unique_ptr<DX12SwapChain> m_DX12SwapChain;
 
@@ -117,7 +92,7 @@ private:
 	std::unique_ptr<DX12DescriptorHeap> m_DX12CBVDDSHeap; //CBVSRV
 	std::unique_ptr<DX12DescriptorHeap> m_DX12ImGuiHeap; //SRV
 	std::unique_ptr<DX12DescriptorHeap> m_DX12DSVHeap;
-
+	std::unique_ptr<DX12ObjectConstantManager> m_DX12ObjectConstantManager;
 	///tmp variable
 	ComPtr<ID3DBlob> m_vertexShader = nullptr;
 	ComPtr<ID3DBlob> m_pixelShader = nullptr;
@@ -126,5 +101,5 @@ private:
 	std::unique_ptr <D3DCamera> m_camera = std::make_unique<D3DCamera>();
 	HANDLE m_fenceEvent = nullptr;
 
-	std::vector<RenderItem> m_renderItems;
+	std::vector<Render::RenderItem> m_renderItems;
 };

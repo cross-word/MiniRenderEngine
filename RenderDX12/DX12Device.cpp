@@ -45,6 +45,7 @@ void DX12Device::Initialize(HWND hWnd)
 	InitDX12SRVHeap();
 	InitDX12FrameResource();
 	InitDX12CommandList(m_DX12FrameResource[0]->GetCommandAllocator());
+	InitDX12FrameResourceCBVRSV();
 	InitDX12SwapChain(hWnd);
 	InitDX12RootSignature();
 	CreateDX12PSO();
@@ -194,7 +195,6 @@ void DX12Device::PrepareInitialResource()
 		auto geometryItem = std::make_unique<DX12RenderGeometry>();
 		if (geometryItem->InitMeshFromFile(
 			m_device.Get(),
-			m_DX12FrameResource[m_currBackBufferIndex].get(),
 			m_DX12CommandList.get(),
 			objFileName
 		))
@@ -242,35 +242,54 @@ void DX12Device::PrepareInitialResource()
 	m_DX12MaterialConstantManager->PushMaterial(std::move(tile0));
 	m_DX12MaterialConstantManager->InitialzieUploadBuffer(m_device.Get(), m_DX12CommandList->GetCommandList(), m_DX12MaterialConstantManager->GetMaterialCount() * sizeof(MaterialConstants));
 	auto matCPUHandle = m_DX12CBVDDSHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + std::size(EngineConfig::DDSFilePath)).cpuDescHandle;
-	m_DX12MaterialConstantManager->InitializeSRV(m_device.Get(), &matCPUHandle, m_DX12MaterialConstantManager->GetMaterialCount());
+	m_DX12MaterialConstantManager->InitializeSRV(m_device.Get(), &matCPUHandle, m_DX12MaterialConstantManager->GetMaterialCount(), sizeof(MaterialConstants));
 	m_DX12MaterialConstantManager->UploadConstant(
 		m_device.Get(), 
 		m_DX12CommandList.get(),
 		m_DX12MaterialConstantManager->GetMaterialCount() * sizeof(MaterialConstants),
 		m_DX12MaterialConstantManager->GetMaterialConstantData());
 
-	RenderItem newRenderItem;
+	Render::RenderItem newRenderItem;
 	newRenderItem.SetRenderGeometry(m_DX12RenderGeometry[0].get());
 	newRenderItem.SetTextureIndex(GetTextureIndexAsTextureName("texture1"));
 	newRenderItem.SetMaterialIndex(GetMaterialIndexAsMaterialName("stone0"));
 	newRenderItem.SetBaseVertexLocation(0);
 	newRenderItem.SetStartIndexLocation(0);
+	XMFLOAT4X4 mat;
+	XMMATRIX W = XMMatrixTranslation(+5.0f, 1.5f, -10.0f + 0 * 5.0f);
+	XMStoreFloat4x4(&mat, XMMatrixTranspose(W));
+	newRenderItem.SetObjWorldMatrix(mat);
+	XMMATRIX T = XMMatrixTranslation(-50.0f, 10.5f, -10.0f + 0 * 50.0f);
+	XMStoreFloat4x4(&mat, XMMatrixTranspose(T));
+	newRenderItem.SetObjTransformMatrix(mat);
 	m_renderItems.push_back(newRenderItem);
 
-	RenderItem newRenderItem1;
+	Render::RenderItem newRenderItem1;
 	newRenderItem1.SetRenderGeometry(m_DX12RenderGeometry[1].get());
 	newRenderItem1.SetTextureIndex(GetTextureIndexAsTextureName("texture0"));
 	newRenderItem1.SetMaterialIndex(GetMaterialIndexAsMaterialName("tile0"));
 	newRenderItem1.SetBaseVertexLocation(0);
 	newRenderItem1.SetStartIndexLocation(0);
+	W = XMMatrixTranslation(+5.0f, 1.5f, -10.0f + 1 * 5.0f);
+	XMStoreFloat4x4(&mat, XMMatrixTranspose(W));
+	newRenderItem1.SetObjWorldMatrix(mat);
+	T = XMMatrixTranslation(-50.0f, 10.5f, -10.0f + 1 * 50.0f);
+	XMStoreFloat4x4(&mat, XMMatrixTranspose(T));
+	newRenderItem1.SetObjTransformMatrix(mat);
 	m_renderItems.push_back(newRenderItem1);
 
-	RenderItem newRenderItem2;
-	newRenderItem2.SetRenderGeometry(m_DX12RenderGeometry[0].get());
+	Render::RenderItem newRenderItem2;
+	newRenderItem2.SetRenderGeometry(m_DX12RenderGeometry[1].get());
 	newRenderItem2.SetTextureIndex(GetTextureIndexAsTextureName("texture2"));
 	newRenderItem2.SetMaterialIndex(GetMaterialIndexAsMaterialName("bricks0"));
 	newRenderItem2.SetBaseVertexLocation(0);
 	newRenderItem2.SetStartIndexLocation(0);
+	W = XMMatrixTranslation(+5.0f, 1.5f, -10.0f + 2 * 5.0f);
+	XMStoreFloat4x4(&mat, XMMatrixTranspose(W));
+	newRenderItem2.SetObjWorldMatrix(mat);
+	T = XMMatrixTranslation(-50.0f, 10.5f, -10.0f + 2 * 50.0f);
+	XMStoreFloat4x4(&mat, XMMatrixTranspose(T));
+	newRenderItem2.SetObjTransformMatrix(mat);
 	m_renderItems.push_back(newRenderItem2);
 	////////////////////////////////////////////////////////
 	/////////////
@@ -280,26 +299,9 @@ void DX12Device::PrepareInitialResource()
 	auto worldSlot = matSlot + 1;
 
 	m_DX12ObjectConstantManager = std::make_unique<DX12ObjectConstantManager>();
-
-	for (size_t i = 0; i < m_renderItems.size(); ++i) 
-	{
-		ObjectConstants obj;
-		DirectX::XMMATRIX W = XMMatrixTranslation(+5.0f, 1.5f, -10.0f + i * 5.0f);
-		DirectX::XMStoreFloat4x4(&obj.World, DirectX::XMMatrixTranspose(W));
-
-		DirectX::XMMATRIX T = XMMatrixTranslation(-50.0f, 10.5f, -10.0f + i * 50.0f);
-		DirectX::XMStoreFloat4x4(&obj.TexTransform, DirectX::XMMatrixTranspose(T));
-		
-		m_DX12ObjectConstantManager->PushObjectConstant(obj);
-	}
-	m_DX12ObjectConstantManager->InitialzieUploadBuffer(m_device.Get(), m_DX12CommandList->GetCommandList(), m_DX12ObjectConstantManager->GetObjectConstantCount() * sizeof(ObjectConstants));
+	m_DX12ObjectConstantManager->InitialzieUploadBuffer(m_device.Get(), m_DX12CommandList->GetCommandList(), EngineConfig::NumDefaultObjectSRVSlot * sizeof(ObjectConstants));
 	auto objCPUHandle = m_DX12CBVDDSHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + std::size(EngineConfig::DDSFilePath) + 1).cpuDescHandle;
-	m_DX12ObjectConstantManager->InitializeSRV(m_device.Get(), &objCPUHandle, m_DX12ObjectConstantManager->GetObjectConstantCount());
-	m_DX12ObjectConstantManager->UploadConstant(
-		m_device.Get(),
-		m_DX12CommandList.get(),
-		m_DX12ObjectConstantManager->GetObjectConstantCount() * sizeof(ObjectConstants),
-		m_DX12ObjectConstantManager->GetObjectConstantData());
+	m_DX12ObjectConstantManager->InitializeSRV(m_device.Get(), &objCPUHandle, EngineConfig::NumDefaultObjectSRVSlot, sizeof(ObjectConstants));
 
 	//wait for upload and reset upload buffers
 	m_DX12CommandList->SubmitAndWait();
@@ -309,7 +311,6 @@ void DX12Device::PrepareInitialResource()
 		m_DX12RenderGeometry[i]->GetDX12IndexBuffer()->ResetUploadBuffer();
 	}
 	m_DX12MaterialConstantManager->GetMaterialResource()->ResetUploadBuffer();
-	m_DX12ObjectConstantManager->GetMaterialResource()->ResetUploadBuffer();
 	/////////////
 }
 
@@ -317,26 +318,34 @@ void DX12Device::InitDX12FrameResource()
 {
 	for (int i = 0; i < EngineConfig::SwapChainBufferCount; i++)
 	{
-		m_DX12FrameResource.push_back(std::move(std::make_unique<DX12FrameResource>(m_device.Get(), m_DX12CBVDDSHeap.get(), i)));
+		m_DX12FrameResource.push_back(std::move(std::make_unique<DX12FrameResource>(m_device.Get())));
+	}
+}
+
+void DX12Device::InitDX12FrameResourceCBVRSV()
+{
+	for (int i = 0; i < EngineConfig::SwapChainBufferCount; i++)
+	{
+		m_DX12FrameResource[i]->CreateCBVSRV(m_device.Get(), m_DX12CommandList->GetCommandList(), m_DX12CBVDDSHeap.get(), i);
 	}
 }
 
 void DX12Device::UpdateFrameResource()
 {
-	m_DX12CurrFrameResource = m_DX12FrameResource[m_currBackBufferIndex].get();
-
 	// Has the GPU finished processing the commands of the current frame resource?
 	// If not, wait until the GPU has completed commands up to this fence point.
-	if (m_DX12CurrFrameResource->GetFenceValue() != 0 && m_DX12CommandList->GetFence()->GetCompletedValue() < m_DX12CurrFrameResource->GetFenceValue())
+	if (m_DX12FrameResource[m_currBackBufferIndex]->GetFenceValue() != 0 && m_DX12CommandList->GetFence()->GetCompletedValue() < m_DX12FrameResource[m_currBackBufferIndex]->GetFenceValue())
 	{
 		ThrowIfFailed(m_DX12CommandList->GetFence()->SetEventOnCompletion(
-			m_DX12CurrFrameResource->GetFenceValue(), m_fenceEvent));
+			m_DX12FrameResource[m_currBackBufferIndex]->GetFenceValue(), m_fenceEvent));
 		WaitForSingleObject(m_fenceEvent, INFINITE);
 	}
 
-	m_DX12CurrFrameResource->UploadPassConstant(m_camera.get());
-	//m_DX12CurrFrameResource->UploadObjectConstant(m_camera.get());
-	//m_DX12CurrFrameResource->UploadMaterialConstat();
+	m_DX12FrameResource[m_currBackBufferIndex]->UploadPassConstant(m_camera.get());
+	m_DX12FrameResource[m_currBackBufferIndex]->ResetAllocator();
+	m_DX12CommandList->ResetList(m_DX12FrameResource[m_currBackBufferIndex]->GetCommandAllocator());
+	m_DX12FrameResource[m_currBackBufferIndex]->UploadObjectConstant(m_device.Get(), m_DX12CommandList.get(), m_DX12CBVDDSHeap.get(), m_renderItems, m_DX12ObjectConstantManager.get());
+	m_DX12CommandList->SubmitAndWait();
 }
 
 UINT DX12Device::GetTextureIndexAsTextureName(const std::string textureName)

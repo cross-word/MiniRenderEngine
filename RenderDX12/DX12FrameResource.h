@@ -5,17 +5,19 @@
 #include "DX12View.h"
 #include "DX12DescriptorHeap.h"
 #include "D3DCamera.h"
+#include "DX12ConstantManager.h"
+#include "DX12RenderGeometry.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
+namespace Render { struct RenderItem; }
 
 // CPU가 한 프레임의 명령 목록들을 구축하는데 필요한 자원들을 대표하는 클래스  
 // cmdAlloc,ConstantBuffers
 struct DX12FrameResource
 {
 public:
-
-    DX12FrameResource(ID3D12Device* device, DX12DescriptorHeap* cbvHeap, uint32_t frameIndex);
+    DX12FrameResource(ID3D12Device* device);
     DX12FrameResource(const DX12FrameResource& rhs) = delete;
     DX12FrameResource& operator=(const DX12FrameResource& rhs) = delete;
     ~DX12FrameResource();
@@ -25,19 +27,21 @@ public:
     inline void SetFenceValue(uint64_t newFenceValue) { m_fence = newFenceValue; }
     inline DX12ResourceBuffer* GetDX12PassConstantBuffer() const noexcept { return m_DX12PassConstantBuffer.get(); }
     inline DX12View* GetDX12PassConstantBufferView() const noexcept { return m_DX12PassConstantBufferView.get(); }
-    inline DX12ResourceBuffer* GetDX12ObjectConstantBuffer() const noexcept { return m_DX12ObjectConstantBuffer.get(); }
-    inline DX12View* GetDX12ObjectConstantBufferView() const noexcept { return m_DX12ObjectConstantBufferView.get(); }
     void ResetAllocator() { ThrowIfFailed(m_commandAllocator->Reset()); }
+    void CreateCBVSRV(ID3D12Device* device, ID3D12GraphicsCommandList* m_commandList, DX12DescriptorHeap* cbvHeap, uint32_t frameIndex);
 
     //prepare for multi-thread
     void EnsureWorkerCapacity(ID3D12Device* device, uint32_t workerCount);
     ID3D12CommandAllocator* GetWorkerAllocator(uint32_t i) { return m_workerAlloc[i].Get(); }
 
     void UpdatePassConstant();
-    void UpdateObjectConstant();
-
     void UploadPassConstant(D3DCamera* d3dCamera);
-    void UploadObjectConstant(D3DCamera* d3dCamera);
+    void UploadObjectConstant(
+        ID3D12Device* device,
+        DX12CommandList* DX12CommandList,
+        DX12DescriptorHeap* DX12CBVDDSHeap,
+        std::vector<Render::RenderItem>& renderItems,
+        DX12ObjectConstantManager* DX12ObjectConstantManager);
 
 private:
     // 명령 할당자는 GPU가 명령들을 다 처리한 후 재설정해야한다.
@@ -49,11 +53,8 @@ private:
     // 효율을 위해 물체에 따라 변하는 상수와 변하지 않는 상수를 구분한다.
     std::unique_ptr<DX12ResourceBuffer> m_DX12PassConstantBuffer; //b0
     std::unique_ptr<DX12View> m_DX12PassConstantBufferView;
-    std::unique_ptr<DX12ResourceBuffer> m_DX12ObjectConstantBuffer; //b1
-    std::unique_ptr<DX12View> m_DX12ObjectConstantBufferView;
 
     PassConstants m_passConstant;
-    ObjectConstants m_objectConstant;
 
     // Fence는 현재 울타리 지점까지의 명령들을 표시하는 값이다.
     // 이 값은 GPU가 이 프레임의 자원들을 사용하고 있는지 판정한다. 따라서 FrameResource에서 GPU의 명령 할당자를 바꾸는 척도가 된다.

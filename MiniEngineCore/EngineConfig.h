@@ -10,6 +10,7 @@ struct EngineConfig
     static constexpr LONGLONG TargetFrameTime = 16666; // 16.666ms
     static constexpr UINT SwapChainBufferCount = 3;
     static constexpr UINT ConstantBufferCount = 1;
+    static constexpr UINT NumDefaultObjectSRVSlot = 65536; //16-bit
     static inline constexpr const wchar_t* ModelObjFilePath[] = {
         LR"(..\Models\Skull.obj)",
         LR"(..\Models\Car.obj)"
@@ -20,5 +21,4 @@ struct EngineConfig
         LR"(..\Textures\bricks3.dds)",
     }; // tmp
     static inline constexpr const wchar_t* ShaderFilePath = LR"(..\\Shaders\\Default.hlsl)"; // tmp
-    //static inline constexpr const wchar_t* ShaderFilePath = LR"(..\\Shaders\\color.hlsl)"; // tmp
 };

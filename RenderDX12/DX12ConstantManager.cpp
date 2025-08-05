@@ -1,17 +1,17 @@
 #include "stdafx.h"
-#include "DX12ConstantObjectManager.h"
+#include "DX12ConstantManager.h"
 
-DX12ConstantObjectManager::DX12ConstantObjectManager()
+DX12ConstantManager::DX12ConstantManager()
 {
 
 }
 
-DX12ConstantObjectManager::~DX12ConstantObjectManager()
+DX12ConstantManager::~DX12ConstantManager()
 {
 
 }
 
-void DX12ConstantObjectManager::InitialzieUploadBuffer(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, UINT byteSize)
+void DX12ConstantManager::InitialzieUploadBuffer(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, UINT byteSize)
 {
     m_DX12ConstantUploader = std::make_unique<DX12ResourceTexture>();
     m_DX12ConstantUploader->CreateMaterialorObjectResource(
@@ -21,7 +21,7 @@ void DX12ConstantObjectManager::InitialzieUploadBuffer(ID3D12Device* device, ID3
 	);
 }
 
-void DX12ConstantObjectManager::InitializeSRV(ID3D12Device* device, const D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle, UINT numConstants)
+void DX12ConstantManager::InitializeSRV(ID3D12Device* device, const D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle, UINT numConstants, UINT byteStirde)
 {
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -29,7 +29,7 @@ void DX12ConstantObjectManager::InitializeSRV(ID3D12Device* device, const D3D12_
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
     srvDesc.Buffer.FirstElement = 0;
     srvDesc.Buffer.NumElements = numConstants;
-    srvDesc.Buffer.StructureByteStride = sizeof(MaterialConstants);
+    srvDesc.Buffer.StructureByteStride = byteStirde;
     srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
 
     //view
@@ -43,33 +43,43 @@ void DX12ConstantObjectManager::InitializeSRV(ID3D12Device* device, const D3D12_
     );
 }
 
-void DX12ConstantObjectManager::UploadConstant(ID3D12Device* device, DX12CommandList* dx12CommandList, UINT byteSize, const void* sourceAddress)
+DX12MaterialConstantManager::DX12MaterialConstantManager()
+{
+
+}
+
+DX12MaterialConstantManager::~DX12MaterialConstantManager()
+{
+
+}
+
+void DX12ConstantManager::UploadConstant(ID3D12Device* device, DX12CommandList* dx12CommandList, UINT byteSize, const void* sourceAddress, UINT destOffset)
 {
     m_DX12ConstantUploader->CreateUploadBuffer(device, byteSize);
     m_DX12ConstantUploader->CopyAndUploadResource(m_DX12ConstantUploader->GetUploadBuffer(), sourceAddress, byteSize);
     m_DX12ConstantUploader->TransitionState(dx12CommandList->GetCommandList(), D3D12_RESOURCE_STATE_COPY_DEST);
-    dx12CommandList->GetCommandList()->CopyBufferRegion(m_DX12ConstantUploader->GetResource(), 0, m_DX12ConstantUploader->GetUploadBuffer(), 0, byteSize);
+    dx12CommandList->GetCommandList()->CopyBufferRegion(m_DX12ConstantUploader->GetResource(), destOffset, m_DX12ConstantUploader->GetUploadBuffer(), 0, byteSize);
     m_DX12ConstantUploader->TransitionState(dx12CommandList->GetCommandList(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 }
 
-void DX12MaterialConstantManager::InitialzieUploadBuffer(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, UINT numConstants)
+void DX12MaterialConstantManager::InitialzieUploadBuffer(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, UINT byteSize)
 {
     if (m_materials.empty())
     {
         ::OutputDebugStringA("No Material was Loaded in Material Manager!");
         assert(m_materials.empty());
     }
-    DX12ConstantObjectManager::InitialzieUploadBuffer(device, cmdList, numConstants);
+    DX12ConstantManager::InitialzieUploadBuffer(device, cmdList, byteSize);
 }
 
-void DX12MaterialConstantManager::InitializeSRV(ID3D12Device* device, const D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle, UINT numConstants)
+void DX12MaterialConstantManager::InitializeSRV(ID3D12Device* device, const D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle, UINT numConstants, UINT byteStirde)
 {
     if (m_materials.empty())
     {
         ::OutputDebugStringA("No Material was Loaded in Material Manager!");
         assert(m_materials.empty());
     }
-    DX12ConstantObjectManager::InitializeSRV(device, cpuHandle, numConstants);
+    DX12ConstantManager::InitializeSRV(device, cpuHandle, numConstants, byteStirde);
 }
 
 void DX12MaterialConstantManager::PushMaterial(std::unique_ptr<Material>&& Mat)
@@ -86,6 +96,16 @@ void DX12MaterialConstantManager::PushMaterial(std::unique_ptr<Material>&& Mat)
     m_materials.emplace_back(std::move(Mat));
 }
 
+DX12ObjectConstantManager::DX12ObjectConstantManager()
+{
+
+}
+
+DX12ObjectConstantManager::~DX12ObjectConstantManager()
+{
+
+}
+
 void DX12ObjectConstantManager::InitialzieUploadBuffer(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, UINT numConstants)
 {
     if (m_objectConstants.empty())
@@ -93,17 +113,17 @@ void DX12ObjectConstantManager::InitialzieUploadBuffer(ID3D12Device* device, ID3
         ::OutputDebugStringA("No ObjectConstant was Loaded in ObjectConstant Manager!");
         assert(m_objectConstants.empty());
     }
-    DX12ConstantObjectManager::InitialzieUploadBuffer(device, cmdList, numConstants);
+    DX12ConstantManager::InitialzieUploadBuffer(device, cmdList, numConstants);
 }
 
-void DX12ObjectConstantManager::InitializeSRV(ID3D12Device* device, const D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle, UINT numConstants)
+void DX12ObjectConstantManager::InitializeSRV(ID3D12Device* device, const D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle, UINT numConstants, UINT byteStirde)
 {
     if (m_objectConstants.empty())
     {
         ::OutputDebugStringA("No ObjectConstant was Loaded in ObjectConstant Manager!");
         assert(m_objectConstants.empty());
     }
-    DX12ConstantObjectManager::InitializeSRV(device, cpuHandle, numConstants);
+    DX12ConstantManager::InitializeSRV(device, cpuHandle, numConstants, byteStirde);
 }
 
 void DX12ObjectConstantManager::PushObjectConstant(ObjectConstants Obj)

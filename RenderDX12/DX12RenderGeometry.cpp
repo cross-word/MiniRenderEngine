@@ -14,7 +14,6 @@ DX12RenderGeometry::~DX12RenderGeometry()
 
 bool DX12RenderGeometry::InitMeshFromFile(
 	ID3D12Device* device,
-	DX12FrameResource* DX12FrameResource,
 	DX12CommandList* dx12CommandList,
 	const std::wstring& filename,
 	D3D12_PRIMITIVE_TOPOLOGY vertexPrimitiveType)

@@ -4,7 +4,6 @@
 
 #include "DX12Resource.h"
 #include "DX12View.h"
-#include "DX12FrameResource.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
@@ -29,7 +28,6 @@ public:
 
 	bool InitMeshFromFile(
 		ID3D12Device* device,
-		DX12FrameResource* DX12FrameResource,
 		DX12CommandList* dx12CommandList,
 		const std::wstring& filename,
 		D3D12_PRIMITIVE_TOPOLOGY vertexPrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); //.obj file
@@ -57,3 +55,39 @@ private:
 	UINT m_IndexCount = 0;
 	UINT m_VertexCount = 0;
 };
+
+namespace Render
+{
+	struct RenderItem
+	{
+	public:
+		void SetRenderGeometry(DX12RenderGeometry* renderGeo) { m_renderGeomery = renderGeo; }
+		void SetTextureIndex(UINT index) { m_textureIndex = index; }
+		void SetMaterialIndex(UINT index) { m_materialIndex = index; }
+		void SetStartIndexLocation(UINT index) { m_startIndexLocation = index; }
+		void SetBaseVertexLocation(UINT index) { m_baseVertexLocation = index; }
+		void SetObjWorldMatrix(const XMFLOAT4X4& mat) { m_objConst.World = mat; m_bObjDirty = true; }
+		void SetObjTransformMatrix(const XMFLOAT4X4& mat) { m_objConst.TexTransform = mat; m_bObjDirty = true; }
+		void SetObjConstantIndex(UINT index) { m_objectIndex = index; }
+		void SetDirtyFlag(bool b) { m_bObjDirty = b; }
+
+		DX12RenderGeometry* GetRenderGeometry() { return m_renderGeomery; }
+		UINT GetTextureIndex() { return m_textureIndex; }
+		UINT GetMaterialIndex() { return m_materialIndex; }
+		UINT GetStartIndexLocation() { return m_startIndexLocation; }
+		UINT GetBaseVertexLocation() { return m_baseVertexLocation; }
+		ObjectConstants GetObjectConstant() { return m_objConst; }
+		bool IsObjDirty() { return m_bObjDirty; }
+		UINT GetObjectConstantIndex() { return m_objectIndex; }
+	private:
+		DX12RenderGeometry* m_renderGeomery;
+		ObjectConstants m_objConst;
+
+		UINT m_textureIndex = 0;
+		UINT m_materialIndex = 0;
+		UINT m_startIndexLocation = 0; // + previous index size
+		UINT m_baseVertexLocation = 0; // + previous vertex size
+		UINT m_objectIndex = 0;
+		bool m_bObjDirty = true;
+	};
+}
