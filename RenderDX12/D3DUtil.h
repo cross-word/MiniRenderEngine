@@ -93,16 +93,16 @@ struct PassConstants // to slot b0 (per camera)
     Light Lights[MaxLights];
 };
 
-struct ObjectConstants // to slot b1 (per draw call)
+struct ObjectConstants
 {
-    XMMATRIX World = XMMatrixIdentity();
-    XMMATRIX TexTransform = XMMatrixIdentity();
+    XMFLOAT4X4 World = XMMatIdentity();
+    XMFLOAT4X4 TexTransform = XMMatIdentity();
 };
 
 struct MaterialConstants
 {
-    DirectX::XMFLOAT4 DiffuseAlbedo = { 1.0f, 1.0f, 1.0f, 1.0f };
-    DirectX::XMFLOAT3 FresnelR0 = { 0.01f, 0.01f, 0.01f };
+    XMFLOAT4 DiffuseAlbedo = { 1.0f, 1.0f, 1.0f, 1.0f };
+    XMFLOAT3 FresnelR0 = { 0.01f, 0.01f, 0.01f };
     float Roughness = 0.25f;
 
     // Used in texture mapping.

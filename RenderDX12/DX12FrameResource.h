@@ -36,7 +36,7 @@ public:
     void UpdatePassConstant();
     void UpdateObjectConstant();
 
-    void UploadPassConstant();
+    void UploadPassConstant(D3DCamera* d3dCamera);
     void UploadObjectConstant(D3DCamera* d3dCamera);
 
 private:

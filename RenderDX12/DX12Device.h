@@ -11,7 +11,7 @@
 #include "DX12FrameResource.h"
 #include "DX12RenderGeometry.h"
 #include "DX12DDSManager.h"
-#include "DX12MaterialManager.h"
+#include "DX12ConstantObjectManager.h"
 #include "D3DCamera.h"
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
@@ -89,7 +89,7 @@ private:
 	void InitDX12SwapChain(HWND hWnd);
 	void InitDX12RTVDescHeap();
 	void InitDX12DSVDescHeap();
-	void InitDX12CBVHeap();
+	void InitDX12CBVDDSHeap();
 	void InitDX12SRVHeap();
 	void InitDX12RootSignature();
 	void InitShader(); //temp func
@@ -108,7 +108,8 @@ private:
 	std::vector<std::unique_ptr<DX12FrameResource>> m_DX12FrameResource;
 	std::vector<std::unique_ptr<DX12RenderGeometry>> m_DX12RenderGeometry;
 	std::vector<std::unique_ptr<DX12DDSManager>> m_DX12DDSManager;
-	std::unique_ptr<DX12MaterialManager> m_DX12MaterialManager;
+	std::unique_ptr<DX12MaterialConstantManager> m_DX12MaterialConstantManager;
+	std::unique_ptr<DX12ObjectConstantManager> m_DX12ObjectConstantManager;
 
 	std::unique_ptr<DX12SwapChain> m_DX12SwapChain;
 

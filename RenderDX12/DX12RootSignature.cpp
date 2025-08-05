@@ -18,32 +18,39 @@ void DX12RootSignature::Initialize(ID3D12Device* device)
 	CD3DX12_ROOT_PARAMETER1 slotRootParameter[4];
 
 	// Create a single descriptor table of CBVs.
-	CD3DX12_DESCRIPTOR_RANGE1 cbvTable[2];
-	cbvTable[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
-	cbvTable[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1);
-	//cbvTable[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 2);
+	CD3DX12_DESCRIPTOR_RANGE1 cbvTable;
+	cbvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
+	//cbvTable[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1);
 
-	CD3DX12_DESCRIPTOR_RANGE1 srvTable[2]; //s0 texture, s1 materials
-	srvTable[0].Init(
+	CD3DX12_DESCRIPTOR_RANGE1 srvTexTable;//t0 space 0 texture
+	srvTexTable.Init(
 		D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-		3,
+		std::size(EngineConfig::DDSFilePath),
 		0,
 		0
+	);
+
+	CD3DX12_DESCRIPTOR_RANGE1 srvTable[2]; //t0 space 1 materials, t1 space 1 worlds
+	srvTable[0].Init(
+		D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+		1,
+		0,
+		1
 	);
 	srvTable[1].Init(
 		D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
 		1,
-		0,
+		1,
 		1
 	);
 
 	auto staticSamplers = GetStaticSamplers();
 
 	// A root signature is an array of root parameters.
-	slotRootParameter[0].InitAsDescriptorTable(2, cbvTable);
-	slotRootParameter[1].InitAsDescriptorTable(1, &srvTable[0], D3D12_SHADER_VISIBILITY_PIXEL);
-	slotRootParameter[2].InitAsDescriptorTable(1, &srvTable[1], D3D12_SHADER_VISIBILITY_ALL);
-	slotRootParameter[3].InitAsConstants(1, 2, 0);
+	slotRootParameter[0].InitAsDescriptorTable(1, &cbvTable);
+	slotRootParameter[1].InitAsDescriptorTable(1, &srvTexTable, D3D12_SHADER_VISIBILITY_PIXEL);
+	slotRootParameter[2].InitAsDescriptorTable(2, srvTable, D3D12_SHADER_VISIBILITY_ALL);
+	slotRootParameter[3].InitAsConstants(3, 2, 0); // index of textur/material/world
 
 	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc(4, slotRootParameter, (UINT)staticSamplers.size(), staticSamplers.data(), D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 

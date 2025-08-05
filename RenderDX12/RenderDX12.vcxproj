@@ -47,7 +47,7 @@
     <ClCompile Include="DX12Device.cpp" />
     <ClCompile Include="DX12FrameBuffer.cpp" />
     <ClCompile Include="DX12FrameResource.cpp" />
-    <ClCompile Include="DX12MaterialManager.cpp" />
+    <ClCompile Include="DX12ConstantObjectManager.cpp" />
     <ClCompile Include="DX12PSO.cpp" />
     <ClCompile Include="DX12RenderGeometry.cpp" />
     <ClCompile Include="DX12Resource.cpp" />
@@ -69,7 +69,7 @@
     <ClInclude Include="DX12Device.h" />
     <ClInclude Include="DX12FrameBuffer.h" />
     <ClInclude Include="DX12FrameResource.h" />
-    <ClInclude Include="DX12MaterialManager.h" />
+    <ClInclude Include="DX12ConstantObjectManager.h" />
     <ClInclude Include="DX12PSO.h" />
     <ClInclude Include="DX12RenderGeometry.h" />
     <ClInclude Include="DX12Resource.h" />

@@ -83,10 +83,10 @@ public:
 		ScratchImage* img
 	);
 
-	void CreateMaterialResource(
+	void CreateMaterialorObjectResource(
 		ID3D12Device* device,
 		ID3D12GraphicsCommandList* cmdList,
-		UINT materialCount
+		UINT byteSize
 	);
 private:
 	ComPtr<ID3D12Resource> m_uploadBuffer;

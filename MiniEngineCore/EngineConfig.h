@@ -9,7 +9,7 @@ struct EngineConfig
     static constexpr UINT MsaaSampleCount = 8;
     static constexpr LONGLONG TargetFrameTime = 16666; // 16.666ms
     static constexpr UINT SwapChainBufferCount = 3;
-    static constexpr UINT ConstantBufferCount = 2;
+    static constexpr UINT ConstantBufferCount = 1;
     static inline constexpr const wchar_t* ModelObjFilePath[] = {
         LR"(..\Models\Skull.obj)",
         LR"(..\Models\Car.obj)"

@@ -15,10 +15,14 @@
     #define NUM_SPOT_LIGHTS 0
 #endif
 
+#ifndef TEX_POOL_MAX
+    #define TEX_POOL_MAX 3
+#endif
+
 // Include structures and functions for lighting.
 #include "LightingUtil.hlsl"
 
-Texture2D    gDiffuseMap : register(t0, space0);
+Texture2D    gDiffuseMap[TEX_POOL_MAX] : register(t0, space0);
 
 struct MaterialParam
 {
@@ -28,7 +32,14 @@ struct MaterialParam
     float4x4 gMatTransform;
 };
 
+struct ObjectParam
+{
+    float4x4 gWorlds;
+    float4x4 gTransform;
+};
+
 StructuredBuffer<MaterialParam> gMaterials : register(t0, space1);
+StructuredBuffer<ObjectParam>   gObject    : register(t1, space1);
 
 SamplerState gsamPointWrap        : register(s0);
 SamplerState gsamPointClamp       : register(s1);
@@ -37,7 +48,7 @@ SamplerState gsamLinearClamp      : register(s3);
 SamplerState gsamAnisotropicWrap  : register(s4);
 SamplerState gsamAnisotropicClamp : register(s5);
 
-// Constant data that varies per material.
+// Constant data that varies per frame.
 cbuffer cbPass : register(b0)
 {
     float4x4 gView;
@@ -63,15 +74,17 @@ cbuffer cbPass : register(b0)
     Light gLights[MaxLights];
 };
 
-// Constant data that varies per frame.
-cbuffer cbPerObject : register(b1)
-{
-    float4x4 gWorld;
-	float4x4 gTexTransform;
-};
+// Constant data that varies per draw.
+//cbuffer cbPerObject : register(b1)
+//{
+    //float4x4 gWorld;
+	//float4x4 gTexTransform;
+//};
 
 cbuffer cbMaterialIndex : register(b2) {
     uint gMaterialIndex;
+    uint gTexIndex;
+    uint gObjectId;
 };
 
 //cbuffer cbMaterial : register(b2)
@@ -102,17 +115,17 @@ VertexOut VSMain(VertexIn vin)
 	VertexOut vout = (VertexOut)0.0f;
 	
     // Transform to world space.
-    float4 posW = mul(float4(vin.PosL, 1.0f), gWorld);
+    float4 posW = mul(float4(vin.PosL, 1.0f), gObject[gObjectId].gWorlds);
     vout.PosW = posW.xyz;
 
     // Assumes nonuniform scaling; otherwise, need to use inverse-transpose of world matrix.
-    vout.NormalW = mul(vin.NormalL, (float3x3)gWorld);
+    vout.NormalW = mul(vin.NormalL, (float3x3)gObject[gObjectId].gWorlds);
 
     // Transform to homogeneous clip space.
     vout.PosH = mul(posW, gViewProj);
 	
 	// Output vertex attributes for interpolation across triangle.
-	float4 texC = mul(float4(vin.TexC, 0.0f, 1.0f), gTexTransform);
+    float4 texC = mul(float4(vin.TexC, 0.0f, 1.0f), gObject[gObjectId].gTransform);
 	vout.TexC = mul(texC, gMaterials[gMaterialIndex].gMatTransform).xy;
 	
     return vout;
@@ -120,7 +133,7 @@ VertexOut VSMain(VertexIn vin)
 
 float4 PSMain(VertexOut pin) : SV_Target
 {
-    float4 diffuseAlbedo = gDiffuseMap.Sample(gsamAnisotropicWrap, pin.TexC) * gMaterials[gMaterialIndex].gDiffuseAlbedo;
+    float4 diffuseAlbedo = gDiffuseMap[gTexIndex].Sample(gsamAnisotropicWrap, pin.TexC) * gMaterials[gMaterialIndex].gDiffuseAlbedo;
 	
     // Interpolating normal can unnormalize it, so renormalize it.
     pin.NormalW = normalize(pin.NormalW);

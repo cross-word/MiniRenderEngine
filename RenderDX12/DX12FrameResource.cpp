@@ -44,7 +44,7 @@ DX12FrameResource::DX12FrameResource(ID3D12Device* device, DX12DescriptorHeap* c
 	m_DX12ObjectConstantBuffer = std::make_unique<DX12ResourceBuffer>();
 	m_DX12ObjectConstantBuffer->CreateConstantBuffer(device, elementByteSize[CBIndex]);
 	cbAddress = m_DX12ObjectConstantBuffer->GetResource()->GetGPUVirtualAddress();
-
+	/*
 	D3D12_CONSTANT_BUFFER_VIEW_DESC objCBVDesc;
 	objCBVDesc.BufferLocation = cbAddress;
 	objCBVDesc.SizeInBytes = elementByteSize[CBIndex];
@@ -55,6 +55,7 @@ DX12FrameResource::DX12FrameResource(ID3D12Device* device, DX12DescriptorHeap* c
 		m_DX12ObjectConstantBuffer.get(),
 		descCPUAddress,
 		&objCBVDesc);
+		*/
 }
 
 DX12FrameResource::~DX12FrameResource()
@@ -62,7 +63,7 @@ DX12FrameResource::~DX12FrameResource()
 
 }
 
-void DX12FrameResource::UploadPassConstant()
+void DX12FrameResource::UploadPassConstant(D3DCamera* d3dCamera)
 {
 	PassConstants passConst;
 	passConst.AmbientLight = { 0.25f, 0.25f, 0.35f, 1.0f };
@@ -72,6 +73,21 @@ void DX12FrameResource::UploadPassConstant()
 	passConst.Lights[1].Strength = { 0.3f, 0.3f, 0.3f };
 	passConst.Lights[2].Direction = { 0.0f, -0.707f, -0.707f };
 	passConst.Lights[2].Strength = { 0.15f, 0.15f, 0.15f };
+	using namespace DirectX;
+
+	XMMATRIX V = d3dCamera->GetViewMatrix();
+	XMMATRIX P = d3dCamera->GetProjectionMatrix(float(EngineConfig::DefaultWidth) / float(EngineConfig::DefaultHeight));
+	XMMATRIX VP = XMMatrixMultiply(V, P); // HLSL column-major
+	XMMATRIX iV = XMMatrixInverse(nullptr, V);
+	XMMATRIX iP = XMMatrixInverse(nullptr, P);
+	XMMATRIX iVP = XMMatrixInverse(nullptr, VP);
+
+	XMStoreFloat4x4(&passConst.View, XMMatrixTranspose(V));
+	XMStoreFloat4x4(&passConst.Proj, XMMatrixTranspose(P));
+	XMStoreFloat4x4(&passConst.ViewProj, XMMatrixTranspose(VP));
+	XMStoreFloat4x4(&passConst.InvView, XMMatrixTranspose(iV));
+	XMStoreFloat4x4(&passConst.InvProj, XMMatrixTranspose(iP));
+	XMStoreFloat4x4(&passConst.InvViewProj, XMMatrixTranspose(iVP));
 
 	m_DX12PassConstantBuffer->CopyAndUploadResource(
 		m_DX12PassConstantBuffer->GetResource(),
@@ -82,7 +98,7 @@ void DX12FrameResource::UploadPassConstant()
 void DX12FrameResource::UploadObjectConstant(D3DCamera* d3dCamera)
 {
 	ObjectConstants objConst;
-	objConst.World = XMMatrixTranspose(XMMatrixIdentity() * d3dCamera->GetViewMatrix() * d3dCamera->GetProjectionMatrix(float(EngineConfig::DefaultWidth / EngineConfig::DefaultHeight))); //TMP CODE FOR TEST CBV TABLE
+	//objConst.World = XMMatrixTranspose(XMMatrixIdentity() * d3dCamera->GetViewMatrix() * d3dCamera->GetProjectionMatrix(float(EngineConfig::DefaultWidth / EngineConfig::DefaultHeight))); //TMP CODE FOR TEST CBV TABLE
 	m_DX12ObjectConstantBuffer->CopyAndUploadResource(
 		m_DX12ObjectConstantBuffer->GetResource(),
 		&objConst,

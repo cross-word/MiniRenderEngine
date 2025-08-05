@@ -38,9 +38,10 @@ void DX12Device::Initialize(HWND hWnd)
 			IID_PPV_ARGS(&m_device)
 		));
 	}
+
 	InitDX12RTVDescHeap();
 	InitDX12DSVDescHeap();
-	InitDX12CBVHeap();
+	InitDX12CBVDDSHeap();
 	InitDX12SRVHeap();
 	InitDX12FrameResource();
 	InitDX12CommandList(m_DX12FrameResource[0]->GetCommandAllocator());
@@ -86,12 +87,12 @@ void DX12Device::InitDX12DSVDescHeap()
 	);
 }
 
-void DX12Device::InitDX12CBVHeap()
+void DX12Device::InitDX12CBVDDSHeap()
 {
 	m_DX12CBVDDSHeap = std::make_unique<DX12DescriptorHeap>();
 	m_DX12CBVDDSHeap->Initialize(
 		m_device.Get(),
-		EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + std::size(EngineConfig::DDSFilePath) + 1, // 2 constant(b0 b1) * 3 frames + dds amount + 1 material vectors
+		EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + std::size(EngineConfig::DDSFilePath) + 1 + 1, // 1 constant(b0) * 3 frames + dds amount + 1 material vectors + 1 world vectors
 		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
 		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
 	);
@@ -169,6 +170,7 @@ void DX12Device::InitShader()
 
 void DX12Device::PrepareInitialResource()
 {
+	m_DX12FrameResource[m_currBackBufferIndex]->ResetAllocator();
 	m_DX12CommandList->ResetList(m_DX12FrameResource[m_currBackBufferIndex]->GetCommandAllocator());
 	int i = 0;
 	for (auto ddsFileName : EngineConfig::DDSFilePath)
@@ -186,19 +188,18 @@ void DX12Device::PrepareInitialResource()
 		m_DX12DDSManager.emplace_back(std::move(ddsItem));
 		i++;
 	}
-	m_DX12CommandList->SubmitAndWait(); //제출 너무 빈번함. 수정하는게 필요할듯? 멀티스레딩할때
 
 	for (auto objFileName : EngineConfig::ModelObjFilePath)
 	{
-		auto geomeryItem = std::make_unique<DX12RenderGeometry>();
-		if (geomeryItem->InitMeshFromFile(
+		auto geometryItem = std::make_unique<DX12RenderGeometry>();
+		if (geometryItem->InitMeshFromFile(
 			m_device.Get(),
 			m_DX12FrameResource[m_currBackBufferIndex].get(),
 			m_DX12CommandList.get(),
 			objFileName
 		))
 		{
-			m_DX12RenderGeometry.emplace_back(std::move(geomeryItem));
+			m_DX12RenderGeometry.emplace_back(std::move(geometryItem));
 		}
 	}
 
@@ -234,18 +235,19 @@ void DX12Device::PrepareInitialResource()
 	tileConst.Roughness = 0.3f;
 	tile0->matConstant = tileConst;
 
-	m_DX12MaterialManager = std::make_unique<DX12MaterialManager>();
+	m_DX12MaterialConstantManager = std::make_unique<DX12MaterialConstantManager>();
 
-	m_DX12MaterialManager->PushMaterialVector(std::move(bricks0));
-	m_DX12MaterialManager->PushMaterialVector(std::move(stone0));
-	m_DX12MaterialManager->PushMaterialVector(std::move(tile0));
-	m_DX12MaterialManager->InitialzieUploadBuffer(m_device.Get(), m_DX12CommandList->GetCommandList());
+	m_DX12MaterialConstantManager->PushMaterial(std::move(bricks0));
+	m_DX12MaterialConstantManager->PushMaterial(std::move(stone0));
+	m_DX12MaterialConstantManager->PushMaterial(std::move(tile0));
+	m_DX12MaterialConstantManager->InitialzieUploadBuffer(m_device.Get(), m_DX12CommandList->GetCommandList(), m_DX12MaterialConstantManager->GetMaterialCount() * sizeof(MaterialConstants));
 	auto matCPUHandle = m_DX12CBVDDSHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + std::size(EngineConfig::DDSFilePath)).cpuDescHandle;
-	m_DX12MaterialManager->InitializeSRV(m_device.Get(), &matCPUHandle);
-	m_DX12FrameResource[m_currBackBufferIndex]->ResetAllocator();
-	m_DX12CommandList->ResetList(m_DX12FrameResource[m_currBackBufferIndex]->GetCommandAllocator());
-
-	m_DX12MaterialManager->UploadMaterial(m_device.Get(), m_DX12CommandList.get());
+	m_DX12MaterialConstantManager->InitializeSRV(m_device.Get(), &matCPUHandle, m_DX12MaterialConstantManager->GetMaterialCount());
+	m_DX12MaterialConstantManager->UploadConstant(
+		m_device.Get(), 
+		m_DX12CommandList.get(),
+		m_DX12MaterialConstantManager->GetMaterialCount() * sizeof(MaterialConstants),
+		m_DX12MaterialConstantManager->GetMaterialConstantData());
 
 	RenderItem newRenderItem;
 	newRenderItem.SetRenderGeometry(m_DX12RenderGeometry[0].get());
@@ -271,6 +273,44 @@ void DX12Device::PrepareInitialResource()
 	newRenderItem2.SetStartIndexLocation(0);
 	m_renderItems.push_back(newRenderItem2);
 	////////////////////////////////////////////////////////
+	/////////////
+	auto base = EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount;
+	auto texBase = base;
+	auto matSlot = base + std::size(EngineConfig::DDSFilePath);
+	auto worldSlot = matSlot + 1;
+
+	m_DX12ObjectConstantManager = std::make_unique<DX12ObjectConstantManager>();
+
+	for (size_t i = 0; i < m_renderItems.size(); ++i) 
+	{
+		ObjectConstants obj;
+		DirectX::XMMATRIX W = XMMatrixTranslation(+5.0f, 1.5f, -10.0f + i * 5.0f);
+		DirectX::XMStoreFloat4x4(&obj.World, DirectX::XMMatrixTranspose(W));
+
+		DirectX::XMMATRIX T = XMMatrixTranslation(-50.0f, 10.5f, -10.0f + i * 50.0f);
+		DirectX::XMStoreFloat4x4(&obj.TexTransform, DirectX::XMMatrixTranspose(T));
+		
+		m_DX12ObjectConstantManager->PushObjectConstant(obj);
+	}
+	m_DX12ObjectConstantManager->InitialzieUploadBuffer(m_device.Get(), m_DX12CommandList->GetCommandList(), m_DX12ObjectConstantManager->GetObjectConstantCount() * sizeof(ObjectConstants));
+	auto objCPUHandle = m_DX12CBVDDSHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + std::size(EngineConfig::DDSFilePath) + 1).cpuDescHandle;
+	m_DX12ObjectConstantManager->InitializeSRV(m_device.Get(), &objCPUHandle, m_DX12ObjectConstantManager->GetObjectConstantCount());
+	m_DX12ObjectConstantManager->UploadConstant(
+		m_device.Get(),
+		m_DX12CommandList.get(),
+		m_DX12ObjectConstantManager->GetObjectConstantCount() * sizeof(ObjectConstants),
+		m_DX12ObjectConstantManager->GetObjectConstantData());
+
+	//wait for upload and reset upload buffers
+	m_DX12CommandList->SubmitAndWait();
+	for (int i = 0; i < m_DX12RenderGeometry.size(); i++)
+	{
+		m_DX12RenderGeometry[i]->GetDX12VertexBuffer()->ResetUploadBuffer();
+		m_DX12RenderGeometry[i]->GetDX12IndexBuffer()->ResetUploadBuffer();
+	}
+	m_DX12MaterialConstantManager->GetMaterialResource()->ResetUploadBuffer();
+	m_DX12ObjectConstantManager->GetMaterialResource()->ResetUploadBuffer();
+	/////////////
 }
 
 void DX12Device::InitDX12FrameResource()
@@ -294,8 +334,8 @@ void DX12Device::UpdateFrameResource()
 		WaitForSingleObject(m_fenceEvent, INFINITE);
 	}
 
-	m_DX12CurrFrameResource->UploadPassConstant();
-	m_DX12CurrFrameResource->UploadObjectConstant(m_camera.get());
+	m_DX12CurrFrameResource->UploadPassConstant(m_camera.get());
+	//m_DX12CurrFrameResource->UploadObjectConstant(m_camera.get());
 	//m_DX12CurrFrameResource->UploadMaterialConstat();
 }
 
@@ -320,15 +360,15 @@ UINT DX12Device::GetTextureIndexAsTextureName(const std::string textureName)
 
 UINT DX12Device::GetMaterialIndexAsMaterialName(const std::string materialName)
 {
-	if (m_DX12MaterialManager->IsMaterailEmpty())
+	if (m_DX12MaterialConstantManager->IsMaterailEmpty())
 	{
 		::OutputDebugStringA("No Material was Loaded in Material Manager!");
 		assert(false);
 	}
 
-	for (int i = 0; i < m_DX12MaterialManager->GetMaterialCount(); i++)
+	for (int i = 0; i < m_DX12MaterialConstantManager->GetMaterialCount(); i++)
 	{
-		if (m_DX12MaterialManager->GetMaterial(i)->Name == materialName) return i;
+		if (m_DX12MaterialConstantManager->GetMaterial(i)->Name == materialName) return i;
 	}
 
 	std::string msg = "Material Name '" + materialName + "' was not found in DX12MaterialManager. Automatically return 0.\n";

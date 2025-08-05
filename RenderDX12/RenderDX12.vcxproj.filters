@@ -84,7 +84,7 @@
     <ClCompile Include="DX12DDSManager.cpp">
       <Filter>Resource Files</Filter>
     </ClCompile>
-    <ClCompile Include="DX12MaterialManager.cpp">
+    <ClCompile Include="DX12ConstantObjectManager.cpp">
       <Filter>Resource Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -140,7 +140,7 @@
     <ClInclude Include="DX12DDSManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DX12MaterialManager.h">
+    <ClInclude Include="DX12ConstantObjectManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

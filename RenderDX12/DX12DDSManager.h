@@ -28,7 +28,7 @@ public:
     inline std::wstring GetDDSFileName() const noexcept { return m_fileName; }
 private:
     std::unique_ptr<DX12ResourceTexture> m_DDSResource;
-    std::unique_ptr<DX12View> m_DX12DDSView; //나중에 view들로 변경
+    std::unique_ptr<DX12View> m_DX12DDSView;
 
     std::string m_textureName;
     std::wstring m_fileName;

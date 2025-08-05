@@ -254,14 +254,12 @@ void DX12ResourceTexture::CreateDDSTexture(
 	TransitionState(cmdList, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 }
 
-void DX12ResourceTexture::CreateMaterialResource(
+void DX12ResourceTexture::CreateMaterialorObjectResource(
 	ID3D12Device* device,
 	ID3D12GraphicsCommandList* cmdList,
-	UINT materialCount
+	UINT byteSize
 )
 {
-	UINT64 byteSize = UINT64(materialCount) * sizeof(MaterialConstants);
-
 	CD3DX12_HEAP_PROPERTIES defaultHeap(D3D12_HEAP_TYPE_DEFAULT);
 
 	CD3DX12_RESOURCE_DESC matDesc{};

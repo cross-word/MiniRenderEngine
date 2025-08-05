@@ -33,6 +33,8 @@ public:
 		DX12CommandList* dx12CommandList,
 		const std::wstring& filename,
 		D3D12_PRIMITIVE_TOPOLOGY vertexPrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); //.obj file
+	inline DX12ResourceBuffer* GetDX12VertexBuffer() const noexcept { return m_DX12VertexBuffer.get(); }
+	inline DX12ResourceBuffer* GetDX12IndexBuffer() const noexcept { return m_DX12IndexBuffer.get(); }
 	inline DX12View* GetDX12VertexBufferView() const noexcept { return m_DX12VertexView.get(); }
 	inline DX12View* GetDX12IndexBufferView() const noexcept { return m_DX12IndexView.get(); }
 

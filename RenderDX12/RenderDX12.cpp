@@ -179,19 +179,20 @@ void RenderDX12::RecordAndSubmit_Single()
 
 	uint32_t cbvSliceIndex = cbvddsHeap->CalcHeapSliceShareBlock(frameIndex, threadIndex, numDescPerFrame, numDescPerThread, maxWorkers);
 	HeapSlice cbvSlice = cbvddsHeap->Offset(cbvSliceIndex);
+	HeapSlice ddsSlice = cbvddsHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount);
 	HeapSlice matSlice = cbvddsHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + std::size(EngineConfig::DDSFilePath));
 	
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootDescriptorTable(0, cbvSlice.gpuDescHandle);
+	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootDescriptorTable(1, ddsSlice.gpuDescHandle);
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootDescriptorTable(2, matSlice.gpuDescHandle);
 	for (int renderItemIndex = 0; renderItemIndex < m_DX12Device.GetRenderItemSize(); renderItemIndex++)
 	{
-		UINT texIndex = m_DX12Device.GetDX12RenderItem(renderItemIndex).GetTextureIndex();
 		UINT matIndex = m_DX12Device.GetDX12RenderItem(renderItemIndex).GetMaterialIndex();
-		HeapSlice ddsSlice = cbvddsHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + texIndex);
-		m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootDescriptorTable(1, ddsSlice.gpuDescHandle);
+		UINT texIndex = m_DX12Device.GetDX12RenderItem(renderItemIndex).GetTextureIndex();
+		struct RootPush { UINT matIdx; UINT texIdx; UINT worldIdx; } push{ matIndex, texIndex, renderItemIndex };
+		m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRoot32BitConstants(3, 3, &push, 0);
 
-		m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRoot32BitConstants(3, 1, &matIndex, 0);
 		m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetPrimitiveTopology(m_DX12Device.GetDX12RenderItem(renderItemIndex).GetRenderGeometry()->GetPrimitiveTopologyType());
 		m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetVertexBuffers(0, 1, m_DX12Device.GetDX12RenderItem(renderItemIndex).GetRenderGeometry()->GetDX12VertexBufferView()->GetVertexBufferView());
 		m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetIndexBuffer(m_DX12Device.GetDX12RenderItem(renderItemIndex).GetRenderGeometry()->GetDX12IndexBufferView()->GetIndexBufferView());
@@ -235,7 +236,7 @@ void RenderDX12::RecordAndSubmit_Single()
 	ID3D12CommandList* lists[] = { m_DX12Device.GetDX12CommandList()->GetCommandList() };
 	m_DX12Device.GetDX12CommandList()->GetCommandQueue()->ExecuteCommandLists(1, lists);
 
-	// ÇÁ·¹ÀÓ Ææ½º ±â·Ï(´ë±â´Â ´ÙÀ½ ÇÁ·¹ÀÓ Begin¿¡¼­¸¸)
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½æ½º ï¿½ï¿½ï¿½(ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Beginï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)
 	const uint64_t fenceValue = m_DX12Device.GetDX12CommandList()->Signal();
 	m_DX12Device.GetFrameResource(currBackBufferIndex)->SetFenceValue(fenceValue);
 	m_timer.EndCPU(currBackBufferIndex); // << CPU TIMER END

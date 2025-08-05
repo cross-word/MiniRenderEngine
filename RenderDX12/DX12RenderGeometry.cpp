@@ -28,18 +28,11 @@ bool DX12RenderGeometry::InitMeshFromFile(
 	const uint32_t vertexStride = sizeof(Vertex);
 	const uint32_t indexBufferSize = (uint32_t)mesh.indices.size() * sizeof(uint32_t);
 
-	DX12FrameResource->ResetAllocator();
-	dx12CommandList->ResetList(DX12FrameResource->GetCommandAllocator());
-
 	m_DX12VertexBuffer = std::make_unique<DX12ResourceBuffer>();
 	m_DX12VertexBuffer->CreateVertexBuffer(device, mesh.vertices, dx12CommandList->GetCommandList());
 
 	m_DX12IndexBuffer = std::make_unique<DX12ResourceBuffer>();
 	m_DX12IndexBuffer->CreateIndexBuffer(device, mesh.indices, dx12CommandList->GetCommandList());
-
-	dx12CommandList->SubmitAndWait(); //should hold for uploading
-	m_DX12VertexBuffer->ResetUploadBuffer();
-	m_DX12IndexBuffer->ResetUploadBuffer();
 
 	m_DX12VertexView = std::make_unique<DX12View>(
 		device,
