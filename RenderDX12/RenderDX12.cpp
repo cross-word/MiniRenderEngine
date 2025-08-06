@@ -2,7 +2,7 @@
 #include "RenderDX12.h"
 
 #include <d3d12sdklayers.h>
-#include <pix.h>
+#include <pix3.h>
 
 #include "../external/imgui/imgui.h"
 #include "../external/imgui/backends/imgui_impl_win32.h"
@@ -146,8 +146,7 @@ void RenderDX12::Draw() {
 
 void RenderDX12::RecordAndSubmit_Single()
 {
-	/////////////////pix marking ~ total frame
-	PIXBeginEvent(m_DX12Device.GetDX12CommandList()->GetCommandQueue(), PIX_COLOR(0, 255, 0), L"Frame %u", sFrameId);
+	PIXBeginEvent(m_DX12Device.GetDX12CommandList()->GetCommandQueue(), PIX_COLOR(0, 255, 0), L"Frame %u", sFrameId); //pix marking ~ total frame
 
 	m_DX12Device.SetCurrentBackBufferIndex(m_DX12Device.GetDX12SwapChain()->GetSwapChain()->GetCurrentBackBufferIndex());
 	uint32_t currBackBufferIndex = m_DX12Device.GetDX12SwapChain()->GetSwapChain()->GetCurrentBackBufferIndex();

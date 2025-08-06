@@ -3,7 +3,6 @@
 #include <windows.h>
 #include <Windowsx.h>
 #include <d2d1.h>
-#include <pix3.h>
 
 #include <list>
 #include <memory>
@@ -63,8 +62,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
         }
 
         UINT frameIndex = 0;
-        PIXBeginEvent(0, L"Frame %u", frameIndex++);
-
         win.UpdateFPS();
         win.DrawFPS();
 
@@ -87,7 +84,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
         }
         lastTime = now;
         MainRenderer.Draw();
-        PIXEndEvent();
     }
     return 0;
 }

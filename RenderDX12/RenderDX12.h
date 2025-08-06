@@ -64,5 +64,5 @@ private:
     void RecordAndSubmit_Single();
     void RecordAndSubmit_Multi(); // for multi-thread
 
-    UINT sFrameId = 0;
 };
+static UINT sFrameId = 0;
