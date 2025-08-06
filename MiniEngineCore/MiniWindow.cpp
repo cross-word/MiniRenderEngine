@@ -68,8 +68,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
         win.UpdateFPS();
         win.DrawFPS();
 
-        PIXEndEvent();
-
         LONGLONG now = win.m_timer.GetTime();
         LONGLONG elapsed = now - lastTime;
 
@@ -89,6 +87,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
         }
         lastTime = now;
         MainRenderer.Draw();
+        PIXEndEvent();
     }
     return 0;
 }

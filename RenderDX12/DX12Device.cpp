@@ -9,7 +9,6 @@ DX12Device::DX12Device()
 }
 DX12Device::~DX12Device()
 {
-	if (m_fenceEvent) CloseHandle(m_fenceEvent);
 	m_DX12FrameResource.clear(); ////wt
 }
 
@@ -55,7 +54,7 @@ void DX12Device::InitDX12CommandList(ID3D12CommandAllocator* commandAllocator)
 {
 	//create command queue/list/fence
 	m_DX12CommandList = std::make_unique<DX12CommandList>();
-	m_DX12CommandList->Initialize(m_device.Get(), commandAllocator);
+	m_DX12CommandList->Initialize(m_device.Get(), commandAllocator, m_fenceEvent);
 }
 
 void DX12Device::InitDX12SwapChain(HWND hWnd)
@@ -181,7 +180,7 @@ void DX12Device::PrepareInitialResource()
 		auto ddsItem = std::make_unique<DX12DDSManager>();
 		ddsItem->LoadAndCreateDDSResource(
 			m_device.Get(),
-			m_DX12CommandList->GetCommandList(),
+			m_DX12CommandList.get(),
 			&cpuHandle,
 			ddsFileName,
 			texName
@@ -249,6 +248,25 @@ void DX12Device::PrepareInitialResource()
 		m_DX12MaterialConstantManager->GetMaterialCount() * sizeof(MaterialConstants),
 		m_DX12MaterialConstantManager->GetMaterialConstantData());
 
+	for (int i = 0; i < 1000; i++)
+	{
+		Render::RenderItem newRenderItem;
+		newRenderItem.SetRenderGeometry(m_DX12RenderGeometry[0].get());
+		newRenderItem.SetTextureIndex(GetTextureIndexAsTextureName("texture1"));
+		newRenderItem.SetMaterialIndex(GetMaterialIndexAsMaterialName("stone0"));
+		newRenderItem.SetBaseVertexLocation(0);
+		newRenderItem.SetStartIndexLocation(0);
+		XMFLOAT4X4 Wmat;
+		XMFLOAT4X4 Tmat;
+		XMMATRIX W = XMMatrixTranslation(i * 5.0f, -6.0f + i * (-3.0f), +5.0f + i * 5.0f);
+		XMStoreFloat4x4(&Wmat, XMMatrixTranspose(W));
+		newRenderItem.SetObjWorldMatrix(Wmat);
+		XMMATRIX T = XMMatrixTranslation(i * (-50.0f), i * (-3.0f), +10.0f + i * 50.0f);
+		XMStoreFloat4x4(&Tmat, XMMatrixTranspose(T));
+		newRenderItem.SetObjTransformMatrix(Tmat);
+		m_renderItems.push_back(newRenderItem);
+	}
+	/*
 	Render::RenderItem newRenderItem;
 	newRenderItem.SetRenderGeometry(m_DX12RenderGeometry[0].get());
 	newRenderItem.SetTextureIndex(GetTextureIndexAsTextureName("texture1"));
@@ -296,6 +314,7 @@ void DX12Device::PrepareInitialResource()
 	XMStoreFloat4x4(&Tmat3, XMMatrixTranspose(T));
 	newRenderItem2.SetObjTransformMatrix(Tmat3);
 	m_renderItems.push_back(newRenderItem2);
+	*/
 	////////////////////////////////////////////////////////
 	/////////////
 	auto base = EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount;
@@ -341,16 +360,12 @@ void DX12Device::UpdateFrameResource()
 	// If not, wait until the GPU has completed commands up to this fence point.
 	if (m_DX12FrameResource[m_currBackBufferIndex]->GetFenceValue() != 0 && m_DX12CommandList->GetFence()->GetCompletedValue() < m_DX12FrameResource[m_currBackBufferIndex]->GetFenceValue())
 	{
-		ThrowIfFailed(m_DX12CommandList->GetFence()->SetEventOnCompletion(
-			m_DX12FrameResource[m_currBackBufferIndex]->GetFenceValue(), m_fenceEvent));
+		ThrowIfFailed(m_DX12CommandList->GetFence()->SetEventOnCompletion(m_DX12FrameResource[m_currBackBufferIndex]->GetFenceValue(), m_fenceEvent));
 		WaitForSingleObject(m_fenceEvent, INFINITE);
 	}
 
 	m_DX12FrameResource[m_currBackBufferIndex]->UploadPassConstant(m_camera.get());
-	m_DX12FrameResource[m_currBackBufferIndex]->ResetAllocator();
-	m_DX12CommandList->ResetList(m_DX12FrameResource[m_currBackBufferIndex]->GetCommandAllocator());
-	m_DX12FrameResource[m_currBackBufferIndex]->UploadObjectConstant(m_device.Get(), m_DX12CommandList->GetCommandList(), m_renderItems, m_DX12ObjectConstantManager.get());
-	m_DX12CommandList->SubmitAndWait();
+	m_DX12FrameResource[m_currBackBufferIndex]->UploadObjectConstant(m_device.Get(), m_DX12CommandList.get(), m_renderItems, m_DX12ObjectConstantManager.get());
 }
 
 UINT DX12Device::GetTextureIndexAsTextureName(const std::string textureName)

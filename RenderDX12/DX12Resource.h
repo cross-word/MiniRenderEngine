@@ -30,7 +30,7 @@ public:
 	D3D12_GPU_VIRTUAL_ADDRESS GetGPUVAdress() const noexcept { return m_resource->GetGPUVirtualAddress(); }
 	D3D12_RESOURCE_STATES GetCurrentState() const noexcept { return m_currentState; }
 
-	void TransitionState(ID3D12GraphicsCommandList* commandList, D3D12_RESOURCE_STATES newState); //실제 상태전이는 커맨드 실행시에 전이됨, 수정해야함
+	void TransitionState(DX12CommandList* DX12CommandList, D3D12_RESOURCE_STATES newState);
 
 	void Reset() noexcept { m_resource.Reset(); m_currentState = D3D12_RESOURCE_STATE_COMMON; }
 	ID3D12Resource** GetAddressOf() noexcept { return m_resource.GetAddressOf(); }
@@ -44,8 +44,8 @@ class DX12ResourceBuffer : public DX12Resource
 public:
 	void ResetUploadBuffer() noexcept { m_uploadBuffer.Reset(); m_uploadBufferCurrentState = D3D12_RESOURCE_STATE_COMMON; }
 	void CreateConstantBuffer(ID3D12Device* device, uint32_t elementByteSize);
-    void CreateVertexBuffer(ID3D12Device* device, std::span<const Vertex> vertices, ID3D12GraphicsCommandList* cmdList);
-	void CreateIndexBuffer(ID3D12Device* device, std::span<const uint32_t> indices, ID3D12GraphicsCommandList* cmdList);
+    void CreateVertexBuffer(ID3D12Device* device, std::span<const Vertex> vertices, DX12CommandList* DX12CommandList);
+	void CreateIndexBuffer(ID3D12Device* device, std::span<const uint32_t> indices, DX12CommandList* DX12CommandList);
 	void CopyAndUploadResource(ID3D12Resource* uploadBuffer, const void* sourceAddress, size_t dataSize, CD3DX12_RANGE* readRange = nullptr);
 
 private:
@@ -78,7 +78,7 @@ public:
 
 	void CreateDDSTexture(
 		ID3D12Device* device,
-		ID3D12GraphicsCommandList* cmdList,
+		DX12CommandList* DX12CommandList,
 		TexMetadata* texMeta,
 		ScratchImage* img
 	);

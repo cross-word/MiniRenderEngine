@@ -58,7 +58,7 @@ public:
 
 	void CreateSingleUploadBuffer(ID3D12Device* device, UINT totalBytes);
 	void StageObjectConstants(const void* src, UINT byteSize, UINT dstOffset);
-	void RecordObjectConstants(ID3D12GraphicsCommandList* commandList);
+	void RecordObjectConstants(DX12CommandList* DX12CommandList);
 
 	void PushObjectConstant(ObjectConstants Obj);
 	inline uint32_t GetObjectConstantCount() const noexcept { return m_objectConstants.size(); }

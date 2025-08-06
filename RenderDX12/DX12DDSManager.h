@@ -18,7 +18,7 @@ public:
 
     void LoadAndCreateDDSResource(
         ID3D12Device* device, 
-        ID3D12GraphicsCommandList* cmdList, 
+        DX12CommandList* DX12CommandList,
         const D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle, 
         const wchar_t* filename,
         const std::string textureName);

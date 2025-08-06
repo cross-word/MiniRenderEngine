@@ -76,7 +76,7 @@ void DX12FrameResource::UploadPassConstant(D3DCamera* d3dCamera)
 
 void DX12FrameResource::UploadObjectConstant(
 	ID3D12Device* device, 
-	ID3D12GraphicsCommandList* commandList,
+	DX12CommandList* DX12CommandList,
 	std::vector<Render::RenderItem>& renderItems,
 	DX12ObjectConstantManager* DX12ObjectConstantManager)
 {
@@ -126,7 +126,7 @@ void DX12FrameResource::UploadObjectConstant(
 	}
 
 	// record
-	DX12ObjectConstantManager->RecordObjectConstants(commandList);
+	DX12ObjectConstantManager->RecordObjectConstants(DX12CommandList);
 }
 
 void DX12FrameResource::EnsureWorkerCapacity(ID3D12Device* device, uint32_t n) {

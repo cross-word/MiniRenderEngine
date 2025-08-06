@@ -57,9 +57,10 @@ void DX12ConstantManager::UploadConstant(ID3D12Device* device, DX12CommandList* 
 {
     m_DX12ConstantUploader->CreateUploadBuffer(device, byteSize);
     m_DX12ConstantUploader->CopyAndUploadResource(m_DX12ConstantUploader->GetUploadBuffer(), sourceAddress, byteSize);
-    m_DX12ConstantUploader->TransitionState(dx12CommandList->GetCommandList(), D3D12_RESOURCE_STATE_COPY_DEST);
+    m_DX12ConstantUploader->TransitionState(dx12CommandList, D3D12_RESOURCE_STATE_COPY_DEST);
     dx12CommandList->GetCommandList()->CopyBufferRegion(m_DX12ConstantUploader->GetResource(), 0, m_DX12ConstantUploader->GetUploadBuffer(), 0, byteSize);
-    m_DX12ConstantUploader->TransitionState(dx12CommandList->GetCommandList(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+    dx12CommandList->RecordResourceStateTransition();
+    m_DX12ConstantUploader->TransitionState(dx12CommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 }
 
 void DX12MaterialConstantManager::InitialzieUploadBuffer(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, UINT byteSize)
@@ -157,25 +158,23 @@ void DX12ObjectConstantManager::StageObjectConstants(const void* src, UINT byteS
     m_cursor += byteSize;
 }
 
-void DX12ObjectConstantManager::RecordObjectConstants(ID3D12GraphicsCommandList* commandList)
+void DX12ObjectConstantManager::RecordObjectConstants(DX12CommandList* DX12CommandList)
 {
     m_DX12ConstantUploader->GetUploadBuffer()->Unmap(0, nullptr);
-    m_DX12ConstantUploader->TransitionState(commandList, D3D12_RESOURCE_STATE_COPY_DEST);
+    m_DX12ConstantUploader->TransitionState(DX12CommandList, D3D12_RESOURCE_STATE_COPY_DEST);
+    DX12CommandList->RecordResourceStateTransition();
 
     for (const auto& r : m_regions) 
     {
-        commandList->CopyBufferRegion(
+        DX12CommandList->GetCommandList()->CopyBufferRegion(
             m_DX12ConstantUploader->GetResource(),
             static_cast<UINT64>(r.dstOffset),
             m_DX12ConstantUploader->GetUploadBuffer(),
             static_cast<UINT64>(r.srcOffset),
             static_cast<UINT64>(r.byteSize));
     }
-
-    m_DX12ConstantUploader->TransitionState(
-        commandList,
-        D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-
+    m_DX12ConstantUploader->TransitionState(DX12CommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+    DX12CommandList->RecordResourceStateTransition();
     //reset
     m_mappedBase = nullptr;
     m_regions.clear();

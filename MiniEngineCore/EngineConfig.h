@@ -12,13 +12,13 @@ struct EngineConfig
     static constexpr UINT ConstantBufferCount = 1;
     static constexpr UINT NumDefaultObjectSRVSlot = 65536; //16-bit
     static inline constexpr const wchar_t* ModelObjFilePath[] = {
-        LR"(..\Models\Skull.obj)",
-        LR"(..\Models\Car.obj)"
+        LR"(..\..\Models\Skull.obj)",
+        LR"(..\..\Models\Car.obj)"
     }; // tmp
     static inline constexpr const wchar_t* DDSFilePath[] = {
-        LR"(..\Textures\bricks.dds)",
-        LR"(..\Textures\bricks2.dds)",
-        LR"(..\Textures\bricks3.dds)",
+        LR"(..\..\Textures\bricks.dds)",
+        LR"(..\..\Textures\bricks2.dds)",
+        LR"(..\..\Textures\bricks3.dds)",
     }; // tmp
-    static inline constexpr const wchar_t* ShaderFilePath = LR"(..\\Shaders\\Default.hlsl)"; // tmp
+    static inline constexpr const wchar_t* ShaderFilePath = LR"(..\..\\Shaders\\Default.hlsl)"; // tmp
 };

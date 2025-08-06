@@ -38,7 +38,7 @@ public:
     void UploadPassConstant(D3DCamera* d3dCamera);
     void UploadObjectConstant(
         ID3D12Device* device,
-        ID3D12GraphicsCommandList* commandList,
+        DX12CommandList* DX12CommandList,
         std::vector<Render::RenderItem>& renderItems,
         DX12ObjectConstantManager* DX12ObjectConstantManager);
 

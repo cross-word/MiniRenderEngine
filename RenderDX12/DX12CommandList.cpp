@@ -12,7 +12,7 @@ DX12CommandList::~DX12CommandList()
 	if (m_fenceEvent) CloseHandle(m_fenceEvent);
 }
 
-void DX12CommandList::Initialize(ID3D12Device* device, ID3D12CommandAllocator* commandAllocator)
+void DX12CommandList::Initialize(ID3D12Device* device, ID3D12CommandAllocator* commandAllocator, HANDLE fenceEvent)
 {
 	//create command queue/allocator
 	D3D12_COMMAND_QUEUE_DESC m_queueDesc = {};
@@ -35,6 +35,7 @@ void DX12CommandList::Initialize(ID3D12Device* device, ID3D12CommandAllocator* c
 	//create fence
 	ThrowIfFailed(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
 
+	m_fenceEvent = fenceEvent;
 	return;
 }
 
@@ -51,14 +52,10 @@ void DX12CommandList::FlushCommandQueue()
 	// Wait until the GPU has completed commands up to this fence point.
 	if (m_fence->GetCompletedValue() < m_fenceValue)
 	{
-		HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
-
 		// Fire event when GPU hits current fence.  
-		ThrowIfFailed(m_fence->SetEventOnCompletion(m_fenceValue, eventHandle));
-
+		ThrowIfFailed(m_fence->SetEventOnCompletion(m_fenceValue, m_fenceEvent));
 		// Wait until the GPU hits current fence event is fired.
-		WaitForSingleObject(eventHandle, INFINITE);
-		CloseHandle(eventHandle);
+		WaitForSingleObject(m_fenceEvent, INFINITE);
 	}
 }
 
@@ -81,6 +78,7 @@ void DX12CommandList::ExecuteCommandLists(UINT NumCommandLists, ID3D12CommandLis
 	return;
 }
 
+//this function never be called except initialize or resize
 void DX12CommandList::SubmitAndWait()
 {
 	m_commandList->Close();
@@ -94,4 +92,17 @@ UINT64 DX12CommandList::Signal()
 	++m_fenceValue;
 	ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), m_fenceValue));
 	return m_fenceValue;
+}
+
+//record must be done when use transitioned resource (draw/render/copy.. )
+//in other situation, it would be better to stack transition command to flush toghter.
+void DX12CommandList::RecordResourceStateTransition()
+{
+	if (m_resourceStateTransitionStack.empty())
+	{
+		::OutputDebugStringA("There is no Stacked Resource State Transition!");
+		return;
+	}
+	m_commandList->ResourceBarrier(m_resourceStateTransitionStack.size(), m_resourceStateTransitionStack.data());
+	m_resourceStateTransitionStack.clear();
 }

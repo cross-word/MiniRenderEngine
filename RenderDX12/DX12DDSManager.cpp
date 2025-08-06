@@ -13,7 +13,7 @@ DX12DDSManager::~DX12DDSManager()
 
 void DX12DDSManager::LoadAndCreateDDSResource(
     ID3D12Device* device, 
-    ID3D12GraphicsCommandList* cmdList, 
+    DX12CommandList* DX12CommandList,
     const D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle, 
     const wchar_t* filename,
     const std::string textureName)
@@ -25,7 +25,7 @@ void DX12DDSManager::LoadAndCreateDDSResource(
     m_DDSResource = std::make_unique<DX12ResourceTexture>();
     m_DDSResource->CreateDDSTexture(
         device,
-        cmdList,
+        DX12CommandList,
         &meta,
         &img
     );
