@@ -14,11 +14,11 @@ public:
 
 	virtual void InitialzieUploadBuffer(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, UINT numConstants);
 	virtual void InitializeSRV(ID3D12Device* device, const D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle, UINT numConstants, UINT byteStirde);
-	void UploadConstant(ID3D12Device* device, DX12CommandList* dx12CommandList, UINT byteSize, const void* sourceAddress, UINT destOffset = 0U);
+	void UploadConstant(ID3D12Device* device, DX12CommandList* dx12CommandList, UINT byteSize, const void* sourceAddress);
 
 	inline DX12ResourceTexture* GetMaterialResource() const noexcept { return m_DX12ConstantUploader.get(); }
 	inline DX12View* GetDX12MaterialView() const noexcept { return m_DX12UploaderView.get(); }
-private:
+protected:
     std::unique_ptr<DX12ResourceTexture> m_DX12ConstantUploader;
     std::unique_ptr<DX12View> m_DX12UploaderView;
 };
@@ -45,17 +45,32 @@ private:
 class DX12ObjectConstantManager : public DX12ConstantManager
 {
 public:
+	struct ConstantCopyRegion {
+		uint64_t srcOffset;
+		uint64_t dstOffset;
+		uint64_t byteSize;
+	};
+
 	DX12ObjectConstantManager();
 	~DX12ObjectConstantManager();
 	void InitialzieUploadBuffer(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, UINT numConstants) override;
 	void InitializeSRV(ID3D12Device* device, const D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle, UINT numConstants, UINT byteStirde) override;
 
+	void CreateSingleUploadBuffer(ID3D12Device* device, UINT totalBytes);
+	void StageObjectConstants(const void* src, UINT byteSize, UINT dstOffset);
+	void RecordObjectConstants(ID3D12GraphicsCommandList* commandList);
+
 	void PushObjectConstant(ObjectConstants Obj);
 	inline uint32_t GetObjectConstantCount() const noexcept { return m_objectConstants.size(); }
-	inline ObjectConstants GetObjectConstant(UINT index) noexcept { return m_objectConstants[index]; }
+	inline ObjectConstants& GetObjectConstant(UINT index) noexcept { return m_objectConstants[index]; }
 	inline bool IsobjectConstantEmpty() const noexcept { return m_objectConstants.empty(); }
 	inline const ObjectConstants* GetObjectConstantData() const noexcept { return m_objectConstants.data(); }
 
 private:
 	std::vector<ObjectConstants> m_objectConstants;
+
+	std::vector<ConstantCopyRegion> m_regions;
+	std::byte* m_mappedBase = nullptr; //need bytewise offset
+	UINT m_cursor = 0;
+	UINT m_capacity = 0;
 };

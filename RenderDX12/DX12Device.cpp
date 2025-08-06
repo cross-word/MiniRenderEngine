@@ -255,13 +255,14 @@ void DX12Device::PrepareInitialResource()
 	newRenderItem.SetMaterialIndex(GetMaterialIndexAsMaterialName("stone0"));
 	newRenderItem.SetBaseVertexLocation(0);
 	newRenderItem.SetStartIndexLocation(0);
-	XMFLOAT4X4 mat;
-	XMMATRIX W = XMMatrixTranslation(+5.0f, 1.5f, -10.0f + 0 * 5.0f);
-	XMStoreFloat4x4(&mat, XMMatrixTranspose(W));
-	newRenderItem.SetObjWorldMatrix(mat);
-	XMMATRIX T = XMMatrixTranslation(-50.0f, 10.5f, -10.0f + 0 * 50.0f);
-	XMStoreFloat4x4(&mat, XMMatrixTranspose(T));
-	newRenderItem.SetObjTransformMatrix(mat);
+	XMFLOAT4X4 Wmat;
+	XMFLOAT4X4 Tmat;
+	XMMATRIX W = XMMatrixTranslation(+5.0f, 1.5f, -10.0f + 2 * 5.0f);
+	XMStoreFloat4x4(&Wmat, XMMatrixTranspose(W));
+	newRenderItem.SetObjWorldMatrix(Wmat);
+	XMMATRIX T = XMMatrixTranslation(-50.0f, 10.5f, -10.0f + 2 * 50.0f);
+	XMStoreFloat4x4(&Tmat, XMMatrixTranspose(T));
+	newRenderItem.SetObjTransformMatrix(Tmat);
 	m_renderItems.push_back(newRenderItem);
 
 	Render::RenderItem newRenderItem1;
@@ -270,12 +271,14 @@ void DX12Device::PrepareInitialResource()
 	newRenderItem1.SetMaterialIndex(GetMaterialIndexAsMaterialName("tile0"));
 	newRenderItem1.SetBaseVertexLocation(0);
 	newRenderItem1.SetStartIndexLocation(0);
+	XMFLOAT4X4 Wmat2;
+	XMFLOAT4X4 Tmat2;
 	W = XMMatrixTranslation(+5.0f, 1.5f, -10.0f + 1 * 5.0f);
-	XMStoreFloat4x4(&mat, XMMatrixTranspose(W));
-	newRenderItem1.SetObjWorldMatrix(mat);
+	XMStoreFloat4x4(&Wmat2, XMMatrixTranspose(W));
+	newRenderItem1.SetObjWorldMatrix(Wmat2);
 	T = XMMatrixTranslation(-50.0f, 10.5f, -10.0f + 1 * 50.0f);
-	XMStoreFloat4x4(&mat, XMMatrixTranspose(T));
-	newRenderItem1.SetObjTransformMatrix(mat);
+	XMStoreFloat4x4(&Tmat2, XMMatrixTranspose(T));
+	newRenderItem1.SetObjTransformMatrix(Tmat2);
 	m_renderItems.push_back(newRenderItem1);
 
 	Render::RenderItem newRenderItem2;
@@ -284,12 +287,14 @@ void DX12Device::PrepareInitialResource()
 	newRenderItem2.SetMaterialIndex(GetMaterialIndexAsMaterialName("bricks0"));
 	newRenderItem2.SetBaseVertexLocation(0);
 	newRenderItem2.SetStartIndexLocation(0);
-	W = XMMatrixTranslation(+5.0f, 1.5f, -10.0f + 2 * 5.0f);
-	XMStoreFloat4x4(&mat, XMMatrixTranspose(W));
-	newRenderItem2.SetObjWorldMatrix(mat);
-	T = XMMatrixTranslation(-50.0f, 10.5f, -10.0f + 2 * 50.0f);
-	XMStoreFloat4x4(&mat, XMMatrixTranspose(T));
-	newRenderItem2.SetObjTransformMatrix(mat);
+	XMFLOAT4X4 Wmat3;
+	XMFLOAT4X4 Tmat3;
+	W = XMMatrixTranslation(+5.0f, 1.5f, -10.0f + 3 * 5.0f);
+	XMStoreFloat4x4(&Wmat3, XMMatrixTranspose(W));
+	newRenderItem2.SetObjWorldMatrix(Wmat3);
+	T = XMMatrixTranslation(-50.0f, 10.5f, -10.0f + 3 * 50.0f);
+	XMStoreFloat4x4(&Tmat3, XMMatrixTranspose(T));
+	newRenderItem2.SetObjTransformMatrix(Tmat3);
 	m_renderItems.push_back(newRenderItem2);
 	////////////////////////////////////////////////////////
 	/////////////
@@ -344,7 +349,7 @@ void DX12Device::UpdateFrameResource()
 	m_DX12FrameResource[m_currBackBufferIndex]->UploadPassConstant(m_camera.get());
 	m_DX12FrameResource[m_currBackBufferIndex]->ResetAllocator();
 	m_DX12CommandList->ResetList(m_DX12FrameResource[m_currBackBufferIndex]->GetCommandAllocator());
-	m_DX12FrameResource[m_currBackBufferIndex]->UploadObjectConstant(m_device.Get(), m_DX12CommandList.get(), m_DX12CBVDDSHeap.get(), m_renderItems, m_DX12ObjectConstantManager.get());
+	m_DX12FrameResource[m_currBackBufferIndex]->UploadObjectConstant(m_device.Get(), m_DX12CommandList->GetCommandList(), m_renderItems, m_DX12ObjectConstantManager.get());
 	m_DX12CommandList->SubmitAndWait();
 }
 

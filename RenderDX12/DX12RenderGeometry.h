@@ -76,7 +76,7 @@ namespace Render
 		UINT GetMaterialIndex() { return m_materialIndex; }
 		UINT GetStartIndexLocation() { return m_startIndexLocation; }
 		UINT GetBaseVertexLocation() { return m_baseVertexLocation; }
-		ObjectConstants GetObjectConstant() { return m_objConst; }
+		ObjectConstants& GetObjectConstant() { return m_objConst; }
 		bool IsObjDirty() { return m_bObjDirty; }
 		UINT GetObjectConstantIndex() { return m_objectIndex; }
 	private:

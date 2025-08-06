@@ -76,34 +76,57 @@ void DX12FrameResource::UploadPassConstant(D3DCamera* d3dCamera)
 
 void DX12FrameResource::UploadObjectConstant(
 	ID3D12Device* device, 
-	DX12CommandList* DX12CommandList, 
-	DX12DescriptorHeap* DX12CBVDDSHeap, 
+	ID3D12GraphicsCommandList* commandList,
 	std::vector<Render::RenderItem>& renderItems,
 	DX12ObjectConstantManager* DX12ObjectConstantManager)
 {
-	for (size_t i = 0; i < renderItems.size(); ++i)
-	{
-		if(renderItems[i].IsObjDirty())
-		{
-			if (DX12ObjectConstantManager->GetObjectConstantCount() < i + 1)
-			{
-				DX12ObjectConstantManager->PushObjectConstant(renderItems[i].GetObjectConstant());
-				renderItems[i].SetObjConstantIndex(i);
-			} //new
-			else
-			{
-				DX12ObjectConstantManager->GetObjectConstant(i) = renderItems[i].GetObjectConstant();
-			} //update
+	// Gather dirty object
+	struct Pending {
+		UINT index;
+		ObjectConstants data;
+	};
+	std::vector<Pending> dirty;
 
-			DX12ObjectConstantManager->UploadConstant(
-				device,
-				DX12CommandList,
-				sizeof(ObjectConstants),
-				DX12ObjectConstantManager->GetObjectConstantData(),
-				i * sizeof(ObjectConstants));
-			renderItems[i].SetDirtyFlag(false);
+	for (int i = 0; i < renderItems.size(); ++i) {
+		if (!renderItems[i].IsObjDirty())
+			continue;
+
+		// if new slot
+		if (DX12ObjectConstantManager->GetObjectConstantCount() < i + 1) 
+		{
+			DX12ObjectConstantManager->PushObjectConstant(renderItems[i].GetObjectConstant());
+			renderItems[i].SetObjConstantIndex(i);
 		}
+		else 
+		{
+			DX12ObjectConstantManager->GetObjectConstant(i)
+				= renderItems[i].GetObjectConstant();
+		}
+
+		Pending p;
+		p.index = i;
+		p.data = renderItems[i].GetObjectConstant();
+		dirty.push_back(p);
 	}
+
+	if (dirty.empty())
+		return;
+
+	// create upload buffer
+	const UINT offsetStride = sizeof(ObjectConstants);
+	DX12ObjectConstantManager->CreateSingleUploadBuffer(device, dirty.size() * offsetStride);
+
+	// stage dirty objects on buffer
+	for (auto& d : dirty) 
+	{
+		const UINT dstOffset = d.index * offsetStride;
+		DX12ObjectConstantManager->StageObjectConstants(&d.data, offsetStride, dstOffset);
+
+		renderItems[d.index].SetDirtyFlag(false);
+	}
+
+	// record
+	DX12ObjectConstantManager->RecordObjectConstants(commandList);
 }
 
 void DX12FrameResource::EnsureWorkerCapacity(ID3D12Device* device, uint32_t n) {
