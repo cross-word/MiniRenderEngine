@@ -21,10 +21,6 @@ using namespace DirectX;
 #include "D3DCamera.h"
 #include "D3DTimer.h"
 
-
-enum class SubmitMode { Single, Multi };
-
-
 /*
 CLASS RENDERDX12
 MAIN WORK:
@@ -59,8 +55,7 @@ private:
     DX12Device m_DX12Device;
     D3DTimer m_timer;
 
-    SubmitMode submit = SubmitMode::Single;
-    uint32_t   workerCount = 0;
+    uint32_t workerCount = EngineConfig::NumThreadWorker;
     void RecordAndSubmit_Single();
     void RecordAndSubmit_Multi(); // for multi-thread
 

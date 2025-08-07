@@ -137,9 +137,8 @@ void RenderDX12::OnResize()
 }
 
 void RenderDX12::Draw() {
-	if (submit == SubmitMode::Multi && workerCount > 0)
-		RecordAndSubmit_Single();
-		//RecordAndSubmit_Multi();
+	if (EngineConfig::UseMultiThread && workerCount > 0)
+		RecordAndSubmit_Multi();
 	else
 		RecordAndSubmit_Single();
 }
@@ -252,6 +251,11 @@ void RenderDX12::RecordAndSubmit_Single()
 
 	PIXEndEvent(m_DX12Device.GetDX12CommandList()->GetCommandQueue()); //pix frame marking end
 	sFrameId++;
+}
+
+void RenderDX12::RecordAndSubmit_Multi() 
+{
+
 }
 
 void RenderDX12::ShutDown()

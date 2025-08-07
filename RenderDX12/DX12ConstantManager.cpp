@@ -58,8 +58,8 @@ void DX12ConstantManager::UploadConstant(ID3D12Device* device, DX12CommandList* 
     m_DX12ConstantUploader->CreateUploadBuffer(device, byteSize);
     m_DX12ConstantUploader->CopyAndUploadResource(m_DX12ConstantUploader->GetUploadBuffer(), sourceAddress, byteSize);
     m_DX12ConstantUploader->TransitionState(dx12CommandList, D3D12_RESOURCE_STATE_COPY_DEST);
-    dx12CommandList->GetCommandList()->CopyBufferRegion(m_DX12ConstantUploader->GetResource(), 0, m_DX12ConstantUploader->GetUploadBuffer(), 0, byteSize);
     dx12CommandList->RecordResourceStateTransition();
+    dx12CommandList->GetCommandList()->CopyBufferRegion(m_DX12ConstantUploader->GetResource(), 0, m_DX12ConstantUploader->GetUploadBuffer(), 0, byteSize);
     m_DX12ConstantUploader->TransitionState(dx12CommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 }
 
@@ -109,21 +109,11 @@ DX12ObjectConstantManager::~DX12ObjectConstantManager()
 
 void DX12ObjectConstantManager::InitialzieUploadBuffer(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, UINT numConstants)
 {
-    if (m_objectConstants.empty())
-    {
-        ::OutputDebugStringA("No ObjectConstant was Loaded in ObjectConstant Manager!");
-        assert(m_objectConstants.empty());
-    }
     DX12ConstantManager::InitialzieUploadBuffer(device, cmdList, numConstants);
 }
 
 void DX12ObjectConstantManager::InitializeSRV(ID3D12Device* device, const D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle, UINT numConstants, UINT byteStirde)
 {
-    if (m_objectConstants.empty())
-    {
-        ::OutputDebugStringA("No ObjectConstant was Loaded in ObjectConstant Manager!");
-        assert(m_objectConstants.empty());
-    }
     DX12ConstantManager::InitializeSRV(device, cpuHandle, numConstants, byteStirde);
 }
 

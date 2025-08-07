@@ -21,4 +21,6 @@ struct EngineConfig
         LR"(..\..\Textures\bricks3.dds)",
     }; // tmp
     static inline constexpr const wchar_t* ShaderFilePath = LR"(..\..\\Shaders\\Default.hlsl)"; // tmp
+    static constexpr UINT NumThreadWorker = 10;
+    static constexpr bool UseMultiThread = false;
 };
