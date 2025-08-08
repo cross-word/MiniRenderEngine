@@ -179,43 +179,43 @@ void DX12FrameBuffer::CheckFence(DX12Device* DX12Device, UINT currBackBufferInde
 	}
 }
 
-void DX12FrameBuffer::BeginFrame(DX12Device* DX12Device, UINT currBackBufferIndex)
+void DX12FrameBuffer::BeginFrame(DX12CommandList* DX12CommandList, UINT currBackBufferIndex)
 {
-	DX12Device->GetDX12CommandList()->GetCommandList()->RSSetViewports(1, &m_viewport);
-	DX12Device->GetDX12CommandList()->GetCommandList()->RSSetScissorRects(1, &m_scissor);
+	DX12CommandList->GetCommandList()->RSSetViewports(1, &m_viewport);
+	DX12CommandList->GetCommandList()->RSSetScissorRects(1, &m_scissor);
 
-	DX12Device->GetDX12CommandList()->GetCommandList()->OMSetRenderTargets(1, &msaaRTVOffsetHandle[currBackBufferIndex], FALSE, &msaaDSVOffsetHandle[currBackBufferIndex]);
-	DX12Device->GetDX12CommandList()->GetCommandList()->ClearRenderTargetView(msaaRTVOffsetHandle[currBackBufferIndex], EngineConfig::DefaultClearColor, 0, nullptr);
-	DX12Device->GetDX12CommandList()->GetCommandList()->ClearDepthStencilView(msaaDSVOffsetHandle[currBackBufferIndex], D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+	DX12CommandList->GetCommandList()->OMSetRenderTargets(1, &msaaRTVOffsetHandle[currBackBufferIndex], FALSE, &msaaDSVOffsetHandle[currBackBufferIndex]);
+	DX12CommandList->GetCommandList()->ClearRenderTargetView(msaaRTVOffsetHandle[currBackBufferIndex], EngineConfig::DefaultClearColor, 0, nullptr);
+	DX12CommandList->GetCommandList()->ClearDepthStencilView(msaaDSVOffsetHandle[currBackBufferIndex], D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 }
 
-void DX12FrameBuffer::EndFrame(DX12Device* DX12Device, UINT currBackBufferIndex)
+void DX12FrameBuffer::EndFrame(DX12CommandList* DX12CommandList, UINT currBackBufferIndex, DXGI_FORMAT RTFormat)
 {
 	//MSAA RESOLVE
 	//MsaaRTv : RT->ResolveSource
 	//BackBuffer : RT->ResolveDest
-	m_DX12MsaaRenderTargets[currBackBufferIndex]->TransitionState(DX12Device->GetDX12CommandList(), D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
-	m_DX12RenderTargets[currBackBufferIndex]->TransitionState(DX12Device->GetDX12CommandList(), D3D12_RESOURCE_STATE_RESOLVE_DEST);
-	DX12Device->GetDX12CommandList()->RecordResourceStateTransition();
+	m_DX12MsaaRenderTargets[currBackBufferIndex]->TransitionState(DX12CommandList, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+	m_DX12RenderTargets[currBackBufferIndex]->TransitionState(DX12CommandList, D3D12_RESOURCE_STATE_RESOLVE_DEST);
+	DX12CommandList->RecordResourceStateTransition();
 
-	DX12Device->GetDX12CommandList()->GetCommandList()->ResolveSubresource(
+	DX12CommandList->GetCommandList()->ResolveSubresource(
 		m_DX12RenderTargets[currBackBufferIndex]->GetResource(),
 		0,
 		m_DX12MsaaRenderTargets[currBackBufferIndex]->GetResource(),
 		0,
-		DX12Device->GetDX12SwapChain()->GetRenderTargetFormat());
+		RTFormat);
 	
 	//MsaaRTv : ResolveSource->RT
 	//BackBuffer : ResolveDest->RT // FOR TIMER
-	m_DX12MsaaRenderTargets[currBackBufferIndex]->TransitionState(DX12Device->GetDX12CommandList(), D3D12_RESOURCE_STATE_RENDER_TARGET);
-	m_DX12RenderTargets[currBackBufferIndex]->TransitionState(DX12Device->GetDX12CommandList(), D3D12_RESOURCE_STATE_RENDER_TARGET);
-	DX12Device->GetDX12CommandList()->RecordResourceStateTransition();
+	m_DX12MsaaRenderTargets[currBackBufferIndex]->TransitionState(DX12CommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	m_DX12RenderTargets[currBackBufferIndex]->TransitionState(DX12CommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	DX12CommandList->RecordResourceStateTransition();
 }
 
-void DX12FrameBuffer::SetBackBufferPresent(DX12Device* DX12Device, UINT currBackBufferIndex)
+void DX12FrameBuffer::SetBackBufferPresent(DX12CommandList* DX12CommandList, UINT currBackBufferIndex)
 {
-	m_DX12RenderTargets[currBackBufferIndex]->TransitionState(DX12Device->GetDX12CommandList(), D3D12_RESOURCE_STATE_PRESENT);
-	DX12Device->GetDX12CommandList()->RecordResourceStateTransition();
+	m_DX12RenderTargets[currBackBufferIndex]->TransitionState(DX12CommandList, D3D12_RESOURCE_STATE_PRESENT);
+	DX12CommandList->RecordResourceStateTransition();
 }
 
 void DX12FrameBuffer::Present(DX12Device* DX12Device)

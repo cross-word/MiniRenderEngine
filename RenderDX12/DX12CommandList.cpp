@@ -9,7 +9,7 @@ DX12CommandList::DX12CommandList()
 
 DX12CommandList::~DX12CommandList()
 {
-	if (m_fenceEvent) CloseHandle(m_fenceEvent);
+	//if (m_fenceEvent) CloseHandle(m_fenceEvent);
 }
 
 void DX12CommandList::Initialize(ID3D12Device* device, ID3D12CommandAllocator* commandAllocator, HANDLE fenceEvent)
