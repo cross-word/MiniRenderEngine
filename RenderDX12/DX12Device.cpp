@@ -12,9 +12,10 @@ DX12Device::~DX12Device()
 	m_DX12FrameResource.clear(); ////wt
 }
 
-void DX12Device::Initialize(HWND hWnd)
+void DX12Device::Initialize(HWND hWnd, const std::wstring& sceneFile)
 {
 	assert(hWnd);
+	m_modelData = LoadGLTF(sceneFile);
 
 	// create hardware device
 	// make hardware adaptor if it can. if not, make warp adapator.
@@ -38,15 +39,17 @@ void DX12Device::Initialize(HWND hWnd)
 		));
 	}
 
+	HRESULT hrCo = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+
 	InitDX12RTVDescHeap();
 	InitDX12DSVDescHeap();
-	InitDX12CBVDDSHeap();
+	InitDX12CBVDDSHeap(m_modelData.textures.size());
 	InitDX12SRVHeap();
 	InitDX12FrameResource();
 	InitDX12CommandList(m_DX12FrameResource[0]->GetCommandAllocator());
 	InitDX12FrameResourceCBVRSV();
 	InitDX12SwapChain(hWnd);
-	InitDX12RootSignature();
+	InitDX12RootSignature(m_modelData.textures.size());
 	CreateDX12PSO();
 }
 
@@ -87,12 +90,12 @@ void DX12Device::InitDX12DSVDescHeap()
 	);
 }
 
-void DX12Device::InitDX12CBVDDSHeap()
+void DX12Device::InitDX12CBVDDSHeap(size_t textureCount)
 {
 	m_DX12CBVDDSHeap = std::make_unique<DX12DescriptorHeap>();
 	m_DX12CBVDDSHeap->Initialize(
 		m_device.Get(),
-		EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + std::size(EngineConfig::DDSFilePath) + 1 + 1, // 1 constant(b0) * 3 frames + dds amount + 1 material vectors + 1 world vectors
+		EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + textureCount + 1 + 1, // 1 constant(b0) * 3 frames + texture amount + 1 material vectors + 1 world vectors
 		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
 		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
 	);
@@ -109,10 +112,10 @@ void DX12Device::InitDX12SRVHeap()
 	);
 }
 
-void DX12Device::InitDX12RootSignature()
+void DX12Device::InitDX12RootSignature(size_t textureCount)
 {
 	m_DX12RootSignature = std::make_unique<DX12RootSignature>();
-	m_DX12RootSignature->Initialize(m_device.Get());
+	m_DX12RootSignature->Initialize(m_device.Get(), (UINT)textureCount);
 }
 
 void DX12Device::CreateDX12PSO()
@@ -173,33 +176,30 @@ void DX12Device::PrepareInitialResource()
 	m_DX12FrameResource[m_currBackBufferIndex]->ResetAllocator();
 	m_DX12CommandList->ResetList(m_DX12FrameResource[m_currBackBufferIndex]->GetCommandAllocator());
 	int i = 0;
-	for (auto ddsFileName : EngineConfig::DDSFilePath)
+	for (auto& texFileName : m_modelData.textures)
 	{
 		auto cpuHandle = m_DX12CBVDDSHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + i).cpuDescHandle;
 		std::string texName = "texture" + std::to_string(i);
-		auto ddsItem = std::make_unique<DX12DDSManager>();
-		ddsItem->LoadAndCreateDDSResource(
+		auto texItem = std::make_unique<DX12TextureManager>();
+		texItem->LoadAndCreateTextureResource(
 			m_device.Get(),
 			m_DX12CommandList.get(),
 			&cpuHandle,
-			ddsFileName,
+			texFileName.c_str(),
 			texName
 		);
-		m_DX12DDSManager.emplace_back(std::move(ddsItem));
+		m_DX12TextureManager.emplace_back(std::move(texItem));
 		i++;
 	}
 
-	for (auto objFileName : EngineConfig::ModelObjFilePath)
+	auto geometryItem = std::make_unique<DX12RenderGeometry>();
+	if (geometryItem->InitMeshFromData(
+		m_device.Get(),
+		m_DX12CommandList.get(),
+		m_modelData.mesh
+	))
 	{
-		auto geometryItem = std::make_unique<DX12RenderGeometry>();
-		if (geometryItem->InitMeshFromFile(
-			m_device.Get(),
-			m_DX12CommandList.get(),
-			objFileName
-		))
-		{
-			m_DX12RenderGeometry.emplace_back(std::move(geometryItem));
-		}
+		m_DX12RenderGeometry.emplace_back(std::move(geometryItem));
 	}
 
 	////////////////////////////////////////////////////////
@@ -240,14 +240,14 @@ void DX12Device::PrepareInitialResource()
 	m_DX12MaterialConstantManager->PushMaterial(std::move(stone0));
 	m_DX12MaterialConstantManager->PushMaterial(std::move(tile0));
 	m_DX12MaterialConstantManager->InitialzieUploadBuffer(m_device.Get(), m_DX12CommandList->GetCommandList(), m_DX12MaterialConstantManager->GetMaterialCount() * sizeof(MaterialConstants));
-	auto matCPUHandle = m_DX12CBVDDSHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + std::size(EngineConfig::DDSFilePath)).cpuDescHandle;
+	auto matCPUHandle = m_DX12CBVDDSHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + m_modelData.textures.size()).cpuDescHandle;
 	m_DX12MaterialConstantManager->InitializeSRV(m_device.Get(), &matCPUHandle, m_DX12MaterialConstantManager->GetMaterialCount(), sizeof(MaterialConstants));
 	m_DX12MaterialConstantManager->UploadConstant(
 		m_device.Get(), 
 		m_DX12CommandList.get(),
 		m_DX12MaterialConstantManager->GetMaterialCount() * sizeof(MaterialConstants),
 		m_DX12MaterialConstantManager->GetMaterialConstantData());
-
+	/*
 	for (int i = 0; i < 1000; i++)
 	{
 		Render::RenderItem newRenderItem;
@@ -266,7 +266,7 @@ void DX12Device::PrepareInitialResource()
 		newRenderItem.SetObjTransformMatrix(Tmat);
 		m_renderItems.push_back(newRenderItem);
 	}
-	/*
+	
 	Render::RenderItem newRenderItem;
 	newRenderItem.SetRenderGeometry(m_DX12RenderGeometry[0].get());
 	newRenderItem.SetTextureIndex(GetTextureIndexAsTextureName("texture1"));
@@ -319,12 +319,12 @@ void DX12Device::PrepareInitialResource()
 	/////////////
 	auto base = EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount;
 	auto texBase = base;
-	auto matSlot = base + std::size(EngineConfig::DDSFilePath);
+	auto matSlot = base + m_modelData.textures.size();
 	auto worldSlot = matSlot + 1;
 
 	m_DX12ObjectConstantManager = std::make_unique<DX12ObjectConstantManager>();
 	m_DX12ObjectConstantManager->InitialzieUploadBuffer(m_device.Get(), m_DX12CommandList->GetCommandList(), EngineConfig::NumDefaultObjectSRVSlot * sizeof(ObjectConstants));
-	auto objCPUHandle = m_DX12CBVDDSHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + std::size(EngineConfig::DDSFilePath) + 1).cpuDescHandle;
+	auto objCPUHandle = m_DX12CBVDDSHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + m_modelData.textures.size() + 1).cpuDescHandle;
 	m_DX12ObjectConstantManager->InitializeSRV(m_device.Get(), &objCPUHandle, EngineConfig::NumDefaultObjectSRVSlot, sizeof(ObjectConstants));
 
 	//wait for upload and reset upload buffers
@@ -370,18 +370,18 @@ void DX12Device::UpdateFrameResource()
 
 UINT DX12Device::GetTextureIndexAsTextureName(const std::string textureName)
 {
-	if (m_DX12DDSManager.empty())
+	if (m_DX12TextureManager.empty())
 	{
-		::OutputDebugStringA("No Texture was Loaded in DDS Manager!");
+		::OutputDebugStringA("No Texture was Loaded in Texture Manager!");
 		assert(false);
 	}
 
-	for (int i = 0; i < m_DX12DDSManager.size(); i++)
+	for (int i = 0; i < m_DX12TextureManager.size(); i++)
 	{
-		if (m_DX12DDSManager[i]->GetDDSTextureName() == textureName) return i;
+		if (m_DX12TextureManager[i]->GetTextureName() == textureName) return i;
 	}
 
-	std::string msg = "Texture Name '" + textureName + "' was not found in DX12DDSManager. Automatically return 0.\n";
+	std::string msg = "Texture Name '" + textureName + "' was not found in DX12TextureManager. Automatically return 0.\n";
 	::OutputDebugStringA(msg.c_str());
 
 	return 0;

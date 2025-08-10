@@ -53,6 +53,7 @@
     <ClCompile Include="DX12Resource.cpp" />
     <ClCompile Include="DX12RootSignature.cpp" />
     <ClCompile Include="DX12SwapChain.cpp" />
+    <ClCompile Include="DX12TextureManager.cpp" />
     <ClCompile Include="DX12View.cpp" />
     <ClCompile Include="RenderDX12.cpp" />
     <ClCompile Include="stdafx.cpp">
@@ -75,6 +76,7 @@
     <ClInclude Include="DX12Resource.h" />
     <ClInclude Include="DX12RootSignature.h" />
     <ClInclude Include="DX12SwapChain.h" />
+    <ClInclude Include="DX12TextureManager.h" />
     <ClInclude Include="DX12View.h" />
     <ClInclude Include="RenderDX12.h" />
     <ClInclude Include="stdafx.h" />

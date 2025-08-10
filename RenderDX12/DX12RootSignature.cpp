@@ -12,7 +12,7 @@ DX12RootSignature::~DX12RootSignature()
 
 }
 
-void DX12RootSignature::Initialize(ID3D12Device* device)
+void DX12RootSignature::Initialize(ID3D12Device* device, UINT textureCount)
 {
 	// Root parameter can be a table, root descriptor or root constants.
 	CD3DX12_ROOT_PARAMETER1 slotRootParameter[4];
@@ -25,7 +25,7 @@ void DX12RootSignature::Initialize(ID3D12Device* device)
 	CD3DX12_DESCRIPTOR_RANGE1 srvTexTable;//t0 space 0 texture
 	srvTexTable.Init(
 		D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-		std::size(EngineConfig::DDSFilePath),
+		textureCount,
 		0,
 		0
 	);

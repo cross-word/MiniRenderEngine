@@ -13,6 +13,9 @@
 #include "DX12DDSManager.h"
 #include "DX12ConstantManager.h"
 #include "D3DCamera.h"
+#include "../FileLoader/GLTFLoader.h"
+#include "DX12TextureManager.h"
+
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 namespace Render { struct RenderItem; }
@@ -30,7 +33,7 @@ class DX12Device
 public:
 	DX12Device();
 	~DX12Device();
-	void Initialize(HWND hWnd);
+	void Initialize(HWND hWnd, const std::wstring& sceneFile);
 
 	inline ID3D12Device* GetDevice() const noexcept { return m_device.Get(); }
 	inline DX12DescriptorHeap* GetDX12RTVHeap() const noexcept { return m_DX12RTVHeap.get(); }
@@ -52,7 +55,7 @@ public:
 	inline D3DCamera* GetD3DCamera() const noexcept { return m_camera.get(); }
 	inline UINT GetCurrentBackBufferIndex() const noexcept { return m_currBackBufferIndex; }
 	inline DX12FrameResource* GetFrameResource(UINT currBackBufferIndex) const noexcept { return m_DX12FrameResource[currBackBufferIndex].get(); }
-
+	inline size_t GetTextureCount() const noexcept { return m_modelData.textures.size(); }
 	inline void SetCurrentBackBufferIndex(UINT newIndex) { m_currBackBufferIndex = newIndex; }
 
 	void CreateDX12PSO();
@@ -65,9 +68,9 @@ private:
 	void InitDX12SwapChain(HWND hWnd);
 	void InitDX12RTVDescHeap();
 	void InitDX12DSVDescHeap();
-	void InitDX12CBVDDSHeap();
+	void InitDX12CBVDDSHeap(size_t textureCount);
 	void InitDX12SRVHeap();
-	void InitDX12RootSignature();
+	void InitDX12RootSignature(size_t textureCount);
 	void InitShader(); //temp func
 
 	void InitDX12FrameResource();
@@ -83,8 +86,9 @@ private:
 	uint32_t m_currBackBufferIndex = 0;
 	std::vector<std::unique_ptr<DX12FrameResource>> m_DX12FrameResource;
 	std::vector<std::unique_ptr<DX12RenderGeometry>> m_DX12RenderGeometry;
-	std::vector<std::unique_ptr<DX12DDSManager>> m_DX12DDSManager;
+	std::vector<std::unique_ptr<DX12TextureManager>> m_DX12TextureManager;
 	std::unique_ptr<DX12MaterialConstantManager> m_DX12MaterialConstantManager;
+	ModelData m_modelData;
 
 	std::unique_ptr<DX12SwapChain> m_DX12SwapChain;
 

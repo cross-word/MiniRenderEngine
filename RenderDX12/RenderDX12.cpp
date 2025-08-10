@@ -83,7 +83,7 @@ void RenderDX12::InitializeDX12(HWND hWnd)
 
 }
 #endif
-	m_DX12Device.Initialize(hWnd);
+	m_DX12Device.Initialize(hWnd, EngineConfig::SceneFilePath);
 	m_DX12FrameBuffer.Initialize(&m_DX12Device);
 	m_timer.Initialize(m_DX12Device.GetDevice(), m_DX12Device.GetDX12CommandList()->GetCommandQueue());
 	//////////////////////////////////////////
@@ -170,7 +170,7 @@ void RenderDX12::RecordAndSubmit_Single()
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootSignature(m_DX12Device.GetDX12RootSignature()->GetRootSignature());
 	ID3D12DescriptorHeap* descriptorHeaps[] = { m_DX12Device.GetDX12CBVSRVHeap()->GetDescHeap()};
 
-	auto* cbvddsHeap = m_DX12Device.GetDX12CBVSRVHeap();
+	auto* cbvSrvHeap = m_DX12Device.GetDX12CBVSRVHeap();
 	constexpr uint32_t numDescPerFrame = EngineConfig::ConstantBufferCount;
 	constexpr uint32_t numDescPerThread = 0;
 	constexpr uint32_t maxWorkers = 0;
@@ -178,14 +178,14 @@ void RenderDX12::RecordAndSubmit_Single()
 	const uint32_t frameIndex = currBackBufferIndex;
 	const uint32_t threadIndex = 0;
 
-	uint32_t cbvSliceIndex = cbvddsHeap->CalcHeapSliceShareBlock(frameIndex, threadIndex, numDescPerFrame, numDescPerThread, maxWorkers);
-	HeapSlice cbvSlice = cbvddsHeap->Offset(cbvSliceIndex);
-	HeapSlice ddsSlice = cbvddsHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount);
-	HeapSlice matSlice = cbvddsHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + std::size(EngineConfig::DDSFilePath));
-	
+	uint32_t cbvSliceIndex = cbvSrvHeap->CalcHeapSliceShareBlock(frameIndex, threadIndex, numDescPerFrame, numDescPerThread, maxWorkers);
+	HeapSlice cbvSlice = cbvSrvHeap->Offset(cbvSliceIndex);
+	HeapSlice texSlice = cbvSrvHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount);
+	HeapSlice matSlice = cbvSrvHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + m_DX12Device.GetTextureCount());
+
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootDescriptorTable(0, cbvSlice.gpuDescHandle);
-	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootDescriptorTable(1, ddsSlice.gpuDescHandle);
+	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootDescriptorTable(1, texSlice.gpuDescHandle);
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootDescriptorTable(2, matSlice.gpuDescHandle);
 
 	PIXBeginEvent(m_DX12Device.GetDX12CommandList()->GetCommandList(), PIX_COLOR(0, 128, 255), L"MainDraw (%d items)", m_DX12Device.GetRenderItemSize()); //pix marking ~ main draw
