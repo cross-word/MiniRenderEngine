@@ -43,7 +43,7 @@ void DX12TextureManager::LoadAndCreateTextureResource(
     }
 
     m_textureResource = std::make_unique<DX12ResourceTexture>();
-    m_textureResource->CreateDDSTexture(
+    m_textureResource->CreateTexture(
         device,
         DX12CommandList,
         &meta,

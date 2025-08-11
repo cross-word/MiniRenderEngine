@@ -207,7 +207,7 @@ void DX12ResourceTexture::CreateRenderTarget(
 	m_currentState = D3D12_RESOURCE_STATE_RENDER_TARGET;
 }
 
-void DX12ResourceTexture::CreateDDSTexture(
+void DX12ResourceTexture::CreateTexture(
 	ID3D12Device* device,
 	DX12CommandList* DX12CommandList,
 	TexMetadata* texMeta,

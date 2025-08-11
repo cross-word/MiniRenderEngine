@@ -23,7 +23,7 @@ void DX12DDSManager::LoadAndCreateDDSResource(
     ScratchImage img;
     ThrowIfFailed(LoadFromDDSFile(filename, DDS_FLAGS_NONE, &meta, img));
     m_DDSResource = std::make_unique<DX12ResourceTexture>();
-    m_DDSResource->CreateDDSTexture(
+    m_DDSResource->CreateTexture(
         device,
         DX12CommandList,
         &meta,

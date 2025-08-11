@@ -16,7 +16,7 @@
 #endif
 
 #ifndef TEX_POOL_MAX
-    #define TEX_POOL_MAX 3
+    #define TEX_POOL_MAX 72
 #endif
 
 // Include structures and functions for lighting.
@@ -119,7 +119,8 @@ VertexOut VSMain(VertexIn vin)
     vout.PosW = posW.xyz;
 
     // Assumes nonuniform scaling; otherwise, need to use inverse-transpose of world matrix.
-    vout.NormalW = mul(vin.NormalL, (float3x3)gObject[gObjectId].gWorlds);
+    float3x3 world3x3 = (float3x3)gObject[gObjectId].gWorlds;
+    vout.NormalW = mul(vin.NormalL, world3x3);
 
     // Transform to homogeneous clip space.
     vout.PosH = mul(posW, gViewProj);
@@ -151,7 +152,7 @@ float4 PSMain(VertexOut pin) : SV_Target
         pin.NormalW, toEyeW, shadowFactor);
 
     float4 litColor = ambient + directLight;
-
+    litColor.rgb = pow(saturate(litColor.rgb), 1.0 / 2.2);
     // Common convention to take alpha from diffuse albedo.
     litColor.a = diffuseAlbedo.a;
 

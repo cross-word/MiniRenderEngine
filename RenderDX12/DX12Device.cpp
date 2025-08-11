@@ -15,7 +15,7 @@ DX12Device::~DX12Device()
 void DX12Device::Initialize(HWND hWnd, const std::wstring& sceneFile)
 {
 	assert(hWnd);
-	m_modelData = LoadGLTF(sceneFile);
+	m_sceneData = LoadGLTFScene(sceneFile);
 
 	// create hardware device
 	// make hardware adaptor if it can. if not, make warp adapator.
@@ -43,13 +43,13 @@ void DX12Device::Initialize(HWND hWnd, const std::wstring& sceneFile)
 
 	InitDX12RTVDescHeap();
 	InitDX12DSVDescHeap();
-	InitDX12CBVDDSHeap(m_modelData.textures.size());
-	InitDX12SRVHeap();
+	InitDX12SRVHeap(m_sceneData.textures.size());
+	InitDX12ImGuiHeap();
 	InitDX12FrameResource();
 	InitDX12CommandList(m_DX12FrameResource[0]->GetCommandAllocator());
 	InitDX12FrameResourceCBVRSV();
 	InitDX12SwapChain(hWnd);
-	InitDX12RootSignature(m_modelData.textures.size());
+	InitDX12RootSignature(m_sceneData.textures.size());
 	CreateDX12PSO();
 }
 
@@ -90,10 +90,10 @@ void DX12Device::InitDX12DSVDescHeap()
 	);
 }
 
-void DX12Device::InitDX12CBVDDSHeap(size_t textureCount)
+void DX12Device::InitDX12SRVHeap(size_t textureCount)
 {
-	m_DX12CBVDDSHeap = std::make_unique<DX12DescriptorHeap>();
-	m_DX12CBVDDSHeap->Initialize(
+	m_DX12SRVHeap = std::make_unique<DX12DescriptorHeap>();
+	m_DX12SRVHeap->Initialize(
 		m_device.Get(),
 		EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + textureCount + 1 + 1, // 1 constant(b0) * 3 frames + texture amount + 1 material vectors + 1 world vectors
 		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
@@ -101,7 +101,7 @@ void DX12Device::InitDX12CBVDDSHeap(size_t textureCount)
 	);
 }
 
-void DX12Device::InitDX12SRVHeap()
+void DX12Device::InitDX12ImGuiHeap()
 {
 	m_DX12ImGuiHeap = std::make_unique<DX12DescriptorHeap>();
 	m_DX12ImGuiHeap->Initialize(
@@ -165,9 +165,10 @@ void DX12Device::InitShader()
 	}
 	m_inputLayout =
 	{
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, (UINT)offsetof(Vertex, position), D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, (UINT)offsetof(Vertex, normal),   D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, (UINT)offsetof(Vertex, texC),     D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TANGENT",  0, DXGI_FORMAT_R32G32B32_FLOAT, 0, (UINT)offsetof(Vertex, tangentU), D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 	};
 }
 
@@ -175,156 +176,90 @@ void DX12Device::PrepareInitialResource()
 {
 	m_DX12FrameResource[m_currBackBufferIndex]->ResetAllocator();
 	m_DX12CommandList->ResetList(m_DX12FrameResource[m_currBackBufferIndex]->GetCommandAllocator());
-	int i = 0;
-	for (auto& texFileName : m_modelData.textures)
+
+	// build texture SRV
+	m_DX12TextureManager.clear();
+	m_DX12TextureManager.reserve(m_sceneData.textures.size());
+	for (size_t i = 0; i < m_sceneData.textures.size(); ++i)
 	{
-		auto cpuHandle = m_DX12CBVDDSHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + i).cpuDescHandle;
-		std::string texName = "texture" + std::to_string(i);
-		auto texItem = std::make_unique<DX12TextureManager>();
-		texItem->LoadAndCreateTextureResource(
+		auto cpuHandle = m_DX12SRVHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + (UINT)i).cpuDescHandle;
+
+		auto tmpTexture = std::make_unique<DX12TextureManager>();
+		std::string texName = "tex_" + std::to_string(i);
+		tmpTexture->LoadAndCreateTextureResource(
 			m_device.Get(),
 			m_DX12CommandList.get(),
 			&cpuHandle,
-			texFileName.c_str(),
+			m_sceneData.textures[i].c_str(),
 			texName
 		);
-		m_DX12TextureManager.emplace_back(std::move(texItem));
-		i++;
+		m_DX12TextureManager.push_back(std::move(tmpTexture));
 	}
 
-	auto geometryItem = std::make_unique<DX12RenderGeometry>();
-	if (geometryItem->InitMeshFromData(
-		m_device.Get(),
-		m_DX12CommandList.get(),
-		m_modelData.mesh
-	))
-	{
-		m_DX12RenderGeometry.emplace_back(std::move(geometryItem));
-	}
-
-	////////////////////////////////////////////////////////
-	///tmp code
-	auto bricks0 = std::make_unique<Material>();
-	bricks0->Name = "bricks0";
-	bricks0->MatCBIndex = 0;
-	bricks0->DiffuseSrvHeapIndex = 0;
-	MaterialConstants brickConst;
-	brickConst.DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-	brickConst.FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
-	brickConst.Roughness = 0.1f;
-	bricks0->matConstant = brickConst;
-
-	auto stone0 = std::make_unique<Material>();
-	stone0->Name = "stone0";
-	stone0->MatCBIndex = 1;
-	stone0->DiffuseSrvHeapIndex = 1;
-	MaterialConstants stoneConst;
-	stoneConst.DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-	stoneConst.FresnelR0 = XMFLOAT3(0.05f, 0.05f, 0.05f);
-	stoneConst.Roughness = 0.3f;
-	stone0->matConstant = stoneConst;
-
-	auto tile0 = std::make_unique<Material>();
-	tile0->Name = "tile0";
-	tile0->MatCBIndex = 2;
-	tile0->DiffuseSrvHeapIndex = 2;
-	MaterialConstants tileConst;
-	tileConst.DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-	tileConst.FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
-	tileConst.Roughness = 0.3f;
-	tile0->matConstant = tileConst;
-
+	// build material SRV
 	m_DX12MaterialConstantManager = std::make_unique<DX12MaterialConstantManager>();
-
-	m_DX12MaterialConstantManager->PushMaterial(std::move(bricks0));
-	m_DX12MaterialConstantManager->PushMaterial(std::move(stone0));
-	m_DX12MaterialConstantManager->PushMaterial(std::move(tile0));
-	m_DX12MaterialConstantManager->InitialzieUploadBuffer(m_device.Get(), m_DX12CommandList->GetCommandList(), m_DX12MaterialConstantManager->GetMaterialCount() * sizeof(MaterialConstants));
-	auto matCPUHandle = m_DX12CBVDDSHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + m_modelData.textures.size()).cpuDescHandle;
-	m_DX12MaterialConstantManager->InitializeSRV(m_device.Get(), &matCPUHandle, m_DX12MaterialConstantManager->GetMaterialCount(), sizeof(MaterialConstants));
-	m_DX12MaterialConstantManager->UploadConstant(
-		m_device.Get(), 
-		m_DX12CommandList.get(),
-		m_DX12MaterialConstantManager->GetMaterialCount() * sizeof(MaterialConstants),
-		m_DX12MaterialConstantManager->GetMaterialConstantData());
-	/*
-	for (int i = 0; i < 1000; i++)
+	for (size_t i = 0; i < m_sceneData.materials.size(); ++i)
 	{
-		Render::RenderItem newRenderItem;
-		newRenderItem.SetRenderGeometry(m_DX12RenderGeometry[0].get());
-		newRenderItem.SetTextureIndex(GetTextureIndexAsTextureName("texture1"));
-		newRenderItem.SetMaterialIndex(GetMaterialIndexAsMaterialName("stone0"));
-		newRenderItem.SetBaseVertexLocation(0);
-		newRenderItem.SetStartIndexLocation(0);
-		XMFLOAT4X4 Wmat;
-		XMFLOAT4X4 Tmat;
-		XMMATRIX W = XMMatrixTranslation(i * 5.0f, -6.0f + i * (-3.0f), +5.0f + i * 5.0f);
-		XMStoreFloat4x4(&Wmat, XMMatrixTranspose(W));
-		newRenderItem.SetObjWorldMatrix(Wmat);
-		XMMATRIX T = XMMatrixTranslation(i * (-50.0f), i * (-3.0f), +10.0f + i * 50.0f);
-		XMStoreFloat4x4(&Tmat, XMMatrixTranspose(T));
-		newRenderItem.SetObjTransformMatrix(Tmat);
-		m_renderItems.push_back(newRenderItem);
+		auto tmpMaterial = std::make_unique<Material>();
+		tmpMaterial->Name = "mat_" + std::to_string(i);
+		tmpMaterial->MatCBIndex = (UINT)i;
+
+		int baseIdx = m_sceneData.materials[i].baseColor >= 0 ? m_sceneData.materials[i].baseColor : 0;
+		tmpMaterial->DiffuseSrvHeapIndex = (UINT)baseIdx;
+
+		MaterialConstants tmpMaterialConstant{};
+		tmpMaterialConstant.DiffuseAlbedo = m_sceneData.materials[i].baseColorFactor;
+		tmpMaterialConstant.FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
+		tmpMaterialConstant.Roughness = m_sceneData.materials[i].roughnessFactor;
+		tmpMaterial->matConstant = tmpMaterialConstant;
+		
+		m_DX12MaterialConstantManager->PushMaterial(std::move(tmpMaterial));
 	}
-	
-	Render::RenderItem newRenderItem;
-	newRenderItem.SetRenderGeometry(m_DX12RenderGeometry[0].get());
-	newRenderItem.SetTextureIndex(GetTextureIndexAsTextureName("texture1"));
-	newRenderItem.SetMaterialIndex(GetMaterialIndexAsMaterialName("stone0"));
-	newRenderItem.SetBaseVertexLocation(0);
-	newRenderItem.SetStartIndexLocation(0);
-	XMFLOAT4X4 Wmat;
-	XMFLOAT4X4 Tmat;
-	XMMATRIX W = XMMatrixTranslation(+5.0f, 1.5f, -10.0f + 2 * 5.0f);
-	XMStoreFloat4x4(&Wmat, XMMatrixTranspose(W));
-	newRenderItem.SetObjWorldMatrix(Wmat);
-	XMMATRIX T = XMMatrixTranslation(-50.0f, 10.5f, -10.0f + 2 * 50.0f);
-	XMStoreFloat4x4(&Tmat, XMMatrixTranspose(T));
-	newRenderItem.SetObjTransformMatrix(Tmat);
-	m_renderItems.push_back(newRenderItem);
 
-	Render::RenderItem newRenderItem1;
-	newRenderItem1.SetRenderGeometry(m_DX12RenderGeometry[1].get());
-	newRenderItem1.SetTextureIndex(GetTextureIndexAsTextureName("texture0"));
-	newRenderItem1.SetMaterialIndex(GetMaterialIndexAsMaterialName("tile0"));
-	newRenderItem1.SetBaseVertexLocation(0);
-	newRenderItem1.SetStartIndexLocation(0);
-	XMFLOAT4X4 Wmat2;
-	XMFLOAT4X4 Tmat2;
-	W = XMMatrixTranslation(+5.0f, 1.5f, -10.0f + 1 * 5.0f);
-	XMStoreFloat4x4(&Wmat2, XMMatrixTranspose(W));
-	newRenderItem1.SetObjWorldMatrix(Wmat2);
-	T = XMMatrixTranslation(-50.0f, 10.5f, -10.0f + 1 * 50.0f);
-	XMStoreFloat4x4(&Tmat2, XMMatrixTranspose(T));
-	newRenderItem1.SetObjTransformMatrix(Tmat2);
-	m_renderItems.push_back(newRenderItem1);
+	m_DX12MaterialConstantManager->InitialzieUploadBuffer(
+		m_device.Get(),
+		m_DX12CommandList->GetCommandList(),
+		m_DX12MaterialConstantManager->GetMaterialCount() * sizeof(MaterialConstants));
 
-	Render::RenderItem newRenderItem2;
-	newRenderItem2.SetRenderGeometry(m_DX12RenderGeometry[1].get());
-	newRenderItem2.SetTextureIndex(GetTextureIndexAsTextureName("texture2"));
-	newRenderItem2.SetMaterialIndex(GetMaterialIndexAsMaterialName("bricks0"));
-	newRenderItem2.SetBaseVertexLocation(0);
-	newRenderItem2.SetStartIndexLocation(0);
-	XMFLOAT4X4 Wmat3;
-	XMFLOAT4X4 Tmat3;
-	W = XMMatrixTranslation(+5.0f, 1.5f, -10.0f + 3 * 5.0f);
-	XMStoreFloat4x4(&Wmat3, XMMatrixTranspose(W));
-	newRenderItem2.SetObjWorldMatrix(Wmat3);
-	T = XMMatrixTranslation(-50.0f, 10.5f, -10.0f + 3 * 50.0f);
-	XMStoreFloat4x4(&Tmat3, XMMatrixTranspose(T));
-	newRenderItem2.SetObjTransformMatrix(Tmat3);
-	m_renderItems.push_back(newRenderItem2);
-	*/
-	////////////////////////////////////////////////////////
-	/////////////
-	auto base = EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount;
-	auto texBase = base;
-	auto matSlot = base + m_modelData.textures.size();
-	auto worldSlot = matSlot + 1;
+	auto matCPUHandle = m_DX12SRVHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + (UINT)m_sceneData.textures.size()).cpuDescHandle;
+	m_DX12MaterialConstantManager->InitializeSRV(
+		m_device.Get(),
+		&matCPUHandle,
+		m_DX12MaterialConstantManager->GetMaterialCount(),
+		sizeof(MaterialConstants));
+
+	// build Geometry
+	m_sceneGeometry.clear();
+	m_sceneGeometry.resize(m_sceneData.primitives.size());
+	for (size_t p = 0; p < m_sceneData.primitives.size(); ++p)
+	{
+		auto tmpGeometry = std::make_unique<DX12RenderGeometry>();
+		tmpGeometry->InitMeshFromData(
+			m_device.Get(),
+			m_DX12CommandList.get(),
+			m_sceneData.primitives[p].mesh,
+			D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		m_sceneGeometry[p] = std::move(tmpGeometry);
+	}
+
+	// build RenderItems
+	m_renderItems.clear();
+	m_renderItems.reserve(m_sceneData.instances.size());
+	for (auto& instance : m_sceneData.instances)
+	{
+		Render::RenderItem renderItem{};
+		XMFLOAT4X4 worldTranspose;
+		XMMATRIX world = XMLoadFloat4x4(&instance.world);
+		XMStoreFloat4x4(&worldTranspose, XMMatrixTranspose(world));
+		renderItem.SetObjWorldMatrix(worldTranspose);
+		renderItem.SetRenderGeometry(m_sceneGeometry[instance.primitive].get());
+		renderItem.SetMaterialIndex(m_sceneData.primitives[instance.primitive].material >= 0 ? m_sceneData.primitives[instance.primitive].material : 0);
+		m_renderItems.push_back(std::move(renderItem));
+	}
 
 	m_DX12ObjectConstantManager = std::make_unique<DX12ObjectConstantManager>();
 	m_DX12ObjectConstantManager->InitialzieUploadBuffer(m_device.Get(), m_DX12CommandList->GetCommandList(), EngineConfig::NumDefaultObjectSRVSlot * sizeof(ObjectConstants));
-	auto objCPUHandle = m_DX12CBVDDSHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + m_modelData.textures.size() + 1).cpuDescHandle;
+	auto objCPUHandle = m_DX12SRVHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + m_sceneData.textures.size() + 1).cpuDescHandle;
 	m_DX12ObjectConstantManager->InitializeSRV(m_device.Get(), &objCPUHandle, EngineConfig::NumDefaultObjectSRVSlot, sizeof(ObjectConstants));
 
 	//wait for upload and reset upload buffers
@@ -350,7 +285,7 @@ void DX12Device::InitDX12FrameResourceCBVRSV()
 {
 	for (int i = 0; i < EngineConfig::SwapChainBufferCount; i++)
 	{
-		m_DX12FrameResource[i]->CreateCBVSRV(m_device.Get(), m_DX12CommandList->GetCommandList(), m_DX12CBVDDSHeap.get(), i);
+		m_DX12FrameResource[i]->CreateCBVSRV(m_device.Get(), m_DX12CommandList->GetCommandList(), m_DX12SRVHeap.get(), i);
 	}
 }
 

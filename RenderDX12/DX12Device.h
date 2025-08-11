@@ -37,7 +37,7 @@ public:
 
 	inline ID3D12Device* GetDevice() const noexcept { return m_device.Get(); }
 	inline DX12DescriptorHeap* GetDX12RTVHeap() const noexcept { return m_DX12RTVHeap.get(); }
-	inline DX12DescriptorHeap* GetDX12CBVSRVHeap() const noexcept { return m_DX12CBVDDSHeap.get(); }
+	inline DX12DescriptorHeap* GetDX12CBVSRVHeap() const noexcept { return m_DX12SRVHeap.get(); }
 	inline DX12DescriptorHeap* GetDX12ImGuiHeap() const noexcept { return m_DX12ImGuiHeap.get(); }
 	inline DX12DescriptorHeap* GetDX12DSVHeap() const noexcept { return m_DX12DSVHeap.get(); }
 	inline DX12CommandList* GetDX12CommandList() const noexcept { return m_DX12CommandList.get(); }
@@ -55,7 +55,7 @@ public:
 	inline D3DCamera* GetD3DCamera() const noexcept { return m_camera.get(); }
 	inline UINT GetCurrentBackBufferIndex() const noexcept { return m_currBackBufferIndex; }
 	inline DX12FrameResource* GetFrameResource(UINT currBackBufferIndex) const noexcept { return m_DX12FrameResource[currBackBufferIndex].get(); }
-	inline size_t GetTextureCount() const noexcept { return m_modelData.textures.size(); }
+	inline size_t GetTextureCount() const noexcept { return m_sceneData.textures.size(); }
 	inline void SetCurrentBackBufferIndex(UINT newIndex) { m_currBackBufferIndex = newIndex; }
 
 	void CreateDX12PSO();
@@ -68,8 +68,8 @@ private:
 	void InitDX12SwapChain(HWND hWnd);
 	void InitDX12RTVDescHeap();
 	void InitDX12DSVDescHeap();
-	void InitDX12CBVDDSHeap(size_t textureCount);
-	void InitDX12SRVHeap();
+	void InitDX12SRVHeap(size_t textureCount);
+	void InitDX12ImGuiHeap();
 	void InitDX12RootSignature(size_t textureCount);
 	void InitShader(); //temp func
 
@@ -88,13 +88,12 @@ private:
 	std::vector<std::unique_ptr<DX12RenderGeometry>> m_DX12RenderGeometry;
 	std::vector<std::unique_ptr<DX12TextureManager>> m_DX12TextureManager;
 	std::unique_ptr<DX12MaterialConstantManager> m_DX12MaterialConstantManager;
-	ModelData m_modelData;
 
 	std::unique_ptr<DX12SwapChain> m_DX12SwapChain;
 
 	std::unique_ptr<DX12DescriptorHeap> m_DX12RTVHeap;
-	std::unique_ptr<DX12DescriptorHeap> m_DX12CBVDDSHeap; //CBVSRV
-	std::unique_ptr<DX12DescriptorHeap> m_DX12ImGuiHeap; //SRV
+	std::unique_ptr<DX12DescriptorHeap> m_DX12SRVHeap; //CBVSRV
+	std::unique_ptr<DX12DescriptorHeap> m_DX12ImGuiHeap; //Imgui-SRV
 	std::unique_ptr<DX12DescriptorHeap> m_DX12DSVHeap;
 	std::unique_ptr<DX12ObjectConstantManager> m_DX12ObjectConstantManager;
 	///tmp variable
@@ -106,4 +105,7 @@ private:
 	HANDLE m_fenceEvent = nullptr;
 
 	std::vector<Render::RenderItem> m_renderItems;
+
+	SceneData m_sceneData;
+	std::vector<std::unique_ptr<DX12RenderGeometry>> m_sceneGeometry;
 };

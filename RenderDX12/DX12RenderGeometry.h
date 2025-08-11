@@ -26,11 +26,6 @@ public:
 		m_VertexCount = moveGeo.m_VertexCount;
 	}
 
-	bool InitMeshFromFile(
-		ID3D12Device* device,
-		DX12CommandList* dx12CommandList,
-		const std::wstring& filename,
-		D3D12_PRIMITIVE_TOPOLOGY vertexPrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); //.obj file
 	bool InitMeshFromData(
 		ID3D12Device* device,
 		DX12CommandList* dx12CommandList,

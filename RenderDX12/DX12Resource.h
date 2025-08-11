@@ -76,7 +76,7 @@ public:
 		uint32_t multiSampleDescCount,
 		DXGI_FORMAT renderTargetFormat);
 
-	void CreateDDSTexture(
+	void CreateTexture(
 		ID3D12Device* device,
 		DX12CommandList* DX12CommandList,
 		TexMetadata* texMeta,

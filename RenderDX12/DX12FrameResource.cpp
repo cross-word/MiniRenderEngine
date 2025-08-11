@@ -48,11 +48,11 @@ void DX12FrameResource::UploadPassConstant(D3DCamera* d3dCamera)
 	PassConstants passConst;
 	passConst.AmbientLight = { 0.25f, 0.25f, 0.35f, 1.0f };
 	passConst.Lights[0].Direction = { 0.57735f, -0.57735f, 0.57735f };
-	passConst.Lights[0].Strength = { 0.6f, 0.6f, 0.6f };
+	passConst.Lights[0].Strength = { 1.0f, 1.0f, 1.0f };
 	passConst.Lights[1].Direction = { -0.57735f, -0.57735f, 0.57735f };
-	passConst.Lights[1].Strength = { 0.3f, 0.3f, 0.3f };
+	passConst.Lights[1].Strength = { 0.6f, 0.6f, 0.6f };
 	passConst.Lights[2].Direction = { 0.0f, -0.707f, -0.707f };
-	passConst.Lights[2].Strength = { 0.15f, 0.15f, 0.15f };
+	passConst.Lights[2].Strength = { 0.45f, 0.45f, 0.45f };
 
 	XMMATRIX V = d3dCamera->GetViewMatrix();
 	XMMATRIX P = d3dCamera->GetProjectionMatrix(float(EngineConfig::DefaultWidth) / float(EngineConfig::DefaultHeight));
