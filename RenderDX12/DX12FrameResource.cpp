@@ -46,7 +46,7 @@ void DX12FrameResource::CreateCBVSRV(ID3D12Device* device, ID3D12GraphicsCommand
 void DX12FrameResource::UploadPassConstant(D3DCamera* d3dCamera)
 {
 	PassConstants passConst;
-	passConst.AmbientLight = { 0.25f, 0.25f, 0.35f, 1.0f };
+	passConst.AmbientLight = { 0.5f, 0.5, 0.5f, 1.0f };
 	passConst.Lights[0].Direction = { 0.57735f, -0.57735f, 0.57735f };
 	passConst.Lights[0].Strength = { 1.0f, 1.0f, 1.0f };
 	passConst.Lights[1].Direction = { -0.57735f, -0.57735f, 0.57735f };
@@ -65,6 +65,7 @@ void DX12FrameResource::UploadPassConstant(D3DCamera* d3dCamera)
 	XMStoreFloat4x4(&passConst.Proj, XMMatrixTranspose(P));
 	XMStoreFloat4x4(&passConst.ViewProj, XMMatrixTranspose(VP));
 	XMStoreFloat4x4(&passConst.InvView, XMMatrixTranspose(iV));
+	XMStoreFloat3(&passConst.EyePosW, iV.r[3]);
 	XMStoreFloat4x4(&passConst.InvProj, XMMatrixTranspose(iP));
 	XMStoreFloat4x4(&passConst.InvViewProj, XMMatrixTranspose(iVP));
 

@@ -25,7 +25,7 @@ void DX12RootSignature::Initialize(ID3D12Device* device, UINT textureCount)
 	CD3DX12_DESCRIPTOR_RANGE1 srvTexTable;//t0 space 0 texture
 	srvTexTable.Init(
 		D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-		textureCount,
+		EngineConfig::MaxTextureCount,
 		0,
 		0
 	);

@@ -24,4 +24,5 @@ struct EngineConfig
     static inline constexpr const wchar_t* SceneFilePath = LR"(D:\MiniEngine\main_sponza\NewSponza_Main_glTF_003.gltf)"; // tmp
     static constexpr UINT NumThreadWorker = 10;
     static constexpr bool UseMultiThread = false;
+    static constexpr UINT MaxTextureCount = 80;
 };

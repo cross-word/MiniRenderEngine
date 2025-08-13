@@ -3,6 +3,49 @@
 #include "D3DCamera.h"
 #include "../FileLoader/SimpleLoader.h"
 
+struct GltfImage {
+	std::string name, mimeType;
+	std::vector<uint8_t> rgba;  // 8-bit RGBA
+	int width = 0, height = 0, comp = 4;
+	bool srgb = false;            // baseColor만 true
+};
+
+static void CreateTextureSRV_FromRGBA8(
+	ID3D12Device* device,
+	DX12CommandList* cl,
+	const GltfImage& img,
+	D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle,
+	std::unique_ptr<DX12ResourceTexture>& outTex,
+	std::unique_ptr<DX12View>& outView)
+{
+	using namespace DirectX;
+	TexMetadata meta{};
+	meta.width = img.width; meta.height = img.height;
+	meta.arraySize = 1; meta.mipLevels = 1;
+	meta.format = img.srgb ? DXGI_FORMAT_R8G8B8A8_UNORM_SRGB : DXGI_FORMAT_R8G8B8A8_UNORM;
+	meta.dimension = TEX_DIMENSION_TEXTURE2D;
+
+	ScratchImage si;
+	ThrowIfFailed(si.Initialize2D(meta.format, meta.width, meta.height, 1, 1));
+	const Image* im = si.GetImage(0, 0, 0);
+	// pitch 보존하며 복사
+	const uint8_t* src = img.rgba.data();
+	for (size_t y = 0; y < meta.height; ++y) {
+		memcpy(im->pixels + y * im->rowPitch, src + y * (size_t)img.width * 4, (size_t)img.width * 4);
+	}
+
+	outTex = std::make_unique<DX12ResourceTexture>();
+	outTex->CreateTexture(device, cl, &meta, &si); // 이름은 DDSTexture지만 meta/si면 OK
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC srv{};
+	srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srv.Format = meta.format;
+	srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srv.Texture2D.MipLevels = 1;
+	outView = std::make_unique<DX12View>(
+		device, EViewType::EShaderResourceView, outTex.get(), cpuHandle, nullptr, &srv);
+}
+
 DX12Device::DX12Device()
 {
 	m_fenceEvent = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
@@ -43,13 +86,13 @@ void DX12Device::Initialize(HWND hWnd, const std::wstring& sceneFile)
 
 	InitDX12RTVDescHeap();
 	InitDX12DSVDescHeap();
-	InitDX12SRVHeap(m_sceneData.textures.size());
+	InitDX12SRVHeap(EngineConfig::MaxTextureCount);
 	InitDX12ImGuiHeap();
 	InitDX12FrameResource();
 	InitDX12CommandList(m_DX12FrameResource[0]->GetCommandAllocator());
 	InitDX12FrameResourceCBVRSV();
 	InitDX12SwapChain(hWnd);
-	InitDX12RootSignature(m_sceneData.textures.size());
+	InitDX12RootSignature(EngineConfig::MaxTextureCount);
 	CreateDX12PSO();
 }
 
@@ -145,7 +188,13 @@ void DX12Device::InitShader()
 	HRESULT hr = S_OK;
 	ID3DBlob* errorBlob = nullptr;
 
-	hr = D3DCompileFromFile(EngineConfig::ShaderFilePath, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_1", compileFlags, 0, &m_vertexShader, &errorBlob);
+	std::string poolMax = std::to_string(EngineConfig::MaxTextureCount);
+	D3D_SHADER_MACRO macros[] = {
+		{ "NUM_TEXTURE", poolMax.c_str() },
+		{ nullptr, nullptr }
+	};
+
+	hr = D3DCompileFromFile(EngineConfig::ShaderFilePath, macros, D3D_COMPILE_STANDARD_FILE_INCLUDE, "VSMain", "vs_5_1", compileFlags, 0, &m_vertexShader, &errorBlob);
 	if (FAILED(hr))
 	{
 		if (errorBlob)
@@ -154,7 +203,7 @@ void DX12Device::InitShader()
 			errorBlob->Release();
 		}
 	}
-	hr = D3DCompileFromFile(EngineConfig::ShaderFilePath, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_1", compileFlags, 0, &m_pixelShader, &errorBlob);
+	hr = D3DCompileFromFile(EngineConfig::ShaderFilePath, macros, D3D_COMPILE_STANDARD_FILE_INCLUDE, "PSMain", "ps_5_1", compileFlags, 0, &m_pixelShader, &errorBlob);
 	if (FAILED(hr))
 	{
 		if (errorBlob)
@@ -196,6 +245,19 @@ void DX12Device::PrepareInitialResource()
 		m_DX12TextureManager.push_back(std::move(tmpTexture));
 	}
 
+	const uint32_t used = m_sceneData.textures.size();
+	for (uint32_t i = used; i < EngineConfig::MaxTextureCount; ++i) {
+		auto cpu = m_DX12SRVHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + i).cpuDescHandle; // 테이블 내 i
+		std::unique_ptr<DX12ResourceTexture> tex;
+		std::unique_ptr<DX12View> view;
+
+		GltfImage one = {}; one.width = 1; one.height = 1; one.srgb = true;
+		one.rgba = { 255,255,255,255 }; // white
+		CreateTextureSRV_FromRGBA8(m_device.Get(), m_DX12CommandList.get(), one, cpu, tex, view);
+		m_gltfTextures.emplace_back(std::move(tex));
+		m_gltfTextureViews.emplace_back(std::move(view));
+	}
+
 	// build material SRV
 	m_DX12MaterialConstantManager = std::make_unique<DX12MaterialConstantManager>();
 	for (size_t i = 0; i < m_sceneData.materials.size(); ++i)
@@ -221,12 +283,18 @@ void DX12Device::PrepareInitialResource()
 		m_DX12CommandList->GetCommandList(),
 		m_DX12MaterialConstantManager->GetMaterialCount() * sizeof(MaterialConstants));
 
-	auto matCPUHandle = m_DX12SRVHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + (UINT)m_sceneData.textures.size()).cpuDescHandle;
+	auto matCPUHandle = m_DX12SRVHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + EngineConfig::MaxTextureCount).cpuDescHandle;
 	m_DX12MaterialConstantManager->InitializeSRV(
 		m_device.Get(),
 		&matCPUHandle,
 		m_DX12MaterialConstantManager->GetMaterialCount(),
 		sizeof(MaterialConstants));
+
+	m_DX12MaterialConstantManager->UploadConstant(
+		m_device.Get(),
+		m_DX12CommandList.get(),
+		m_DX12MaterialConstantManager->GetMaterialCount() * sizeof(MaterialConstants),
+		m_DX12MaterialConstantManager->GetMaterialConstantData());
 
 	// build Geometry
 	m_sceneGeometry.clear();
@@ -253,13 +321,17 @@ void DX12Device::PrepareInitialResource()
 		XMStoreFloat4x4(&worldTranspose, XMMatrixTranspose(world));
 		renderItem.SetObjWorldMatrix(worldTranspose);
 		renderItem.SetRenderGeometry(m_sceneGeometry[instance.primitive].get());
-		renderItem.SetMaterialIndex(m_sceneData.primitives[instance.primitive].material >= 0 ? m_sceneData.primitives[instance.primitive].material : 0);
+		UINT matIndex = (UINT)(m_sceneData.primitives[instance.primitive].material >= 0 ? m_sceneData.primitives[instance.primitive].material : 0);
+		renderItem.SetMaterialIndex(matIndex);
+		int tex = m_sceneData.materials[matIndex].baseColor; // baseColor로!
+		if (tex < 0 || tex >= (int)EngineConfig::MaxTextureCount) tex = 0; // 디폴트 화이트
+		renderItem.SetTextureIndex((UINT)tex);
 		m_renderItems.push_back(std::move(renderItem));
 	}
 
 	m_DX12ObjectConstantManager = std::make_unique<DX12ObjectConstantManager>();
 	m_DX12ObjectConstantManager->InitialzieUploadBuffer(m_device.Get(), m_DX12CommandList->GetCommandList(), EngineConfig::NumDefaultObjectSRVSlot * sizeof(ObjectConstants));
-	auto objCPUHandle = m_DX12SRVHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + m_sceneData.textures.size() + 1).cpuDescHandle;
+	auto objCPUHandle = m_DX12SRVHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + EngineConfig::MaxTextureCount + 1).cpuDescHandle;
 	m_DX12ObjectConstantManager->InitializeSRV(m_device.Get(), &objCPUHandle, EngineConfig::NumDefaultObjectSRVSlot, sizeof(ObjectConstants));
 
 	//wait for upload and reset upload buffers

@@ -45,6 +45,7 @@ struct SceneData {
     std::vector<NodeInstance>    instances;
     std::vector<MaterialTex>     materials;
     std::vector<std::wstring>    textures;
+    //std::vector<tinygltf::Light> lgiths;
 };
 
 FileLoad_API SceneData LoadGLTFScene(const std::wstring& filename);

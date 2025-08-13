@@ -108,4 +108,8 @@ private:
 
 	SceneData m_sceneData;
 	std::vector<std::unique_ptr<DX12RenderGeometry>> m_sceneGeometry;
+
+	std::vector<std::unique_ptr<DX12ResourceTexture>> m_gltfTextures;
+	std::vector<std::unique_ptr<DX12View>> m_gltfTextureViews;
+
 };

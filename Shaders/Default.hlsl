@@ -15,14 +15,10 @@
     #define NUM_SPOT_LIGHTS 0
 #endif
 
-#ifndef TEX_POOL_MAX
-    #define TEX_POOL_MAX 72
-#endif
-
 // Include structures and functions for lighting.
 #include "LightingUtil.hlsl"
 
-Texture2D    gDiffuseMap[TEX_POOL_MAX] : register(t0, space0);
+Texture2D    gDiffuseMap[NUM_TEXTURE] : register(t0, space0);
 
 struct MaterialParam
 {
@@ -134,8 +130,8 @@ VertexOut VSMain(VertexIn vin)
 
 float4 PSMain(VertexOut pin) : SV_Target
 {
-    float4 diffuseAlbedo = gDiffuseMap[gTexIndex].Sample(gsamAnisotropicWrap, pin.TexC) * gMaterials[gMaterialIndex].gDiffuseAlbedo;
-	
+    float4 diffuseAlbedo = gDiffuseMap[NonUniformResourceIndex(gTexIndex)].Sample(gsamAnisotropicWrap, pin.TexC) * gMaterials[gMaterialIndex].gDiffuseAlbedo;
+    if (gTexIndex >= NUM_TEXTURE) return float4(1, 0, 1, 1);
     // Interpolating normal can unnormalize it, so renormalize it.
     pin.NormalW = normalize(pin.NormalW);
 
@@ -158,5 +154,3 @@ float4 PSMain(VertexOut pin) : SV_Target
 
     return litColor;
 }
-
-
