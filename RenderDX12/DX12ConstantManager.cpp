@@ -90,8 +90,18 @@ void DX12MaterialConstantManager::PushMaterial(std::unique_ptr<Material>&& Mat)
     MaterialConstants tmpMatConst;
     tmpMatConst.DiffuseAlbedo = Mat->matConstant.DiffuseAlbedo;
     tmpMatConst.FresnelR0 = Mat->matConstant.FresnelR0;
-    tmpMatConst.MatTransform = Mat->matConstant.MatTransform;
     tmpMatConst.Roughness = Mat->matConstant.Roughness;
+    tmpMatConst.Metallic = Mat->matConstant.Metallic;
+    tmpMatConst.NormalScale = Mat->matConstant.NormalScale;
+    tmpMatConst.OcclusionStrength = Mat->matConstant.OcclusionStrength;
+    tmpMatConst.EmissiveStrength = Mat->matConstant.EmissiveStrength;
+    tmpMatConst.EmissiveFactor = Mat->matConstant.EmissiveFactor;
+    tmpMatConst.BaseColorIndex = Mat->matConstant.BaseColorIndex;
+    tmpMatConst.NormalIndex = Mat->matConstant.NormalIndex;
+    tmpMatConst.ORMIndex = Mat->matConstant.ORMIndex;
+    tmpMatConst.OcclusionIndex = Mat->matConstant.OcclusionIndex;
+    tmpMatConst.EmissiveIndex = Mat->matConstant.EmissiveIndex;
+
 
     m_materialConstant.emplace_back(tmpMatConst);
     m_materials.emplace_back(std::move(Mat));

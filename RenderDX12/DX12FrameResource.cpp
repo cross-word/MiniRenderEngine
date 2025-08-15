@@ -43,16 +43,33 @@ void DX12FrameResource::CreateCBVSRV(ID3D12Device* device, ID3D12GraphicsCommand
 		&passCBVDesc);
 }
 
-void DX12FrameResource::UploadPassConstant(D3DCamera* d3dCamera)
+void DX12FrameResource::UploadPassConstant(D3DCamera* d3dCamera, std::vector<Light>& lights)
 {
 	PassConstants passConst;
-	passConst.AmbientLight = { 0.5f, 0.5, 0.5f, 1.0f };
-	passConst.Lights[0].Direction = { 0.57735f, -0.57735f, 0.57735f };
-	passConst.Lights[0].Strength = { 1.0f, 1.0f, 1.0f };
-	passConst.Lights[1].Direction = { -0.57735f, -0.57735f, 0.57735f };
-	passConst.Lights[1].Strength = { 0.6f, 0.6f, 0.6f };
-	passConst.Lights[2].Direction = { 0.0f, -0.707f, -0.707f };
-	passConst.Lights[2].Strength = { 0.45f, 0.45f, 0.45f };
+	passConst.AmbientLight = { 0.15f, 0.15f, 0.15f, 1.0f };
+	Light sun{}; //sun light
+
+	sun.Type = LIGHT_TYPE_DIRECTIONAL;   // 0
+	sun.Color = { 1.0f, 1.0f, 1.0f };
+	sun.Intensity = 10.5f;
+	sun.Direction = { 0.0f, -1.0f, 0.0f };
+	sun.Range = -1.0f;
+	sun.Position = { 0.0f, 0.0f, 0.0f };
+	sun.InnerCos = 0.0f;
+	sun.OuterCos = -1.0f;
+	passConst.Lights[0] = sun;
+
+	for (uint16_t i = 0; i < lights.size(); ++i)
+	{
+		passConst.Lights[i + 1].Color = lights[i].Color;
+		passConst.Lights[i + 1].Direction = lights[i].Direction;
+		passConst.Lights[i + 1].InnerCos = lights[i].InnerCos;
+		passConst.Lights[i + 1].Intensity = lights[i].Intensity;
+		passConst.Lights[i + 1].OuterCos = lights[i].OuterCos;
+		passConst.Lights[i + 1].Position = lights[i].Position;
+		passConst.Lights[i + 1].Range = lights[i].Range;
+		passConst.Lights[i + 1].Type = lights[i].Type;
+	}
 
 	XMMATRIX V = d3dCamera->GetViewMatrix();
 	XMMATRIX P = d3dCamera->GetProjectionMatrix(float(EngineConfig::DefaultWidth) / float(EngineConfig::DefaultHeight));

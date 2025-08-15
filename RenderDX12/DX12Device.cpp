@@ -189,8 +189,10 @@ void DX12Device::InitShader()
 	ID3DBlob* errorBlob = nullptr;
 
 	std::string poolMax = std::to_string(EngineConfig::MaxTextureCount);
+	std::string numLight = std::to_string(m_sceneData.lights.size() + 1);
 	D3D_SHADER_MACRO macros[] = {
 		{ "NUM_TEXTURE", poolMax.c_str() },
+		{ "NUM_LIGHTS", numLight.c_str()},
 		{ nullptr, nullptr }
 	};
 
@@ -217,7 +219,7 @@ void DX12Device::InitShader()
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, (UINT)offsetof(Vertex, position), D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		{ "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, (UINT)offsetof(Vertex, normal),   D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, (UINT)offsetof(Vertex, texC),     D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TANGENT",  0, DXGI_FORMAT_R32G32B32_FLOAT, 0, (UINT)offsetof(Vertex, tangentU), D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TANGENT",  0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, (UINT)offsetof(Vertex, tangent), D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 	};
 }
 
@@ -266,13 +268,24 @@ void DX12Device::PrepareInitialResource()
 		tmpMaterial->Name = "mat_" + std::to_string(i);
 		tmpMaterial->MatCBIndex = (UINT)i;
 
-		int baseIdx = m_sceneData.materials[i].baseColor >= 0 ? m_sceneData.materials[i].baseColor : 0;
+		int baseIdx = m_sceneData.materials[i].BaseColorIndex >= 0 ? m_sceneData.materials[i].BaseColorIndex : 0;
 		tmpMaterial->DiffuseSrvHeapIndex = (UINT)baseIdx;
 
 		MaterialConstants tmpMaterialConstant{};
-		tmpMaterialConstant.DiffuseAlbedo = m_sceneData.materials[i].baseColorFactor;
-		tmpMaterialConstant.FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
-		tmpMaterialConstant.Roughness = m_sceneData.materials[i].roughnessFactor;
+		tmpMaterialConstant.DiffuseAlbedo = m_sceneData.materials[i].DiffuseAlbedo;
+		tmpMaterialConstant.FresnelR0 = m_sceneData.materials[i].FresnelR0;
+		tmpMaterialConstant.Roughness = m_sceneData.materials[i].Roughness;
+		tmpMaterialConstant.Metallic = m_sceneData.materials[i].Metallic;
+		tmpMaterialConstant.NormalScale = m_sceneData.materials[i].NormalScale;
+		tmpMaterialConstant.OcclusionStrength = m_sceneData.materials[i].OcclusionStrength;
+		tmpMaterialConstant.EmissiveStrength = m_sceneData.materials[i].EmissiveStrength;
+		tmpMaterialConstant.EmissiveFactor = m_sceneData.materials[i].EmissiveFactor;
+		tmpMaterialConstant.BaseColorIndex = m_sceneData.materials[i].BaseColorIndex;
+		tmpMaterialConstant.NormalIndex = m_sceneData.materials[i].NormalIndex;
+		tmpMaterialConstant.ORMIndex = m_sceneData.materials[i].ORMIndex;
+		tmpMaterialConstant.OcclusionIndex = m_sceneData.materials[i].OcclusionIndex;
+		tmpMaterialConstant.EmissiveIndex = m_sceneData.materials[i].EmissiveIndex;
+
 		tmpMaterial->matConstant = tmpMaterialConstant;
 		
 		m_DX12MaterialConstantManager->PushMaterial(std::move(tmpMaterial));
@@ -317,13 +330,11 @@ void DX12Device::PrepareInitialResource()
 	{
 		Render::RenderItem renderItem{};
 		XMFLOAT4X4 worldTranspose;
-		XMMATRIX world = XMLoadFloat4x4(&instance.world);
-		XMStoreFloat4x4(&worldTranspose, XMMatrixTranspose(world));
-		renderItem.SetObjWorldMatrix(worldTranspose);
+		renderItem.SetObjWorldMatrix(instance.world);
 		renderItem.SetRenderGeometry(m_sceneGeometry[instance.primitive].get());
 		UINT matIndex = (UINT)(m_sceneData.primitives[instance.primitive].material >= 0 ? m_sceneData.primitives[instance.primitive].material : 0);
 		renderItem.SetMaterialIndex(matIndex);
-		int tex = m_sceneData.materials[matIndex].baseColor; // baseColor로!
+		int tex = m_sceneData.materials[matIndex].BaseColorIndex; // baseColor로!
 		if (tex < 0 || tex >= (int)EngineConfig::MaxTextureCount) tex = 0; // 디폴트 화이트
 		renderItem.SetTextureIndex((UINT)tex);
 		m_renderItems.push_back(std::move(renderItem));
@@ -371,7 +382,7 @@ void DX12Device::UpdateFrameResource()
 		WaitForSingleObject(m_fenceEvent, INFINITE);
 	}
 
-	m_DX12FrameResource[m_currBackBufferIndex]->UploadPassConstant(m_camera.get());
+	m_DX12FrameResource[m_currBackBufferIndex]->UploadPassConstant(m_camera.get(), m_sceneData.lights);
 	m_DX12FrameResource[m_currBackBufferIndex]->UploadObjectConstant(m_device.Get(), m_DX12CommandList.get(), m_renderItems, m_DX12ObjectConstantManager.get());
 }
 

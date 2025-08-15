@@ -7,6 +7,9 @@
 #include <dxgiformat.h>
 
 using namespace DirectX;
+#define LIGHT_TYPE_DIRECTIONAL 0
+#define LIGHT_TYPE_POINT       1
+#define LIGHT_TYPE_SPOT        2
 
 #ifdef _ENABLE_FILE_LOAD
 #  define FileLoad_API __declspec(dllexport)
@@ -14,20 +17,26 @@ using namespace DirectX;
 #  define FileLoad_API __declspec(dllimport)
 #endif
 
-struct MaterialTex {
-    int baseColor = -1;
-    int normal = -1;
-    int metallicRoughness = -1;
-    int occlusion = -1;
-    int emissive = -1;
 
-    XMFLOAT4 baseColorFactor = { 1,1,1,1 };
-    float metallicFactor = 1.0f;
-    float roughnessFactor = 1.0f;
+struct MaterialTex 
+{
+    DirectX::XMFLOAT4 DiffuseAlbedo = { 1,1,1,1 }; // = pbrMetallicRoughness.baseColorFactor(vec4)
+    DirectX::XMFLOAT3 FresnelR0 = { 0.04f,0.04f,0.04f };
+    float              Roughness = 1.0f;      // pbrMetallicRoughness.roughnessFactor
 
-    int alphaMode = 0;
-    float alphaCutoff = 0.5f;
-    int doubleSided = 0;
+    // PBR
+    float Metallic = 1.0f;        // pbrMetallicRoughness.metallicFactor
+    float NormalScale = 1.0f;        // normalTexture.scale
+    float OcclusionStrength = 1.0f;        // occlusionTexture.strength
+    float EmissiveStrength = 1.0f;        // extensions["KHR_materials_emissive_strength"]
+
+    DirectX::XMFLOAT3 EmissiveFactor = { 0,0,0 }; // emissiveFactor(vec3)
+
+    uint32_t BaseColorIndex = UINT32_MAX; // pbrMetallicRoughness.baseColorTexture.index + .texCoord
+    uint32_t NormalIndex = UINT32_MAX; // normalTexture.index + .texCoord
+    uint32_t ORMIndex = UINT32_MAX; // pbrMetallicRoughness.metallicRoughnessTexture.index + .texCoord
+    uint32_t OcclusionIndex = UINT32_MAX;
+    uint32_t EmissiveIndex = UINT32_MAX; // emissiveTexture.index
 };
 
 struct PrimitiveMeshEx {
@@ -40,12 +49,22 @@ struct NodeInstance {
     XMFLOAT4X4 world;
 };
 
+struct Light
+{
+    DirectX::XMFLOAT3 Color;     float Intensity; // dir: lux, pt/spot: cd
+    DirectX::XMFLOAT3 Direction; float Range;     // meters, <=0 infinite
+    DirectX::XMFLOAT3 Position;  float InnerCos;  // spot only
+    int                Type;      float OuterCos;  // spot only
+    float              _pad_[2];                  // 16B align
+};
+static_assert(sizeof(Light) % 16 == 0, "CB alignment");
+
 struct SceneData {
     std::vector<PrimitiveMeshEx> primitives;
     std::vector<NodeInstance>    instances;
     std::vector<MaterialTex>     materials;
     std::vector<std::wstring>    textures;
-    //std::vector<tinygltf::Light> lgiths;
+    std::vector<Light> lights;
 };
 
 FileLoad_API SceneData LoadGLTFScene(const std::wstring& filename);

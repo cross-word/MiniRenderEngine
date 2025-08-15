@@ -7,6 +7,8 @@
 #include <filesystem>
 #include <unordered_map>
 
+static const XMMATRIX FlipZ = XMMatrixScaling(1.f, 1.f, -1.f);
+
 const uint8_t* GetDataPtr(const tinygltf::Model& model, const tinygltf::Accessor& acc)
 {
     const auto& bv = model.bufferViews[acc.bufferView];
@@ -137,7 +139,12 @@ MeshData BuildMeshFromPrimitive(const tinygltf::Model& model, const tinygltf::Pr
         if (posAcc) { readVec(posAcc, i, tmp, 3); v.position = { tmp[0], tmp[1], tmp[2] }; }
         if (nrmAcc) { readVec(nrmAcc, i, tmp, 3); v.normal = { tmp[0], tmp[1], tmp[2] }; }
         if (texAcc) { readVec(texAcc, i, tmp, 2); v.texC = { tmp[0], tmp[1] }; } // 필요 시 v = 1 - v[1]
-        if (tanAcc) { readVec(tanAcc, i, tmp, 4); v.tangentU = { tmp[0], tmp[1], tmp[2] }; }
+        if (tanAcc) {
+            float t[4] = { 0,0,0,1 };
+            readVec(tanAcc, i, t, 4);
+            v.tangent = { t[0], t[1], t[2], t[3] };
+            v.tangent.w = -v.tangent.w;
+        }
 
         md.vertices.push_back(v);
     }
@@ -162,24 +169,99 @@ MeshData BuildMeshFromPrimitive(const tinygltf::Model& model, const tinygltf::Pr
     return md;
 }
 
-void TraverseNode(const tinygltf::Model& model, int nodeIdx, const XMMATRIX& parent, std::vector<std::pair<int, XMFLOAT4X4>>& out)
+void BuildNodeWorlds(const tinygltf::Model& model,
+    std::vector<XMFLOAT4X4>& nodeWorldOut)
 {
-    const auto& n = model.nodes[nodeIdx];
-    XMFLOAT4X4 localF;
-    XMStoreFloat4x4(&localF, NodeLocal(n));
-    XMMATRIX local = XMLoadFloat4x4(&localF);
-    XMMATRIX world = XMMatrixMultiply(parent, local);
-    XMFLOAT4X4 W; XMStoreFloat4x4(&W, world);
-
-    if (n.mesh >= 0)
-    {
-        const auto& mesh = model.meshes[n.mesh];
-        for (size_t pi = 0; pi < mesh.primitives.size(); ++pi)
+    nodeWorldOut.assign(model.nodes.size(), XMFLOAT4X4{});
+    std::function<void(int, XMMATRIX)> dfs = [&](int idx, XMMATRIX parent)
         {
-            out.emplace_back((int)&mesh.primitives[pi] - (int)&mesh.primitives[0], W); // temp, 실제 매핑은 아래에서
-        }
+            XMFLOAT4X4 lf; XMStoreFloat4x4(&lf, NodeLocal(model.nodes[idx]));
+            XMMATRIX   lw = XMLoadFloat4x4(&lf);
+            XMMATRIX   ww = XMMatrixMultiply(parent, lw);
+
+            ww = FlipZ * ww * FlipZ; // RH→LH
+            XMStoreFloat4x4(&nodeWorldOut[idx], ww);
+            for (int c : model.nodes[idx].children) dfs(c, ww);
+        };
+
+    XMMATRIX I = XMMatrixIdentity();
+    if (model.scenes.empty()) {
+        for (size_t i = 0; i < model.nodes.size(); ++i) dfs((int)i, I);
     }
-    for (int c : n.children) TraverseNode(model, c, world, out);
+    else {
+        int s = model.defaultScene >= 0 ? model.defaultScene : 0;
+        for (int root : model.scenes[s].nodes) dfs(root, I);
+    }
+}
+
+inline DirectX::XMVECTOR NodeWorldForward(const DirectX::XMMATRIX& M)
+{
+    return XMVector3Normalize(XMVector4Transform(XMVectorSet(0, 0, -1, 0), M));
+}
+
+inline DirectX::XMVECTOR NodeWorldPosition(const DirectX::XMMATRIX& M)
+{
+    return M.r[3]; // (x,y,z,1)
+}
+
+inline int LightTypeToInt(const std::string& t)
+{
+    if (t == "directional") return 0;
+    if (t == "point")       return 1;
+    return 2; // "spot"
+}
+
+void CollectGLTFLights(const tinygltf::Model& model,
+    const std::vector<XMFLOAT4X4>& nodeWorldsLH,
+    std::vector<Light>& out)
+{
+    out.clear();
+
+    auto nodeLightIndex = [&](const tinygltf::Node& n)->int {
+#ifdef HAS_TINYGLTF_NODE_LIGHT
+        if (n.light >= 0) return n.light;
+#endif
+        auto it = n.extensions.find("KHR_lights_punctual");
+        if (it != n.extensions.end() && it->second.IsObject()) {
+            const auto& obj = it->second.Get<tinygltf::Value::Object>();
+            auto lit = obj.find("light");
+            if (lit != obj.end()) {
+                if (lit->second.IsInt())    return lit->second.Get<int>();
+                if (lit->second.IsNumber()) return (int)lit->second.GetNumberAsInt();
+            }
+        }
+        return -1;
+        };
+
+    for (size_t ni = 0; ni < model.nodes.size(); ++ni) {
+        int li = nodeLightIndex(model.nodes[ni]);
+        if (li < 0 || li >= (int)model.lights.size()) continue;
+
+        const auto& L = model.lights[li];
+        Light g{};
+
+        g.Color = { (float)L.color[0], (float)L.color[1], (float)L.color[2] };
+        g.Intensity = (float)L.intensity;
+        g.Type = LightTypeToInt(L.type);
+        g.Range = (L.range > 0.0) ? (float)L.range : -1.0f;
+
+        if (g.Type == LIGHT_TYPE_SPOT) {
+            g.InnerCos = cosf((float)L.spot.innerConeAngle);
+            g.OuterCos = cosf((float)L.spot.outerConeAngle);
+        }
+        else {
+            g.InnerCos = 0.0f; g.OuterCos = -1.0f;
+        }
+
+        XMMATRIX W = XMLoadFloat4x4(&nodeWorldsLH[ni]);
+        XMVECTOR dir = NodeWorldForward(W);
+        XMVECTOR pos = NodeWorldPosition(W);
+
+        XMStoreFloat3(&g.Direction, dir);
+        XMStoreFloat3(&g.Position, pos);
+
+        out.push_back(g);
+    }
 }
 
 SceneData LoadGLTFScene(const std::wstring& filename)
@@ -211,29 +293,33 @@ SceneData LoadGLTFScene(const std::wstring& filename)
     for (const auto& m : model.materials)
     {
         MaterialTex mt{};
-        if (m.pbrMetallicRoughness.baseColorTexture.index >= 0) mt.baseColor = m.pbrMetallicRoughness.baseColorTexture.index;
-        if (m.normalTexture.index >= 0)                         mt.normal = m.normalTexture.index;
-        if (m.occlusionTexture.index >= 0)                      mt.occlusion = m.occlusionTexture.index;
-        if (m.emissiveTexture.index >= 0)                       mt.emissive = m.emissiveTexture.index;
-        if (m.pbrMetallicRoughness.metallicRoughnessTexture.index >= 0) mt.metallicRoughness = m.pbrMetallicRoughness.metallicRoughnessTexture.index;
-
         if (m.pbrMetallicRoughness.baseColorFactor.size() == 4)
         {
-            mt.baseColorFactor = XMFLOAT4(
+            mt.DiffuseAlbedo = XMFLOAT4(
                 (float)m.pbrMetallicRoughness.baseColorFactor[0],
                 (float)m.pbrMetallicRoughness.baseColorFactor[1],
                 (float)m.pbrMetallicRoughness.baseColorFactor[2],
                 (float)m.pbrMetallicRoughness.baseColorFactor[3]);
         }
-        if (m.pbrMetallicRoughness.metallicFactor > 0)  mt.metallicFactor = (float)m.pbrMetallicRoughness.metallicFactor;
-        if (m.pbrMetallicRoughness.roughnessFactor > 0) mt.roughnessFactor = (float)m.pbrMetallicRoughness.roughnessFactor;
+        if (m.pbrMetallicRoughness.roughnessFactor > 0) mt.Roughness = (float)m.pbrMetallicRoughness.roughnessFactor;
+        if (m.pbrMetallicRoughness.metallicFactor > 0)  mt.Metallic = (float)m.pbrMetallicRoughness.metallicFactor;
+        if (m.normalTexture.scale > 0) mt.NormalScale = (float)m.normalTexture.scale;
+        if (m.occlusionTexture.strength > 0) mt.OcclusionStrength = (float)m.occlusionTexture.strength;
+        //if (m.extensions["KHR_materials_emissive_strength"])
+        if (m.emissiveFactor.size() == 3)
+        {
+            mt.EmissiveFactor = XMFLOAT3(
+                (float)m.emissiveFactor[0],
+                (float)m.emissiveFactor[1],
+                (float)m.emissiveFactor[2]
+            );
+        };
 
-        // alpha/doublesided
-        if (m.alphaMode == "BLEND") mt.alphaMode = 2;
-        else if (m.alphaMode == "MASK")  mt.alphaMode = 1;
-        else                             mt.alphaMode = 0;
-        mt.alphaCutoff = (float)m.alphaCutoff;
-        mt.doubleSided = m.doubleSided ? 1 : 0;
+        if (m.pbrMetallicRoughness.baseColorTexture.index >= 0) mt.BaseColorIndex = m.pbrMetallicRoughness.baseColorTexture.index;
+        if (m.normalTexture.index >= 0)                         mt.NormalIndex = m.normalTexture.index;
+        if (m.occlusionTexture.index >= 0)                      mt.OcclusionIndex = m.occlusionTexture.index;
+        if (m.emissiveTexture.index >= 0)                       mt.EmissiveIndex = m.emissiveTexture.index;
+        if (m.pbrMetallicRoughness.metallicRoughnessTexture.index >= 0) mt.ORMIndex = m.pbrMetallicRoughness.metallicRoughnessTexture.index;
 
         scene.materials.push_back(mt);
     }
@@ -281,13 +367,15 @@ SceneData LoadGLTFScene(const std::wstring& filename)
                     XMStoreFloat4x4(&lf, NodeLocal(n));
                     XMMATRIX lw = XMLoadFloat4x4(&lf);
                     XMMATRIX ww = XMMatrixMultiply(parent, lw);
+                    // RH→LH
+                    ww = FlipZ * ww * FlipZ;
                     if (n.mesh >= 0)
                     {
                         const auto& mesh = model.meshes[n.mesh];
                         for (size_t pi = 0; pi < mesh.primitives.size(); ++pi)
                         {
                             int primIdx = meshPrimOffset[n.mesh] + (int)pi;
-                            XMFLOAT4X4 W; XMStoreFloat4x4(&W, ww);
+                            XMFLOAT4X4 W; XMStoreFloat4x4(&W, XMMatrixTranspose(ww));
                             instRaw.emplace_back(primIdx, W);
                         }
                     }
@@ -310,13 +398,15 @@ SceneData LoadGLTFScene(const std::wstring& filename)
                 XMStoreFloat4x4(&lf, NodeLocal(n));
                 XMMATRIX lw = XMLoadFloat4x4(&lf);
                 XMMATRIX ww = XMMatrixMultiply(parent, lw);
+                // RH→LH
+                ww = FlipZ * ww * FlipZ;
                 if (n.mesh >= 0)
                 {
                     const auto& mesh = model.meshes[n.mesh];
                     for (size_t pi = 0; pi < mesh.primitives.size(); ++pi)
                     {
                         int primIdx = meshPrimOffset[n.mesh] + (int)pi;
-                        XMFLOAT4X4 W; XMStoreFloat4x4(&W, ww);
+                        XMFLOAT4X4 W; XMStoreFloat4x4(&W, XMMatrixTranspose(ww));
                         instRaw.emplace_back(primIdx, W);
                     }
                 }
@@ -334,6 +424,13 @@ SceneData LoadGLTFScene(const std::wstring& filename)
         ni.world = pr.second;
         scene.instances.push_back(ni);
     }
+
+    std::vector<XMFLOAT4X4> nodeWorldsLH;
+    BuildNodeWorlds(model, nodeWorldsLH);
+
+    // ... 인스턴스 만들 땐 XMMatrixTranspose(ww)를 저장 (위 1) 참조)
+
+    CollectGLTFLights(model, nodeWorldsLH, scene.lights); // 시그니처 변경
 
     return scene;
 }

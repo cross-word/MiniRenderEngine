@@ -148,7 +148,6 @@ float4 PSMain(VertexOut pin) : SV_Target
         pin.NormalW, toEyeW, shadowFactor);
 
     float4 litColor = ambient + directLight;
-    litColor.rgb = pow(saturate(litColor.rgb), 1.0 / 2.2);
     // Common convention to take alpha from diffuse albedo.
     litColor.a = diffuseAlbedo.a;
 

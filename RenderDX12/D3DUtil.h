@@ -4,6 +4,7 @@
 #include <wrl.h>
 #include <DirectXMath.h>
 #include "../MiniEngineCore/EngineConfig.h"
+#include "../FileLoader/GLTFLoader.h"
 using namespace DirectX;
 
 class DxException
@@ -47,18 +48,7 @@ enum class EViewType
     ERenderTargetView
 };
 
-struct Light
-{
-    DirectX::XMFLOAT3 Strength = { 0.5f, 0.5f, 0.5f };
-    float FalloffStart = 1.0f;                          // point/spot light only
-    DirectX::XMFLOAT3 Direction = { 0.0f, -1.0f, 0.0f };// directional/spot light only
-    float FalloffEnd = 10.0f;                           // point/spot light only
-    DirectX::XMFLOAT3 Position = { 0.0f, 0.0f, 0.0f };  // point/spot light only
-    float SpotPower = 64.0f;                            // spot light only
-};
-
-
-#define MaxLights 16
+#define MaxLights 25
 static XMFLOAT4X4 XMMatIdentity()
 {
     return XMFLOAT4X4({ 1, 0, 0, 0,
@@ -67,6 +57,7 @@ static XMFLOAT4X4 XMMatIdentity()
                         0, 0, 0, 1
                                 });
 }
+
 struct PassConstants // to slot b0 (per camera)
 {
     XMFLOAT4X4 View = XMMatIdentity();
@@ -101,13 +92,27 @@ struct ObjectConstants
 
 struct MaterialConstants
 {
-    XMFLOAT4 DiffuseAlbedo = { 1.0f, 1.0f, 1.0f, 1.0f };
-    XMFLOAT3 FresnelR0 = { 0.01f, 0.01f, 0.01f };
-    float Roughness = 0.25f;
+    DirectX::XMFLOAT4 DiffuseAlbedo = { 1,1,1,1 }; // = baseColorFactor
+    DirectX::XMFLOAT3 FresnelR0 = { 0.04f,0.04f,0.04f };
+    float              Roughness = 1.0f;      // perceptual roughness [0..1]
 
-    // Used in texture mapping.
-    DirectX::XMFLOAT4X4 MatTransform = XMMatIdentity();
+    DirectX::XMFLOAT4X4 MatTransform = XMMatIdentity(); // baseColor
+
+    float Metallic = 1.0f;        // metallicFactor
+    float NormalScale = 1.0f;        // normalTexture.scale
+    float OcclusionStrength = 1.0f;        // occlusionTexture.strength
+    float EmissiveStrength = 1.0f;        // KHR_materials_emissive_strength
+
+    DirectX::XMFLOAT3 EmissiveFactor = { 0,0,0 };
+    //float _pad0 = 0.f;
+
+    uint32_t BaseColorIndex = UINT32_MAX;
+    uint32_t NormalIndex = UINT32_MAX; 
+    uint32_t ORMIndex = UINT32_MAX;
+    uint32_t OcclusionIndex = UINT32_MAX;
+    uint32_t EmissiveIndex = UINT32_MAX;
 };
+static_assert(sizeof(MaterialConstants) % 16 == 0, "CB/SSBO align");
 
 struct Material // to slot b2 (per object)
 {

@@ -35,7 +35,7 @@ public:
     ID3D12CommandAllocator* GetWorkerAllocator(uint32_t i) { return m_workerAlloc[i].Get(); }
 
     void UpdatePassConstant();
-    void UploadPassConstant(D3DCamera* d3dCamera);
+    void UploadPassConstant(D3DCamera* d3dCamera, std::vector<Light>& lights);
     void UploadObjectConstant(
         ID3D12Device* device,
         DX12CommandList* DX12CommandList,
