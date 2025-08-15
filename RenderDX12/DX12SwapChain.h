@@ -21,7 +21,7 @@ public:
 	~DX12SwapChain();
 
 	void InitializeMultiSample(ID3D12Device* device);
-	void InitializeSwapChain(DX12CommandList* DX12CommandList, IDXGIFactory4* factory, HWND hWnd);
+	void InitializeSwapChain(DX12CommandList* dx12CommandList, IDXGIFactory4* factory, HWND hWnd);
 	inline IDXGISwapChain3* GetSwapChain() const noexcept { return m_swapChain.Get(); }
 	inline UINT GetSwapChainBufferCount() const noexcept { return m_swapChainBufferCount; }
 	inline DXGI_FORMAT GetRenderTargetFormat() const noexcept { return m_renderTargetFormat; }

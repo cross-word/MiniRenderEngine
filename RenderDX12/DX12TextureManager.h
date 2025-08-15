@@ -19,10 +19,15 @@ public:
 
     void LoadAndCreateTextureResource(
         ID3D12Device* device,
-        DX12CommandList* DX12CommandList,
+        DX12CommandList* dx12CommandList,
         const D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle,
         const wchar_t* filename,
         const std::string textureName);
+    void CreateDummyTextureResource(
+        ID3D12Device* device,
+        DX12CommandList* dx12CommandList,
+        const D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle);
+
     inline DX12ResourceTexture* GetTextureResource() const noexcept { return m_textureResource.get(); }
     inline DX12View* GetDX12TextureView() const noexcept { return m_DX12TextureView.get(); }
     inline std::string GetTextureName() const noexcept { return m_textureName; }

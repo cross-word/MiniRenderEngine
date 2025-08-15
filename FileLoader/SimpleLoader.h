@@ -13,13 +13,14 @@ using namespace DirectX;
 
 struct Vertex
 {
-    DirectX::XMFLOAT3 position;
-    DirectX::XMFLOAT3 normal;
-    DirectX::XMFLOAT2 texC;
-    DirectX::XMFLOAT4 tangent;
+    XMFLOAT3 position;
+    XMFLOAT3 normal;
+    XMFLOAT2 texC;
+    XMFLOAT4 tangent;
 };
 
-struct MeshData {
+struct MeshData
+{
     ~MeshData() = default;
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;

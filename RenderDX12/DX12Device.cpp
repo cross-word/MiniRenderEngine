@@ -3,49 +3,6 @@
 #include "D3DCamera.h"
 #include "../FileLoader/SimpleLoader.h"
 
-struct GltfImage {
-	std::string name, mimeType;
-	std::vector<uint8_t> rgba;  // 8-bit RGBA
-	int width = 0, height = 0, comp = 4;
-	bool srgb = false;            // baseColor만 true
-};
-
-static void CreateTextureSRV_FromRGBA8(
-	ID3D12Device* device,
-	DX12CommandList* cl,
-	const GltfImage& img,
-	D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle,
-	std::unique_ptr<DX12ResourceTexture>& outTex,
-	std::unique_ptr<DX12View>& outView)
-{
-	using namespace DirectX;
-	TexMetadata meta{};
-	meta.width = img.width; meta.height = img.height;
-	meta.arraySize = 1; meta.mipLevels = 1;
-	meta.format = img.srgb ? DXGI_FORMAT_R8G8B8A8_UNORM_SRGB : DXGI_FORMAT_R8G8B8A8_UNORM;
-	meta.dimension = TEX_DIMENSION_TEXTURE2D;
-
-	ScratchImage si;
-	ThrowIfFailed(si.Initialize2D(meta.format, meta.width, meta.height, 1, 1));
-	const Image* im = si.GetImage(0, 0, 0);
-	// pitch 보존하며 복사
-	const uint8_t* src = img.rgba.data();
-	for (size_t y = 0; y < meta.height; ++y) {
-		memcpy(im->pixels + y * im->rowPitch, src + y * (size_t)img.width * 4, (size_t)img.width * 4);
-	}
-
-	outTex = std::make_unique<DX12ResourceTexture>();
-	outTex->CreateTexture(device, cl, &meta, &si); // 이름은 DDSTexture지만 meta/si면 OK
-
-	D3D12_SHADER_RESOURCE_VIEW_DESC srv{};
-	srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srv.Format = meta.format;
-	srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srv.Texture2D.MipLevels = 1;
-	outView = std::make_unique<DX12View>(
-		device, EViewType::EShaderResourceView, outTex.get(), cpuHandle, nullptr, &srv);
-}
-
 DX12Device::DX12Device()
 {
 	m_fenceEvent = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
@@ -82,17 +39,17 @@ void DX12Device::Initialize(HWND hWnd, const std::wstring& sceneFile)
 		));
 	}
 
-	HRESULT hrCo = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+	ThrowIfFailed(CoInitializeEx(nullptr, COINIT_MULTITHREADED));
 
 	InitDX12RTVDescHeap();
 	InitDX12DSVDescHeap();
-	InitDX12SRVHeap(EngineConfig::MaxTextureCount);
+	InitDX12SRVHeap();
 	InitDX12ImGuiHeap();
 	InitDX12FrameResource();
 	InitDX12CommandList(m_DX12FrameResource[0]->GetCommandAllocator());
-	InitDX12FrameResourceCBVRSV();
+	CreateDX12FrameResourceSRV();
 	InitDX12SwapChain(hWnd);
-	InitDX12RootSignature(EngineConfig::MaxTextureCount);
+	InitDX12RootSignature();
 	CreateDX12PSO();
 }
 
@@ -118,8 +75,7 @@ void DX12Device::InitDX12RTVDescHeap()
 		m_device.Get(),
 		EngineConfig::SwapChainBufferCount + EngineConfig::SwapChainBufferCount, // back buffer + msaa buffer
 		D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
-		D3D12_DESCRIPTOR_HEAP_FLAG_NONE
-	);
+		D3D12_DESCRIPTOR_HEAP_FLAG_NONE);
 }
 
 void DX12Device::InitDX12DSVDescHeap()
@@ -129,19 +85,17 @@ void DX12Device::InitDX12DSVDescHeap()
 		m_device.Get(),
 		EngineConfig::SwapChainBufferCount + EngineConfig::SwapChainBufferCount, // back buffer + msaa buffer
 		D3D12_DESCRIPTOR_HEAP_TYPE_DSV,
-		D3D12_DESCRIPTOR_HEAP_FLAG_NONE
-	);
+		D3D12_DESCRIPTOR_HEAP_FLAG_NONE);
 }
 
-void DX12Device::InitDX12SRVHeap(size_t textureCount)
+void DX12Device::InitDX12SRVHeap()
 {
 	m_DX12SRVHeap = std::make_unique<DX12DescriptorHeap>();
 	m_DX12SRVHeap->Initialize(
 		m_device.Get(),
-		EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + textureCount + 1 + 1, // 1 constant(b0) * 3 frames + texture amount + 1 material vectors + 1 world vectors
+		EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + EngineConfig::MaxTextureCount + 1 + 1, // 1 constant(b0) * 3 frames + texture amount + 1 material vectors + 1 world vectors
 		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
-	);
+		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE);
 }
 
 void DX12Device::InitDX12ImGuiHeap()
@@ -151,14 +105,13 @@ void DX12Device::InitDX12ImGuiHeap()
 		m_device.Get(),
 		1, //  1 imgui
 		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE
-	);
+		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE);
 }
 
-void DX12Device::InitDX12RootSignature(size_t textureCount)
+void DX12Device::InitDX12RootSignature()
 {
 	m_DX12RootSignature = std::make_unique<DX12RootSignature>();
-	m_DX12RootSignature->Initialize(m_device.Get(), (UINT)textureCount);
+	m_DX12RootSignature->Initialize(m_device.Get());
 }
 
 void DX12Device::CreateDX12PSO()
@@ -190,7 +143,8 @@ void DX12Device::InitShader()
 
 	std::string poolMax = std::to_string(EngineConfig::MaxTextureCount);
 	std::string numLight = std::to_string(m_sceneData.lights.size() + 1);
-	D3D_SHADER_MACRO macros[] = {
+	D3D_SHADER_MACRO macros[] =
+	{
 		{ "NUM_TEXTURE", poolMax.c_str() },
 		{ "NUM_LIGHTS", numLight.c_str()},
 		{ nullptr, nullptr }
@@ -242,22 +196,21 @@ void DX12Device::PrepareInitialResource()
 			m_DX12CommandList.get(),
 			&cpuHandle,
 			m_sceneData.textures[i].c_str(),
-			texName
-		);
+			texName);
 		m_DX12TextureManager.push_back(std::move(tmpTexture));
 	}
 
-	const uint32_t used = m_sceneData.textures.size();
-	for (uint32_t i = used; i < EngineConfig::MaxTextureCount; ++i) {
-		auto cpu = m_DX12SRVHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + i).cpuDescHandle; // 테이블 내 i
-		std::unique_ptr<DX12ResourceTexture> tex;
-		std::unique_ptr<DX12View> view;
+	const uint32_t dummyStartIndex = m_sceneData.textures.size();
+	for (uint32_t i = dummyStartIndex; i < EngineConfig::MaxTextureCount; ++i)
+	{
+		auto cpuHandle = m_DX12SRVHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + (UINT)i).cpuDescHandle;
 
-		GltfImage one = {}; one.width = 1; one.height = 1; one.srgb = true;
-		one.rgba = { 255,255,255,255 }; // white
-		CreateTextureSRV_FromRGBA8(m_device.Get(), m_DX12CommandList.get(), one, cpu, tex, view);
-		m_gltfTextures.emplace_back(std::move(tex));
-		m_gltfTextureViews.emplace_back(std::move(view));
+		auto tmpTexture = std::make_unique<DX12TextureManager>();
+		tmpTexture->CreateDummyTextureResource(
+			m_device.Get(),
+			m_DX12CommandList.get(),
+			&cpuHandle);
+		m_DX12TextureManager.push_back(std::move(tmpTexture));
 	}
 
 	// build material SRV
@@ -364,11 +317,11 @@ void DX12Device::InitDX12FrameResource()
 	}
 }
 
-void DX12Device::InitDX12FrameResourceCBVRSV()
+void DX12Device::CreateDX12FrameResourceSRV()
 {
 	for (int i = 0; i < EngineConfig::SwapChainBufferCount; i++)
 	{
-		m_DX12FrameResource[i]->CreateCBVSRV(m_device.Get(), m_DX12CommandList->GetCommandList(), m_DX12SRVHeap.get(), i);
+		m_DX12FrameResource[i]->CreateSRV(m_device.Get(), m_DX12SRVHeap.get(), i);
 	}
 }
 

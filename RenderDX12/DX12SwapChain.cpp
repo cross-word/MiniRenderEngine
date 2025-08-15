@@ -29,7 +29,7 @@ void DX12SwapChain::InitializeMultiSample(ID3D12Device* device)
 	assert(m_8xMsaaQuality > 0 && "Unexpected MSAA quality level.");
 }
 
-void DX12SwapChain::InitializeSwapChain(DX12CommandList* DX12CommandList, IDXGIFactory4* factory, HWND hWnd)
+void DX12SwapChain::InitializeSwapChain(DX12CommandList* dx12CommandList, IDXGIFactory4* factory, HWND hWnd)
 {
 	//create swap chain
 	m_swapChain.Reset();
@@ -49,7 +49,7 @@ void DX12SwapChain::InitializeSwapChain(DX12CommandList* DX12CommandList, IDXGIF
 
 	ComPtr<IDXGISwapChain1> tmpSwapChain;
 	ThrowIfFailed(factory->CreateSwapChainForHwnd(
-		DX12CommandList->GetCommandQueue(),
+		dx12CommandList->GetCommandQueue(),
 		hWnd, //window
 		&swapChainDesc,
 		nullptr,

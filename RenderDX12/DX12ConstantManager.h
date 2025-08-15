@@ -28,10 +28,10 @@ class DX12MaterialConstantManager : public DX12ConstantManager
 public:
 	DX12MaterialConstantManager();
 	~DX12MaterialConstantManager();
-	void InitialzieUploadBuffer(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, UINT byteSize) override;
+	void InitialzieUploadBuffer(ID3D12Device* device, ID3D12GraphicsCommandList* commandList, UINT byteSize) override;
 	void InitializeSRV(ID3D12Device* device, const D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle, UINT numConstants, UINT byteStirde) override;
 
-	void PushMaterial(std::unique_ptr<Material>&& Mat);
+	void PushMaterial(std::unique_ptr<Material>&& material);
 	inline uint32_t GetMaterialCount() const noexcept { return m_materials.size(); }
 	inline Material* GetMaterial(UINT index) noexcept { return m_materials[index].get(); }
 	inline bool IsMaterailEmpty() const noexcept { return m_materials.empty(); }
@@ -53,14 +53,14 @@ public:
 
 	DX12ObjectConstantManager();
 	~DX12ObjectConstantManager();
-	void InitialzieUploadBuffer(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, UINT numConstants) override;
+	void InitialzieUploadBuffer(ID3D12Device* device, ID3D12GraphicsCommandList* commandList, UINT numConstants) override;
 	void InitializeSRV(ID3D12Device* device, const D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle, UINT numConstants, UINT byteStirde) override;
 
-	void CreateSingleUploadBuffer(ID3D12Device* device, UINT totalBytes);
+	void PushObjectConstant(ObjectConstants objectConstant);
+	void CreateObjectConstantUploadBuffer(ID3D12Device* device, UINT totalBytes);
 	void StageObjectConstants(const void* src, UINT byteSize, UINT dstOffset);
-	void RecordObjectConstants(DX12CommandList* DX12CommandList);
+	void RecordObjectConstants(DX12CommandList* dx12CommandList);
 
-	void PushObjectConstant(ObjectConstants Obj);
 	inline uint32_t GetObjectConstantCount() const noexcept { return m_objectConstants.size(); }
 	inline ObjectConstants& GetObjectConstant(UINT index) noexcept { return m_objectConstants[index]; }
 	inline bool IsobjectConstantEmpty() const noexcept { return m_objectConstants.empty(); }

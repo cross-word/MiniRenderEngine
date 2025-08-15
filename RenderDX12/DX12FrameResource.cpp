@@ -15,16 +15,16 @@ DX12FrameResource::~DX12FrameResource()
 
 }
 
-void DX12FrameResource::CreateCBVSRV(ID3D12Device* device, ID3D12GraphicsCommandList* m_commandList, DX12DescriptorHeap* cbvHeap, uint32_t frameIndex)
+void DX12FrameResource::CreateSRV(ID3D12Device* device, DX12DescriptorHeap* dx12DescriptorHeap, uint32_t frameIndex)
 {
 	//SET HEAP VAR
-//NEED FrameIndex, ThreadIndex, public descNum per frame, private descNum per thread, maxworker // in multi-thread env
+	//NEED FrameIndex, ThreadIndex, public descNum per frame, private descNum per thread, maxworker // in multi-thread env
 
-//CREATE CONSTANT BUFFER
-//ALLOCATE GPU ADDRESS
+	//CREATE CONSTANT BUFFER
+	//ALLOCATE GPU ADDRESS
 	uint32_t byteSize = CalcConstantBufferByteSize(sizeof(PassConstants));
 	int CBIndex = 0;
-	auto descCPUAddress = cbvHeap->Offset(cbvHeap->CalcHeapSliceShareBlock(frameIndex, 0, EngineConfig::ConstantBufferCount, 0, 0)).cpuDescHandle;
+	auto descCPUAddress = dx12DescriptorHeap->Offset(dx12DescriptorHeap->CalcHeapSliceShareBlock(frameIndex, 0, EngineConfig::ConstantBufferCount, 0, 0)).cpuDescHandle;
 
 	//PassConstantBuffer
 	m_DX12PassConstantBuffer = std::make_unique<DX12ResourceBuffer>();
@@ -49,7 +49,7 @@ void DX12FrameResource::UploadPassConstant(D3DCamera* d3dCamera, std::vector<Lig
 	passConst.AmbientLight = { 0.15f, 0.15f, 0.15f, 1.0f };
 	Light sun{}; //sun light
 
-	sun.Type = LIGHT_TYPE_DIRECTIONAL;   // 0
+	sun.Type = LIGHT_TYPE_DIRECTIONAL;
 	sun.Color = { 1.0f, 1.0f, 1.0f };
 	sun.Intensity = 10.5f;
 	sun.Direction = { 0.0f, -1.0f, 0.0f };
@@ -59,6 +59,7 @@ void DX12FrameResource::UploadPassConstant(D3DCamera* d3dCamera, std::vector<Lig
 	sun.OuterCos = -1.0f;
 	passConst.Lights[0] = sun;
 
+	//gather lights from .gltf
 	for (uint16_t i = 0; i < lights.size(); ++i)
 	{
 		passConst.Lights[i + 1].Color = lights[i].Color;
@@ -94,57 +95,57 @@ void DX12FrameResource::UploadPassConstant(D3DCamera* d3dCamera, std::vector<Lig
 
 void DX12FrameResource::UploadObjectConstant(
 	ID3D12Device* device, 
-	DX12CommandList* DX12CommandList,
+	DX12CommandList* dx12CommandList,
 	std::vector<Render::RenderItem>& renderItems,
-	DX12ObjectConstantManager* DX12ObjectConstantManager)
+	DX12ObjectConstantManager* dx12ObjectConstantManager)
 {
 	// Gather dirty object
-	struct Pending {
+	struct PendingObject
+	{
 		UINT index;
-		ObjectConstants data;
+		ObjectConstants constantData;
 	};
-	std::vector<Pending> dirty;
+	std::vector<PendingObject> dirtyObjects;
 
 	for (int i = 0; i < renderItems.size(); ++i) {
-		if (!renderItems[i].IsObjDirty())
+		if (!renderItems[i].IsObjectDirty())
 			continue;
 
 		// if new slot
-		if (DX12ObjectConstantManager->GetObjectConstantCount() < i + 1) 
+		if (dx12ObjectConstantManager->GetObjectConstantCount() < i + 1)
 		{
-			DX12ObjectConstantManager->PushObjectConstant(renderItems[i].GetObjectConstant());
+			dx12ObjectConstantManager->PushObjectConstant(renderItems[i].GetObjectConstant());
 			renderItems[i].SetObjConstantIndex(i);
 		}
 		else 
 		{
-			DX12ObjectConstantManager->GetObjectConstant(i)
+			dx12ObjectConstantManager->GetObjectConstant(i)
 				= renderItems[i].GetObjectConstant();
 		}
 
-		Pending p;
-		p.index = i;
-		p.data = renderItems[i].GetObjectConstant();
-		dirty.push_back(p);
+		PendingObject tmpObject;
+		tmpObject.index = i;
+		tmpObject.constantData = renderItems[i].GetObjectConstant();
+		dirtyObjects.push_back(tmpObject);
 	}
 
-	if (dirty.empty())
-		return;
+	if (dirtyObjects.empty()) return;
 
 	// create upload buffer
 	const UINT offsetStride = sizeof(ObjectConstants);
-	DX12ObjectConstantManager->CreateSingleUploadBuffer(device, dirty.size() * offsetStride);
+	dx12ObjectConstantManager->CreateObjectConstantUploadBuffer(device, dirtyObjects.size() * offsetStride);
 
 	// stage dirty objects on buffer
-	for (auto& d : dirty) 
+	for (auto& object : dirtyObjects)
 	{
-		const UINT dstOffset = d.index * offsetStride;
-		DX12ObjectConstantManager->StageObjectConstants(&d.data, offsetStride, dstOffset);
+		const UINT dstOffset = object.index * offsetStride;
+		dx12ObjectConstantManager->StageObjectConstants(&object.constantData, offsetStride, dstOffset);
 
-		renderItems[d.index].SetDirtyFlag(false);
+		renderItems[object.index].SetDirtyFlag(false);
 	}
 
 	// record
-	DX12ObjectConstantManager->RecordObjectConstants(DX12CommandList);
+	dx12ObjectConstantManager->RecordObjectConstants(dx12CommandList);
 }
 
 void DX12FrameResource::EnsureWorkerCapacity(ID3D12Device* device, uint32_t n) {
@@ -153,7 +154,9 @@ void DX12FrameResource::EnsureWorkerCapacity(ID3D12Device* device, uint32_t n) {
 	size_t old = m_workerAlloc.size();
 	m_workerAlloc.resize(n);
 	for (size_t i = old; i < n; ++i)
+	{
 		ThrowIfFailed(device->CreateCommandAllocator(
 			D3D12_COMMAND_LIST_TYPE_DIRECT,
 			IID_PPV_ARGS(m_workerAlloc[i].GetAddressOf())));
+	}
 }

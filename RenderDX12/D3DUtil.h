@@ -54,8 +54,7 @@ static XMFLOAT4X4 XMMatIdentity()
     return XMFLOAT4X4({ 1, 0, 0, 0,
                         0, 1, 0, 0,
                         0, 0, 1, 0,
-                        0, 0, 0, 1
-                                });
+                        0, 0, 0, 1});
 }
 
 struct PassConstants // to slot b0 (per camera)
@@ -92,18 +91,18 @@ struct ObjectConstants
 
 struct MaterialConstants
 {
-    DirectX::XMFLOAT4 DiffuseAlbedo = { 1,1,1,1 }; // = baseColorFactor
-    DirectX::XMFLOAT3 FresnelR0 = { 0.04f,0.04f,0.04f };
+    XMFLOAT4 DiffuseAlbedo = { 1,1,1,1 }; // = baseColorFactor
+    XMFLOAT3 FresnelR0 = { 0.04f,0.04f,0.04f };
     float              Roughness = 1.0f;      // perceptual roughness [0..1]
 
-    DirectX::XMFLOAT4X4 MatTransform = XMMatIdentity(); // baseColor
+    XMFLOAT4X4 MatTransform = XMMatIdentity(); // baseColor
 
     float Metallic = 1.0f;        // metallicFactor
     float NormalScale = 1.0f;        // normalTexture.scale
     float OcclusionStrength = 1.0f;        // occlusionTexture.strength
     float EmissiveStrength = 1.0f;        // KHR_materials_emissive_strength
 
-    DirectX::XMFLOAT3 EmissiveFactor = { 0,0,0 };
+    XMFLOAT3 EmissiveFactor = { 0,0,0 };
     //float _pad0 = 0.f;
 
     uint32_t BaseColorIndex = UINT32_MAX;

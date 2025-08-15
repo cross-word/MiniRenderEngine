@@ -71,9 +71,9 @@ void DX12CommandList::ResetList(ID3D12PipelineState* pInitiaState, ID3D12Command
 	return;
 }
 
-void DX12CommandList::ExecuteCommandLists(UINT NumCommandLists, ID3D12CommandList** ppCommandLists)
+void DX12CommandList::ExecuteCommandLists(UINT numCommandLists, ID3D12CommandList** ppCommandLists)
 {
-	m_commandQueue->ExecuteCommandLists(NumCommandLists, ppCommandLists);
+	m_commandQueue->ExecuteCommandLists(numCommandLists, ppCommandLists);
 
 	return;
 }

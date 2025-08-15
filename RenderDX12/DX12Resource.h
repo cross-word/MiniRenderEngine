@@ -30,7 +30,7 @@ public:
 	D3D12_GPU_VIRTUAL_ADDRESS GetGPUVAdress() const noexcept { return m_resource->GetGPUVirtualAddress(); }
 	D3D12_RESOURCE_STATES GetCurrentState() const noexcept { return m_currentState; }
 
-	void TransitionState(DX12CommandList* DX12CommandList, D3D12_RESOURCE_STATES newState);
+	void TransitionState(DX12CommandList* dx12CommandList, D3D12_RESOURCE_STATES newState);
 
 	void Reset() noexcept { m_resource.Reset(); m_currentState = D3D12_RESOURCE_STATE_COMMON; }
 	ID3D12Resource** GetAddressOf() noexcept { return m_resource.GetAddressOf(); }
@@ -44,8 +44,8 @@ class DX12ResourceBuffer : public DX12Resource
 public:
 	void ResetUploadBuffer() noexcept { m_uploadBuffer.Reset(); m_uploadBufferCurrentState = D3D12_RESOURCE_STATE_COMMON; }
 	void CreateConstantBuffer(ID3D12Device* device, uint32_t elementByteSize);
-    void CreateVertexBuffer(ID3D12Device* device, std::span<const Vertex> vertices, DX12CommandList* DX12CommandList);
-	void CreateIndexBuffer(ID3D12Device* device, std::span<const uint32_t> indices, DX12CommandList* DX12CommandList);
+    void CreateVertexBuffer(ID3D12Device* device, std::span<const Vertex> vertices, DX12CommandList* dx12CommandList);
+	void CreateIndexBuffer(ID3D12Device* device, std::span<const uint32_t> indices, DX12CommandList* dx12CommandList);
 	void CopyAndUploadResource(ID3D12Resource* uploadBuffer, const void* sourceAddress, size_t dataSize, CD3DX12_RANGE* readRange = nullptr);
 
 private:
@@ -78,16 +78,14 @@ public:
 
 	void CreateTexture(
 		ID3D12Device* device,
-		DX12CommandList* DX12CommandList,
-		TexMetadata* texMeta,
-		ScratchImage* img
-	);
+		DX12CommandList* dx12CommandList,
+		TexMetadata* texMetaData,
+		ScratchImage* img);
 
 	void CreateMaterialorObjectResource(
 		ID3D12Device* device,
-		ID3D12GraphicsCommandList* cmdList,
-		UINT byteSize
-	);
+		UINT byteSize);
+
 private:
 	ComPtr<ID3D12Resource> m_uploadBuffer;
 	D3D12_RESOURCE_STATES  m_uploadBufferCurrentState = D3D12_RESOURCE_STATE_COMMON; //default state common

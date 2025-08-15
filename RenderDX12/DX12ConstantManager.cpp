@@ -11,14 +11,12 @@ DX12ConstantManager::~DX12ConstantManager()
 
 }
 
-void DX12ConstantManager::InitialzieUploadBuffer(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, UINT byteSize)
+void DX12ConstantManager::InitialzieUploadBuffer(ID3D12Device* device, ID3D12GraphicsCommandList* commandList, UINT byteSize)
 {
     m_DX12ConstantUploader = std::make_unique<DX12ResourceTexture>();
     m_DX12ConstantUploader->CreateMaterialorObjectResource(
 		device,
-		cmdList,
-        byteSize
-	);
+        byteSize);
 }
 
 void DX12ConstantManager::InitializeSRV(ID3D12Device* device, const D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle, UINT numConstants, UINT byteStirde)
@@ -39,18 +37,7 @@ void DX12ConstantManager::InitializeSRV(ID3D12Device* device, const D3D12_CPU_DE
         m_DX12ConstantUploader.get(),
         *cpuHandle,
         nullptr,
-        &srvDesc
-    );
-}
-
-DX12MaterialConstantManager::DX12MaterialConstantManager()
-{
-
-}
-
-DX12MaterialConstantManager::~DX12MaterialConstantManager()
-{
-
+        &srvDesc);
 }
 
 void DX12ConstantManager::UploadConstant(ID3D12Device* device, DX12CommandList* dx12CommandList, UINT byteSize, const void* sourceAddress)
@@ -63,14 +50,24 @@ void DX12ConstantManager::UploadConstant(ID3D12Device* device, DX12CommandList* 
     m_DX12ConstantUploader->TransitionState(dx12CommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 }
 
-void DX12MaterialConstantManager::InitialzieUploadBuffer(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, UINT byteSize)
+DX12MaterialConstantManager::DX12MaterialConstantManager()
+{
+
+}
+
+DX12MaterialConstantManager::~DX12MaterialConstantManager()
+{
+
+}
+
+void DX12MaterialConstantManager::InitialzieUploadBuffer(ID3D12Device* device, ID3D12GraphicsCommandList* commandList, UINT byteSize)
 {
     if (m_materials.empty())
     {
         ::OutputDebugStringA("No Material was Loaded in Material Manager!");
         assert(m_materials.empty());
     }
-    DX12ConstantManager::InitialzieUploadBuffer(device, cmdList, byteSize);
+    DX12ConstantManager::InitialzieUploadBuffer(device, commandList, byteSize);
 }
 
 void DX12MaterialConstantManager::InitializeSRV(ID3D12Device* device, const D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle, UINT numConstants, UINT byteStirde)
@@ -83,28 +80,28 @@ void DX12MaterialConstantManager::InitializeSRV(ID3D12Device* device, const D3D1
     DX12ConstantManager::InitializeSRV(device, cpuHandle, numConstants, byteStirde);
 }
 
-void DX12MaterialConstantManager::PushMaterial(std::unique_ptr<Material>&& Mat)
+void DX12MaterialConstantManager::PushMaterial(std::unique_ptr<Material>&& material)
 {
-    if (Mat == nullptr) return;
+    if (material == nullptr) return;
 
-    MaterialConstants tmpMatConst;
-    tmpMatConst.DiffuseAlbedo = Mat->matConstant.DiffuseAlbedo;
-    tmpMatConst.FresnelR0 = Mat->matConstant.FresnelR0;
-    tmpMatConst.Roughness = Mat->matConstant.Roughness;
-    tmpMatConst.Metallic = Mat->matConstant.Metallic;
-    tmpMatConst.NormalScale = Mat->matConstant.NormalScale;
-    tmpMatConst.OcclusionStrength = Mat->matConstant.OcclusionStrength;
-    tmpMatConst.EmissiveStrength = Mat->matConstant.EmissiveStrength;
-    tmpMatConst.EmissiveFactor = Mat->matConstant.EmissiveFactor;
-    tmpMatConst.BaseColorIndex = Mat->matConstant.BaseColorIndex;
-    tmpMatConst.NormalIndex = Mat->matConstant.NormalIndex;
-    tmpMatConst.ORMIndex = Mat->matConstant.ORMIndex;
-    tmpMatConst.OcclusionIndex = Mat->matConstant.OcclusionIndex;
-    tmpMatConst.EmissiveIndex = Mat->matConstant.EmissiveIndex;
+    MaterialConstants tmpMaterialConst;
+    tmpMaterialConst.DiffuseAlbedo = material->matConstant.DiffuseAlbedo;
+    tmpMaterialConst.FresnelR0 = material->matConstant.FresnelR0;
+    tmpMaterialConst.Roughness = material->matConstant.Roughness;
+    tmpMaterialConst.Metallic = material->matConstant.Metallic;
+    tmpMaterialConst.NormalScale = material->matConstant.NormalScale;
+    tmpMaterialConst.OcclusionStrength = material->matConstant.OcclusionStrength;
+    tmpMaterialConst.EmissiveStrength = material->matConstant.EmissiveStrength;
+    tmpMaterialConst.EmissiveFactor = material->matConstant.EmissiveFactor;
+    tmpMaterialConst.BaseColorIndex = material->matConstant.BaseColorIndex;
+    tmpMaterialConst.NormalIndex = material->matConstant.NormalIndex;
+    tmpMaterialConst.ORMIndex = material->matConstant.ORMIndex;
+    tmpMaterialConst.OcclusionIndex = material->matConstant.OcclusionIndex;
+    tmpMaterialConst.EmissiveIndex = material->matConstant.EmissiveIndex;
 
 
-    m_materialConstant.emplace_back(tmpMatConst);
-    m_materials.emplace_back(std::move(Mat));
+    m_materialConstant.emplace_back(tmpMaterialConst);
+    m_materials.emplace_back(std::move(material));
 }
 
 DX12ObjectConstantManager::DX12ObjectConstantManager()
@@ -127,16 +124,18 @@ void DX12ObjectConstantManager::InitializeSRV(ID3D12Device* device, const D3D12_
     DX12ConstantManager::InitializeSRV(device, cpuHandle, numConstants, byteStirde);
 }
 
-void DX12ObjectConstantManager::PushObjectConstant(ObjectConstants Obj)
+void DX12ObjectConstantManager::PushObjectConstant(ObjectConstants objectConstant)
 {
-    m_objectConstants.emplace_back(Obj);
+    m_objectConstants.emplace_back(objectConstant);
 }
 
-void DX12ObjectConstantManager::CreateSingleUploadBuffer(ID3D12Device* device, UINT totalBytes)
+void DX12ObjectConstantManager::CreateObjectConstantUploadBuffer(ID3D12Device* device, UINT totalBytes)
 {
+    //reset record helpers
     m_regions.clear();
     m_cursor = 0;
     m_capacity = totalBytes;
+
     m_DX12ConstantUploader->CreateUploadBuffer(device, totalBytes);
 
     // Map
@@ -145,36 +144,37 @@ void DX12ObjectConstantManager::CreateSingleUploadBuffer(ID3D12Device* device, U
     m_mappedBase = reinterpret_cast<std::byte*>(mapped);
 }
 
+//stage on dirty object constant
 void DX12ObjectConstantManager::StageObjectConstants(const void* src, UINT byteSize, UINT dstOffset)
 {
     memcpy(m_mappedBase + m_cursor, src, byteSize);
 
-    ConstantCopyRegion r;
-    r.srcOffset = m_cursor;
-    r.dstOffset = dstOffset;
-    r.byteSize = byteSize;
-    m_regions.push_back(r);
+    ConstantCopyRegion tmpCopyRegion;
+    tmpCopyRegion.srcOffset = m_cursor;
+    tmpCopyRegion.dstOffset = dstOffset;
+    tmpCopyRegion.byteSize = byteSize;
+    m_regions.push_back(tmpCopyRegion);
 
     m_cursor += byteSize;
 }
 
-void DX12ObjectConstantManager::RecordObjectConstants(DX12CommandList* DX12CommandList)
+void DX12ObjectConstantManager::RecordObjectConstants(DX12CommandList* dx12CommandList)
 {
     m_DX12ConstantUploader->GetUploadBuffer()->Unmap(0, nullptr);
-    m_DX12ConstantUploader->TransitionState(DX12CommandList, D3D12_RESOURCE_STATE_COPY_DEST);
-    DX12CommandList->RecordResourceStateTransition();
+    m_DX12ConstantUploader->TransitionState(dx12CommandList, D3D12_RESOURCE_STATE_COPY_DEST);
+    dx12CommandList->RecordResourceStateTransition();
 
-    for (const auto& r : m_regions) 
+    for (const auto& uploadAddressResion : m_regions) 
     {
-        DX12CommandList->GetCommandList()->CopyBufferRegion(
+        dx12CommandList->GetCommandList()->CopyBufferRegion(
             m_DX12ConstantUploader->GetResource(),
-            static_cast<UINT64>(r.dstOffset),
+            static_cast<UINT64>(uploadAddressResion.dstOffset),
             m_DX12ConstantUploader->GetUploadBuffer(),
-            static_cast<UINT64>(r.srcOffset),
-            static_cast<UINT64>(r.byteSize));
+            static_cast<UINT64>(uploadAddressResion.srcOffset),
+            static_cast<UINT64>(uploadAddressResion.byteSize));
     }
-    m_DX12ConstantUploader->TransitionState(DX12CommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-    DX12CommandList->RecordResourceStateTransition();
+    m_DX12ConstantUploader->TransitionState(dx12CommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+    dx12CommandList->RecordResourceStateTransition();
     //reset
     m_mappedBase = nullptr;
     m_regions.clear();

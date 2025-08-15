@@ -68,13 +68,13 @@ private:
 	void InitDX12SwapChain(HWND hWnd);
 	void InitDX12RTVDescHeap();
 	void InitDX12DSVDescHeap();
-	void InitDX12SRVHeap(size_t textureCount);
+	void InitDX12SRVHeap();
 	void InitDX12ImGuiHeap();
-	void InitDX12RootSignature(size_t textureCount);
+	void InitDX12RootSignature();
 	void InitShader(); //temp func
 
 	void InitDX12FrameResource();
-	void InitDX12FrameResourceCBVRSV();
+	void CreateDX12FrameResourceSRV();
 private:
 	ComPtr<IDXGIFactory4> m_factory;
 	ComPtr<ID3D12Device> m_device;
@@ -96,7 +96,7 @@ private:
 	std::unique_ptr<DX12DescriptorHeap> m_DX12ImGuiHeap; //Imgui-SRV
 	std::unique_ptr<DX12DescriptorHeap> m_DX12DSVHeap;
 	std::unique_ptr<DX12ObjectConstantManager> m_DX12ObjectConstantManager;
-	///tmp variable
+
 	ComPtr<ID3DBlob> m_vertexShader = nullptr;
 	ComPtr<ID3DBlob> m_pixelShader = nullptr;
 	std::vector<D3D12_INPUT_ELEMENT_DESC> m_inputLayout;
@@ -108,8 +108,4 @@ private:
 
 	SceneData m_sceneData;
 	std::vector<std::unique_ptr<DX12RenderGeometry>> m_sceneGeometry;
-
-	std::vector<std::unique_ptr<DX12ResourceTexture>> m_gltfTextures;
-	std::vector<std::unique_ptr<DX12View>> m_gltfTextureViews;
-
 };

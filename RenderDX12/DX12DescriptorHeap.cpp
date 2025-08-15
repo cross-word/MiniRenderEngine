@@ -24,8 +24,7 @@ void DX12DescriptorHeap::Initialize(
 	cbvHeapDesc.Flags = descFlag;
 	cbvHeapDesc.NodeMask = nodeMask;
 	ThrowIfFailed(device->CreateDescriptorHeap(
-		&cbvHeapDesc, IID_PPV_ARGS(m_descHeap.GetAddressOf())
-	));
+		&cbvHeapDesc, IID_PPV_ARGS(m_descHeap.GetAddressOf())));
 	m_descriptorIncrementSize = device->GetDescriptorHandleIncrementSize(descHeapType);
 }
 

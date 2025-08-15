@@ -12,7 +12,7 @@ DX12RootSignature::~DX12RootSignature()
 
 }
 
-void DX12RootSignature::Initialize(ID3D12Device* device, UINT textureCount)
+void DX12RootSignature::Initialize(ID3D12Device* device)
 {
 	// Root parameter can be a table, root descriptor or root constants.
 	CD3DX12_ROOT_PARAMETER1 slotRootParameter[4];
@@ -20,29 +20,25 @@ void DX12RootSignature::Initialize(ID3D12Device* device, UINT textureCount)
 	// Create a single descriptor table of CBVs.
 	CD3DX12_DESCRIPTOR_RANGE1 cbvTable;
 	cbvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
-	//cbvTable[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1);
 
 	CD3DX12_DESCRIPTOR_RANGE1 srvTexTable;//t0 space 0 texture
 	srvTexTable.Init(
 		D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
 		EngineConfig::MaxTextureCount,
 		0,
-		0
-	);
+		0);
 
 	CD3DX12_DESCRIPTOR_RANGE1 srvTable[2]; //t0 space 1 materials, t1 space 1 worlds
 	srvTable[0].Init(
 		D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
 		1,
 		0,
-		1
-	);
+		1);
 	srvTable[1].Init(
 		D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
 		1,
 		1,
-		1
-	);
+		1);
 
 	auto staticSamplers = GetStaticSamplers();
 

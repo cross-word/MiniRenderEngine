@@ -25,19 +25,19 @@ public:
     ~DX12FrameBuffer();
 
 
-    void Initialize(DX12Device* DX12Device);
-    void Resize(DX12Device* DX12Device);
-    void CheckFence(DX12Device* DX12Device, UINT currBackBufferIndex);
-    void BeginFrame(DX12CommandList* DX12CommandList, UINT currBackBufferIndex);
-    void EndFrame(DX12CommandList* DX12CommandList, UINT currBackBufferIndex, DXGI_FORMAT RTFormat);
-    void SetBackBufferPresent(DX12CommandList* DX12CommandList, UINT currBackBufferIndex);
-    void Present(DX12Device* DX12Device);
+    void Initialize(DX12Device* dx12Device);
+    void Resize(DX12Device* dx12Device);
+    void CheckFence(DX12Device* dx12Device, UINT currBackBufferIndex);
+    void BeginFrame(DX12CommandList* dx12CommandList, UINT currBackBufferIndex);
+    void EndFrame(DX12CommandList* dx12CommandList, UINT currBackBufferIndex, DXGI_FORMAT renderTargetFormat);
+    void SetBackBufferPresent(DX12CommandList* dx12CommandList, UINT currBackBufferIndex);
+    void Present(DX12Device* dx12Device);
 private:
-    void CreateRenderTargetsAndViews(DX12Device* DX12Device);
-    void CreateDepthStencilAndView(DX12Device* DX12Device);
-    void CreateMsaaRenderTargetAndView(DX12Device* DX12Device);
-    void CreateMsaaDepthStencilAndView(DX12Device* DX12Device);
-    void SetViewPortAndScissor(DX12Device* DX12Device);
+    void CreateRenderTargetsAndViews(DX12Device* dx12Device);
+    void CreateDepthStencilAndView(DX12Device* dx12Device);
+    void CreateMsaaRenderTargetAndView(DX12Device* dx12Device);
+    void CreateMsaaDepthStencilAndView(DX12Device* dx12Device);
+    void SetViewPortAndScissor(DX12Device* dx12Device);
 
     std::unique_ptr<DX12Resource> m_DX12RenderTargets[EngineConfig::SwapChainBufferCount];
     std::unique_ptr<DX12View> m_DX12RenderTargetViews[EngineConfig::SwapChainBufferCount];

@@ -18,22 +18,24 @@ const uint8_t* GetDataPtr(const tinygltf::Model& model, const tinygltf::Accessor
 
 size_t CompSize(int componentType)
 {
-    switch (componentType) {
-    case TINYGLTF_COMPONENT_TYPE_FLOAT:         return 4;
-    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:return 2;
-    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE: return 1;
-    default: return 4;
+    switch (componentType)
+    {
+        case TINYGLTF_COMPONENT_TYPE_FLOAT:         return 4;
+        case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:return 2;
+        case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE: return 1;
+        default: return 4;
     }
 }
 
 size_t ElemCount(int type)
 {
-    switch (type) {
-    case TINYGLTF_TYPE_SCALAR: return 1;
-    case TINYGLTF_TYPE_VEC2:   return 2;
-    case TINYGLTF_TYPE_VEC3:   return 3;
-    case TINYGLTF_TYPE_VEC4:   return 4;
-    default: return 0;
+    switch (type)
+    {
+        case TINYGLTF_TYPE_SCALAR: return 1;
+        case TINYGLTF_TYPE_VEC2:   return 2;
+        case TINYGLTF_TYPE_VEC3:   return 3;
+        case TINYGLTF_TYPE_VEC4:   return 4;
+        default: return 0;
     }
 }
 
@@ -139,11 +141,7 @@ MeshData BuildMeshFromPrimitive(const tinygltf::Model& model, const tinygltf::Pr
         if (posAcc) { readVec(posAcc, i, tmp, 3); v.position = { tmp[0], tmp[1], -tmp[2] }; }
         if (nrmAcc) { readVec(nrmAcc, i, tmp, 3); v.normal = { tmp[0], tmp[1], -tmp[2] }; }
         if (texAcc) { readVec(texAcc, i, tmp, 2); v.texC = { tmp[0], tmp[1] }; } // 필요 시 v = 1 - v[1]
-        if (tanAcc) {
-            float t[4] = { 0,0,0,1 };
-            readVec(tanAcc, i, t, 4);
-            v.tangent = { t[0], t[1], -t[2], -t[3] };
-        }
+        if (tanAcc) { float t[4] = { 0,0,0,1 }; readVec(tanAcc, i, t, 4); v.tangent = { t[0], t[1], -t[2], -t[3] }; }
 
         md.vertices.push_back(v);
     }
@@ -197,12 +195,12 @@ void BuildNodeWorlds(const tinygltf::Model& model,
     }
 }
 
-inline DirectX::XMVECTOR NodeWorldForward(const DirectX::XMMATRIX& M)
+inline XMVECTOR NodeWorldForward(const XMMATRIX& M)
 {
     return XMVector3Normalize(XMVector4Transform(XMVectorSet(0, 0, -1, 0), M));
 }
 
-inline DirectX::XMVECTOR NodeWorldPosition(const DirectX::XMMATRIX& M)
+inline XMVECTOR NodeWorldPosition(const XMMATRIX& M)
 {
     return M.r[3]; // (x,y,z,1)
 }
@@ -225,10 +223,12 @@ void CollectGLTFLights(const tinygltf::Model& model,
         if (n.light >= 0) return n.light;
 #endif
         auto it = n.extensions.find("KHR_lights_punctual");
-        if (it != n.extensions.end() && it->second.IsObject()) {
+        if (it != n.extensions.end() && it->second.IsObject())
+        {
             const auto& obj = it->second.Get<tinygltf::Value::Object>();
             auto lit = obj.find("light");
-            if (lit != obj.end()) {
+            if (lit != obj.end())
+            {
                 if (lit->second.IsInt())    return lit->second.Get<int>();
                 if (lit->second.IsNumber()) return (int)lit->second.GetNumberAsInt();
             }
@@ -236,7 +236,8 @@ void CollectGLTFLights(const tinygltf::Model& model,
         return -1;
         };
 
-    for (size_t ni = 0; ni < model.nodes.size(); ++ni) {
+    for (size_t ni = 0; ni < model.nodes.size(); ++ni)
+    {
         int li = nodeLightIndex(model.nodes[ni]);
         if (li < 0 || li >= (int)model.lights.size()) continue;
 
@@ -248,11 +249,13 @@ void CollectGLTFLights(const tinygltf::Model& model,
         g.Type = LightTypeToInt(L.type);
         g.Range = (L.range > 0.0) ? (float)L.range : -1.0f;
 
-        if (g.Type == LIGHT_TYPE_SPOT) {
+        if (g.Type == LIGHT_TYPE_SPOT)
+        {
             g.InnerCos = cosf((float)L.spot.innerConeAngle);
             g.OuterCos = cosf((float)L.spot.outerConeAngle);
         }
-        else {
+        else
+        {
             g.InnerCos = 0.0f; g.OuterCos = -1.0f;
         }
 
@@ -314,8 +317,7 @@ SceneData LoadGLTFScene(const std::wstring& filename)
             mt.EmissiveFactor = XMFLOAT3(
                 (float)m.emissiveFactor[0],
                 (float)m.emissiveFactor[1],
-                (float)m.emissiveFactor[2]
-            );
+                (float)m.emissiveFactor[2]);
         };
 
         if (m.pbrMetallicRoughness.baseColorTexture.index >= 0) mt.BaseColorIndex = m.pbrMetallicRoughness.baseColorTexture.index;
@@ -431,9 +433,7 @@ SceneData LoadGLTFScene(const std::wstring& filename)
     std::vector<XMFLOAT4X4> nodeWorldsLH;
     BuildNodeWorlds(model, nodeWorldsLH);
 
-    // ... 인스턴스 만들 땐 XMMatrixTranspose(ww)를 저장 (위 1) 참조)
-
-    CollectGLTFLights(model, nodeWorldsLH, scene.lights); // 시그니처 변경
+    CollectGLTFLights(model, nodeWorldsLH, scene.lights);
 
     return scene;
 }

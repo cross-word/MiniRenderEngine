@@ -16,7 +16,7 @@ class DX12RootSignature
 public:
 	DX12RootSignature();
 	~DX12RootSignature();
-	void Initialize(ID3D12Device* device, UINT textureCount);
+	void Initialize(ID3D12Device* device);
 	inline ID3D12RootSignature* GetRootSignature() const noexcept { return m_rootSignature.Get(); }
 
 private:

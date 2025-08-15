@@ -22,14 +22,14 @@ public:
 		m_DX12IndexView = moveGeo.m_DX12IndexView;
 		m_indexFormat = moveGeo.m_indexFormat;
 		m_primitiveTopologyType = moveGeo.m_primitiveTopologyType;
-		m_IndexCount = moveGeo.m_IndexCount;
-		m_VertexCount = moveGeo.m_VertexCount;
+		m_indexCount = moveGeo.m_indexCount;
+		m_vertexCount = moveGeo.m_vertexCount;
 	}
 
 	bool InitMeshFromData(
 		ID3D12Device* device,
 		DX12CommandList* dx12CommandList,
-		const MeshData& mesh,
+		const MeshData& meshData,
 		D3D12_PRIMITIVE_TOPOLOGY vertexPrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	inline DX12ResourceBuffer* GetDX12VertexBuffer() const noexcept { return m_DX12VertexBuffer.get(); }
@@ -38,8 +38,8 @@ public:
 	inline DX12View* GetDX12IndexBufferView() const noexcept { return m_DX12IndexView.get(); }
 
 	inline D3D12_PRIMITIVE_TOPOLOGY GetPrimitiveTopologyType() const { return m_primitiveTopologyType; }
-	inline UINT GetIndexCount() const noexcept { return m_IndexCount; }
-	inline UINT GetVertexCount() const noexcept { return m_VertexCount; }
+	inline UINT GetIndexCount() const noexcept { return m_indexCount; }
+	inline UINT GetVertexCount() const noexcept { return m_vertexCount; }
 
 private:
 	//vertex
@@ -53,8 +53,8 @@ private:
 
 	//rendering info
 	D3D12_PRIMITIVE_TOPOLOGY m_primitiveTopologyType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST; //default
-	UINT m_IndexCount = 0;
-	UINT m_VertexCount = 0;
+	UINT m_indexCount = 0;
+	UINT m_vertexCount = 0;
 };
 
 namespace Render
@@ -62,33 +62,33 @@ namespace Render
 	struct RenderItem
 	{
 	public:
-		void SetRenderGeometry(DX12RenderGeometry* renderGeo) { m_renderGeomery = renderGeo; }
+		void SetRenderGeometry(DX12RenderGeometry* dx12RenderGeoetry) { m_DX12RenderGeomery = dx12RenderGeoetry; }
 		void SetTextureIndex(UINT index) { m_textureIndex = index; }
 		void SetMaterialIndex(UINT index) { m_materialIndex = index; }
 		void SetStartIndexLocation(UINT index) { m_startIndexLocation = index; }
 		void SetBaseVertexLocation(UINT index) { m_baseVertexLocation = index; }
-		void SetObjWorldMatrix(const XMFLOAT4X4& mat) { m_objConst.World = mat; m_bObjDirty = true; }
-		void SetObjTransformMatrix(const XMFLOAT4X4& mat) { m_objConst.TexTransform = mat; m_bObjDirty = true; }
+		void SetObjWorldMatrix(const XMFLOAT4X4& worldMatrix) { m_objectConst.World = worldMatrix; m_bObjectDirty = true; }
+		void SetObjTransformMatrix(const XMFLOAT4X4& transformMatrix) { m_objectConst.TexTransform = transformMatrix; m_bObjectDirty = true; }
 		void SetObjConstantIndex(UINT index) { m_objectIndex = index; }
-		void SetDirtyFlag(bool b) { m_bObjDirty = b; }
+		void SetDirtyFlag(bool bdirty) { m_bObjectDirty = bdirty; }
 
-		DX12RenderGeometry* GetRenderGeometry() { return m_renderGeomery; }
+		DX12RenderGeometry* GetRenderGeometry() { return m_DX12RenderGeomery; }
 		UINT GetTextureIndex() { return m_textureIndex; }
 		UINT GetMaterialIndex() { return m_materialIndex; }
 		UINT GetStartIndexLocation() { return m_startIndexLocation; }
 		UINT GetBaseVertexLocation() { return m_baseVertexLocation; }
-		ObjectConstants& GetObjectConstant() { return m_objConst; }
-		bool IsObjDirty() { return m_bObjDirty; }
+		ObjectConstants& GetObjectConstant() { return m_objectConst; }
+		bool IsObjectDirty() { return m_bObjectDirty; }
 		UINT GetObjectConstantIndex() { return m_objectIndex; }
 	private:
-		DX12RenderGeometry* m_renderGeomery;
-		ObjectConstants m_objConst;
+		DX12RenderGeometry* m_DX12RenderGeomery;
+		ObjectConstants m_objectConst;
 
 		UINT m_textureIndex = 0;
 		UINT m_materialIndex = 0;
 		UINT m_startIndexLocation = 0; // + previous index size
 		UINT m_baseVertexLocation = 0; // + previous vertex size
 		UINT m_objectIndex = 0;
-		bool m_bObjDirty = true;
+		bool m_bObjectDirty = true;
 	};
 }

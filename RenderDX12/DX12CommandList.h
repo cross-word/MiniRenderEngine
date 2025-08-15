@@ -31,7 +31,7 @@ public:
 	void FlushCommandQueue();
 	void ResetList(ID3D12CommandAllocator* commandAllocator);
 	void ResetList(ID3D12PipelineState* pInitiaState, ID3D12CommandAllocator* commandAllocator);
-	void ExecuteCommandLists(UINT NumCommandLists, ID3D12CommandList** ppCommandLists);
+	void ExecuteCommandLists(UINT numCommandLists, ID3D12CommandList** ppCommandLists);
 	void SubmitAndWait();
 	UINT64 Signal();
 

@@ -29,7 +29,7 @@ void D3DCamera::Rotate(float dx, float dy)
 {
     m_yaw += dx;
     m_pitch += dy;
-    const float limit = DirectX::XM_PIDIV2 - 0.01f;
+    const float limit = XM_PIDIV2 - 0.01f;
     if (m_pitch > limit) m_pitch = limit;
     if (m_pitch < -limit) m_pitch = -limit;
 }

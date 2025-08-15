@@ -12,13 +12,13 @@ DX12Resource::~DX12Resource()
 
 }
 
-void DX12Resource::TransitionState(DX12CommandList* DX12CommandList, D3D12_RESOURCE_STATES newState)
+void DX12Resource::TransitionState(DX12CommandList* dx12CommandList, D3D12_RESOURCE_STATES newState)
 {
 	assert(m_resource);
 	if (m_currentState == newState) return;
 
 	auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_resource.Get(), m_currentState, newState);
-	DX12CommandList->PushStateTransition(barrier);
+	dx12CommandList->PushStateTransition(barrier);
 	m_currentState = newState;
 
 	return;
@@ -34,12 +34,11 @@ void DX12ResourceBuffer::CreateConstantBuffer(ID3D12Device* device, uint32_t ele
 		&bufferDesc,
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
-		IID_PPV_ARGS(&m_resource)
-	));
+		IID_PPV_ARGS(&m_resource)));
 	m_currentState = D3D12_RESOURCE_STATE_GENERIC_READ;
 }
 
-void DX12ResourceBuffer::CreateVertexBuffer(ID3D12Device* device, std::span<const Vertex> vertices, DX12CommandList* DX12CommandList)
+void DX12ResourceBuffer::CreateVertexBuffer(ID3D12Device* device, std::span<const Vertex> vertices, DX12CommandList* dx12CommandList)
 {
 	// resourcse which do not change during frame upload to GPU in initial time!!
 
@@ -57,8 +56,8 @@ void DX12ResourceBuffer::CreateVertexBuffer(ID3D12Device* device, std::span<cons
 		nullptr,
 		IID_PPV_ARGS(&m_resource)));
 	m_currentState = D3D12_RESOURCE_STATE_COMMON;
-	TransitionState(DX12CommandList, D3D12_RESOURCE_STATE_COPY_DEST);
-	DX12CommandList->RecordResourceStateTransition();
+	TransitionState(dx12CommandList, D3D12_RESOURCE_STATE_COPY_DEST);
+	dx12CommandList->RecordResourceStateTransition();
 
 	CD3DX12_HEAP_PROPERTIES heapProp2 = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
 	CD3DX12_RESOURCE_DESC descBuffer2 = CD3DX12_RESOURCE_DESC::Buffer(vertexSize);
@@ -73,11 +72,11 @@ void DX12ResourceBuffer::CreateVertexBuffer(ID3D12Device* device, std::span<cons
 	m_uploadBufferCurrentState = D3D12_RESOURCE_STATE_GENERIC_READ;
 
 	CopyAndUploadResource(m_uploadBuffer.Get(), vertices.data(), static_cast<size_t>(vertexSize));
-	DX12CommandList->GetCommandList()->CopyBufferRegion(m_resource.Get(), 0, m_uploadBuffer.Get(), 0, vertexSize);
-	TransitionState(DX12CommandList, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+	dx12CommandList->GetCommandList()->CopyBufferRegion(m_resource.Get(), 0, m_uploadBuffer.Get(), 0, vertexSize);
+	TransitionState(dx12CommandList, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 }
 
-void DX12ResourceBuffer::CreateIndexBuffer(ID3D12Device* device, std::span<const uint32_t> indices, DX12CommandList* DX12CommandList)
+void DX12ResourceBuffer::CreateIndexBuffer(ID3D12Device* device, std::span<const uint32_t> indices, DX12CommandList* dx12CommandList)
 {
 	// resourcse which do not change during frame upload to GPU in initial time!!
 
@@ -94,8 +93,8 @@ void DX12ResourceBuffer::CreateIndexBuffer(ID3D12Device* device, std::span<const
 		nullptr,
 		IID_PPV_ARGS(&m_resource)));
 	m_currentState = D3D12_RESOURCE_STATE_COMMON;
-	TransitionState(DX12CommandList, D3D12_RESOURCE_STATE_COPY_DEST);
-	DX12CommandList->RecordResourceStateTransition();
+	TransitionState(dx12CommandList, D3D12_RESOURCE_STATE_COPY_DEST);
+	dx12CommandList->RecordResourceStateTransition();
 
 	CD3DX12_HEAP_PROPERTIES heapProp2 = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
 	CD3DX12_RESOURCE_DESC descBuffer2 = CD3DX12_RESOURCE_DESC::Buffer(indexSize);
@@ -109,8 +108,8 @@ void DX12ResourceBuffer::CreateIndexBuffer(ID3D12Device* device, std::span<const
 	m_uploadBufferCurrentState = D3D12_RESOURCE_STATE_GENERIC_READ;
 
 	CopyAndUploadResource(m_uploadBuffer.Get(), indices.data(), static_cast<size_t>(indexSize));
-	DX12CommandList->GetCommandList()->CopyBufferRegion(m_resource.Get(), 0, m_uploadBuffer.Get(), 0, indexSize);
-	TransitionState(DX12CommandList, D3D12_RESOURCE_STATE_INDEX_BUFFER);
+	dx12CommandList->GetCommandList()->CopyBufferRegion(m_resource.Get(), 0, m_uploadBuffer.Get(), 0, indexSize);
+	TransitionState(dx12CommandList, D3D12_RESOURCE_STATE_INDEX_BUFFER);
 }
 
 void DX12ResourceBuffer::CopyAndUploadResource(ID3D12Resource* uploadBuffer, const void* sourceAddress, size_t dataSize, CD3DX12_RANGE* readRange)
@@ -162,8 +161,7 @@ void DX12ResourceTexture::CreateDepthStencil(
 		&DSVDesc,
 		D3D12_RESOURCE_STATE_COMMON,
 		&optClear,
-		IID_PPV_ARGS(&m_resource))
-	);
+		IID_PPV_ARGS(&m_resource)));
 	m_currentState = D3D12_RESOURCE_STATE_COMMON;
 }
 
@@ -202,66 +200,69 @@ void DX12ResourceTexture::CreateRenderTarget(
 		&RTVDesc,
 		D3D12_RESOURCE_STATE_RENDER_TARGET,
 		&optClear,
-		IID_PPV_ARGS(&m_resource))
-	);
+		IID_PPV_ARGS(&m_resource)));
 	m_currentState = D3D12_RESOURCE_STATE_RENDER_TARGET;
 }
 
 void DX12ResourceTexture::CreateTexture(
 	ID3D12Device* device,
-	DX12CommandList* DX12CommandList,
-	TexMetadata* texMeta,
-	ScratchImage* img
-)
+	DX12CommandList* dx12CommandList,
+	TexMetadata* texMetaData,
+	ScratchImage* img)
 {
 	D3D12_RESOURCE_DESC texDesc = {};
-	texDesc.Dimension = (texMeta->dimension == TEX_DIMENSION_TEXTURE2D)
-		? D3D12_RESOURCE_DIMENSION_TEXTURE2D : D3D12_RESOURCE_DIMENSION_TEXTURE3D;
-	texDesc.Width = (UINT)texMeta->width;
-	texDesc.Height = (UINT)texMeta->height;
-	texDesc.DepthOrArraySize = (UINT)((texMeta->dimension == TEX_DIMENSION_TEXTURE3D) ? texMeta->depth : texMeta->arraySize);
-	texDesc.MipLevels = (UINT)texMeta->mipLevels;
-	texDesc.Format = texMeta->format; // ÇÊ¿ä ½Ã MakeSRGB(meta.format)
+	texDesc.Dimension = (texMetaData->dimension == TEX_DIMENSION_TEXTURE2D) ? D3D12_RESOURCE_DIMENSION_TEXTURE2D : D3D12_RESOURCE_DIMENSION_TEXTURE3D;
+	texDesc.Width = (UINT)texMetaData->width;
+	texDesc.Height = (UINT)texMetaData->height;
+	texDesc.DepthOrArraySize = (UINT)((texMetaData->dimension == TEX_DIMENSION_TEXTURE3D) ? texMetaData->depth : texMetaData->arraySize);
+	texDesc.MipLevels = (UINT)texMetaData->mipLevels;
+	texDesc.Format = texMetaData->format;
 	texDesc.SampleDesc = { 1, 0 };
 	texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 
 	CD3DX12_HEAP_PROPERTIES defaultHeap(D3D12_HEAP_TYPE_DEFAULT);
 	ThrowIfFailed(device->CreateCommittedResource(
-		&defaultHeap, D3D12_HEAP_FLAG_NONE,
-		&texDesc, D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
+		&defaultHeap,
+		D3D12_HEAP_FLAG_NONE,
+		&texDesc,
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		nullptr,
 		IID_PPV_ARGS(m_resource.GetAddressOf())));
 	m_currentState = D3D12_RESOURCE_STATE_COPY_DEST;
 
-	std::vector<D3D12_SUBRESOURCE_DATA> subs;
-	subs.reserve(texMeta->mipLevels * texMeta->arraySize);
-	for (size_t a = 0; a < texMeta->arraySize; ++a)
-		for (size_t m = 0; m < texMeta->mipLevels; ++m) {
-			auto* imgLevel = img->GetImage(m, a, 0);
-			D3D12_SUBRESOURCE_DATA s{};
-			s.pData = imgLevel->pixels;
-			s.RowPitch = imgLevel->rowPitch;
-			s.SlicePitch = imgLevel->slicePitch;
-			subs.push_back(s);
+	std::vector<D3D12_SUBRESOURCE_DATA> subResourceData;
+	subResourceData.reserve(texMetaData->mipLevels * texMetaData->arraySize);
+	for (size_t i = 0; i < texMetaData->arraySize; ++i)
+	{
+		for (size_t j = 0; j < texMetaData->mipLevels; ++j)
+		{
+			auto* imgLevel = img->GetImage(j, i, 0);
+			D3D12_SUBRESOURCE_DATA tmpSubData{};
+			tmpSubData.pData = imgLevel->pixels;
+			tmpSubData.RowPitch = imgLevel->rowPitch;
+			tmpSubData.SlicePitch = imgLevel->slicePitch;
+			subResourceData.push_back(tmpSubData);
 		}
+	}
 
-	UINT64 uploadBytes = GetRequiredIntermediateSize(m_resource.Get(), 0, (UINT)subs.size());
+	UINT64 uploadBytes = GetRequiredIntermediateSize(m_resource.Get(), 0, (UINT)subResourceData.size());
 	CD3DX12_HEAP_PROPERTIES uploadHeap(D3D12_HEAP_TYPE_UPLOAD);
 	auto uploadDesc = CD3DX12_RESOURCE_DESC::Buffer(uploadBytes);
 	ThrowIfFailed(device->CreateCommittedResource(
-		&uploadHeap, D3D12_HEAP_FLAG_NONE, &uploadDesc,
-		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(m_uploadBuffer.GetAddressOf())));
+		&uploadHeap,
+		D3D12_HEAP_FLAG_NONE,
+		&uploadDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(m_uploadBuffer.GetAddressOf())));
 
-	//TransitionState(DX12CommandList, D3D12_RESOURCE_STATE_COPY_DEST);
-	//DX12CommandList->RecordResourceStateTransition();
-	UpdateSubresources(DX12CommandList->GetCommandList(), m_resource.Get(), m_uploadBuffer.Get(), 0, 0, (UINT)subs.size(), subs.data());
-	TransitionState(DX12CommandList, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	UpdateSubresources(dx12CommandList->GetCommandList(), m_resource.Get(), m_uploadBuffer.Get(), 0, 0, (UINT)subResourceData.size(), subResourceData.data());
+	TransitionState(dx12CommandList, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 }
 
 void DX12ResourceTexture::CreateMaterialorObjectResource(
 	ID3D12Device* device,
-	ID3D12GraphicsCommandList* cmdList,
-	UINT byteSize
-)
+	UINT byteSize)
 {
 	CD3DX12_HEAP_PROPERTIES defaultHeap(D3D12_HEAP_TYPE_DEFAULT);
 

@@ -23,24 +23,23 @@ public:
     ~DX12FrameResource();
 
     inline ID3D12CommandAllocator* GetCommandAllocator() const noexcept { return m_commandAllocator.Get(); }
-    inline UINT64 GetFenceValue() { return m_fence; }
+    inline UINT64 GetFenceValue() const noexcept  { return m_fence; }
     inline void SetFenceValue(uint64_t newFenceValue) { m_fence = newFenceValue; }
     inline DX12ResourceBuffer* GetDX12PassConstantBuffer() const noexcept { return m_DX12PassConstantBuffer.get(); }
     inline DX12View* GetDX12PassConstantBufferView() const noexcept { return m_DX12PassConstantBufferView.get(); }
     void ResetAllocator() { ThrowIfFailed(m_commandAllocator->Reset()); }
-    void CreateCBVSRV(ID3D12Device* device, ID3D12GraphicsCommandList* m_commandList, DX12DescriptorHeap* cbvHeap, uint32_t frameIndex);
+    void CreateSRV(ID3D12Device* device, DX12DescriptorHeap* dx12DescriptorHeap, uint32_t frameIndex);
 
     //prepare for multi-thread
     void EnsureWorkerCapacity(ID3D12Device* device, uint32_t workerCount);
     ID3D12CommandAllocator* GetWorkerAllocator(uint32_t i) { return m_workerAlloc[i].Get(); }
 
-    void UpdatePassConstant();
     void UploadPassConstant(D3DCamera* d3dCamera, std::vector<Light>& lights);
     void UploadObjectConstant(
         ID3D12Device* device,
-        DX12CommandList* DX12CommandList,
+        DX12CommandList* dx12CommandList,
         std::vector<Render::RenderItem>& renderItems,
-        DX12ObjectConstantManager* DX12ObjectConstantManager);
+        DX12ObjectConstantManager* dx12ObjectConstantManager);
 
 private:
     // 명령 할당자는 GPU가 명령들을 다 처리한 후 재설정해야한다.
