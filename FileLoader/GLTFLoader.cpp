@@ -136,14 +136,13 @@ MeshData BuildMeshFromPrimitive(const tinygltf::Model& model, const tinygltf::Pr
         Vertex v{};
         float tmp[4] = { 0,0,0,0 };
 
-        if (posAcc) { readVec(posAcc, i, tmp, 3); v.position = { tmp[0], tmp[1], tmp[2] }; }
-        if (nrmAcc) { readVec(nrmAcc, i, tmp, 3); v.normal = { tmp[0], tmp[1], tmp[2] }; }
+        if (posAcc) { readVec(posAcc, i, tmp, 3); v.position = { tmp[0], tmp[1], -tmp[2] }; }
+        if (nrmAcc) { readVec(nrmAcc, i, tmp, 3); v.normal = { tmp[0], tmp[1], -tmp[2] }; }
         if (texAcc) { readVec(texAcc, i, tmp, 2); v.texC = { tmp[0], tmp[1] }; } // ÇÊ¿ä ½Ã v = 1 - v[1]
         if (tanAcc) {
             float t[4] = { 0,0,0,1 };
             readVec(tanAcc, i, t, 4);
-            v.tangent = { t[0], t[1], t[2], t[3] };
-            v.tangent.w = -v.tangent.w;
+            v.tangent = { t[0], t[1], -t[2], -t[3] };
         }
 
         md.vertices.push_back(v);
@@ -165,7 +164,11 @@ MeshData BuildMeshFromPrimitive(const tinygltf::Model& model, const tinygltf::Pr
         else
             md.indices.push_back(*(const uint8_t*)p);
     }
-
+    if (prim.mode == TINYGLTF_MODE_TRIANGLES)
+    {
+        for (size_t i = 0; i + 2 < md.indices.size(); i += 3)
+            std::swap(md.indices[i + 1], md.indices[i + 2]);
+    }
     return md;
 }
 
