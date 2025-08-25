@@ -18,7 +18,8 @@ void DX12PSO::CreatePSO(
 	DXGI_FORMAT depthStencilFormat,
 	DXGI_FORMAT renderTargetFormat,
 	ID3DBlob* vertexShader,
-	ID3DBlob* pixelShader)
+	ID3DBlob* pixelShader,
+	UINT numRenderTarget)
 {
 	// Describe and create the graphics pipeline state object (PSO).
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
@@ -34,7 +35,7 @@ void DX12PSO::CreatePSO(
 	psoDesc.SampleDesc.Quality = 0;
 	psoDesc.SampleMask = UINT_MAX;
 	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-	psoDesc.NumRenderTargets = 1;
+	psoDesc.NumRenderTargets = numRenderTarget;
 	psoDesc.RTVFormats[0] = renderTargetFormat;
 	psoDesc.SampleDesc.Count = EngineConfig::MsaaSampleCount;
 	psoDesc.SampleDesc.Quality = 0;

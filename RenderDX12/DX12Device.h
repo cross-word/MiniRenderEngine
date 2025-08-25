@@ -15,6 +15,7 @@
 #include "D3DCamera.h"
 #include "../FileLoader/GLTFLoader.h"
 #include "DX12TextureManager.h"
+#include "DX12ShadowManager.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
@@ -56,9 +57,9 @@ public:
 	inline UINT GetCurrentBackBufferIndex() const noexcept { return m_currBackBufferIndex; }
 	inline DX12FrameResource* GetFrameResource(UINT currBackBufferIndex) const noexcept { return m_DX12FrameResource[currBackBufferIndex].get(); }
 	inline size_t GetTextureCount() const noexcept { return m_sceneData.textures.size(); }
+	inline DX12ShadowManager* GetDX12ShadowManager() const noexcept { return m_DX12ShadowManager.get(); }
 	inline void SetCurrentBackBufferIndex(UINT newIndex) { m_currBackBufferIndex = newIndex; }
 
-	void CreateDX12PSO();
 	void PrepareInitialResource();
 	void UpdateFrameResource();
 	UINT GetTextureIndexAsTextureName(const std::string textureName);
@@ -71,10 +72,12 @@ private:
 	void InitDX12SRVHeap();
 	void InitDX12ImGuiHeap();
 	void InitDX12RootSignature();
+	void CreateDX12PSO();
 	void InitShader(); //temp func
 
 	void InitDX12FrameResource();
 	void CreateDX12FrameResourceSRV();
+	void InitDX12ShadowManager();
 private:
 	ComPtr<IDXGIFactory4> m_factory;
 	ComPtr<ID3D12Device> m_device;
@@ -96,9 +99,12 @@ private:
 	std::unique_ptr<DX12DescriptorHeap> m_DX12ImGuiHeap; //Imgui-SRV
 	std::unique_ptr<DX12DescriptorHeap> m_DX12DSVHeap;
 	std::unique_ptr<DX12ObjectConstantManager> m_DX12ObjectConstantManager;
+	std::unique_ptr<DX12ShadowManager> m_DX12ShadowManager;
 
 	ComPtr<ID3DBlob> m_vertexShader = nullptr;
 	ComPtr<ID3DBlob> m_pixelShader = nullptr;
+	ComPtr<ID3DBlob> m_shadowVertexShader = nullptr;
+	ComPtr<ID3DBlob> m_shadowPixelShader = nullptr;
 	std::vector<D3D12_INPUT_ELEMENT_DESC> m_inputLayout;
 
 	std::unique_ptr <D3DCamera> m_camera = std::make_unique<D3DCamera>();

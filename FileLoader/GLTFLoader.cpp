@@ -212,7 +212,8 @@ inline int LightTypeToInt(const std::string& t)
     return 2; // "spot"
 }
 
-void CollectGLTFLights(const tinygltf::Model& model,
+void CollectGLTFLights(
+    const tinygltf::Model& model,
     const std::vector<XMFLOAT4X4>& nodeWorldsLH,
     std::vector<Light>& out)
 {

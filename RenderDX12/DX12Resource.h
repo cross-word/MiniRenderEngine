@@ -86,6 +86,13 @@ public:
 		ID3D12Device* device,
 		UINT byteSize);
 
+	void CreateShadowResource(
+		ID3D12Device* device,
+		uint32_t shadowWidth,
+		uint32_t shadowHeight,
+		DXGI_FORMAT shadowResourceFormat,
+		DXGI_FORMAT shadowDSVFormat);
+
 private:
 	ComPtr<ID3D12Resource> m_uploadBuffer;
 	D3D12_RESOURCE_STATES  m_uploadBufferCurrentState = D3D12_RESOURCE_STATE_COMMON; //default state common

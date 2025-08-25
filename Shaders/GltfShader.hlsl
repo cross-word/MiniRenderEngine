@@ -32,10 +32,16 @@
     #define LIGHT_TYPE_SPOT 2
 #endif
 
-// Include structures and functions for lighting.
-#include "GltfLightingUtil.hlsl"
+#ifndef SHADOW_BIAS
+#define SHADOW_BIAS 0.0015f
+#endif
+#define SHADOW_PCF_3x3
 
-Texture2D    gDiffuseMap[NUM_TEXTURE] : register(t0, space0);
+
+// Include structures and functions for lighting.
+//#include "GltfLightingUtil.hlsl"
+#include "Common.hlsl"
+#include "LightingUtil.hlsl"
 
 struct MaterialParam
 {
@@ -63,8 +69,10 @@ struct ObjectParam
     float4x4 gTransform;
 };
 
+Texture2D    gDiffuseMap[NUM_TEXTURE] : register(t0, space0);
 StructuredBuffer<MaterialParam> gMaterials : register(t0, space1);
 StructuredBuffer<ObjectParam>   gObject    : register(t1, space1);
+Texture2D gShadowMap : register(t2, space1);
 
 SamplerState gsamPointWrap        : register(s0);
 SamplerState gsamPointClamp       : register(s1);
@@ -72,6 +80,7 @@ SamplerState gsamLinearWrap       : register(s2);
 SamplerState gsamLinearClamp      : register(s3);
 SamplerState gsamAnisotropicWrap  : register(s4);
 SamplerState gsamAnisotropicClamp : register(s5);
+SamplerComparisonState gsamShadow : register(s6);
 
 // Constant data that varies per frame.
 cbuffer cbPass : register(b0)
@@ -92,6 +101,9 @@ cbuffer cbPass : register(b0)
     float gDeltaTime;
     float4 gAmbientLight;
 
+    float4x4 gLightViewProj;
+    float2 gShadowTexelSize; float2 _padShadow;
+
     // Indices [0, NUM_DIR_LIGHTS) are directional lights;
     // indices [NUM_DIR_LIGHTS, NUM_DIR_LIGHTS+NUM_POINT_LIGHTS) are point lights;
     // indices [NUM_DIR_LIGHTS+NUM_POINT_LIGHTS, NUM_DIR_LIGHTS+NUM_POINT_LIGHT+NUM_SPOT_LIGHTS)
@@ -99,7 +111,8 @@ cbuffer cbPass : register(b0)
     Light gLights[NUM_LIGHTS];
 };
 
-cbuffer cbMaterialIndex : register(b2) {
+cbuffer cbMaterialIndex : register(b2)
+{
     uint gMaterialIndex;
     uint gTexIndex;
     uint gObjectId;
@@ -113,115 +126,140 @@ struct VertexIn
     float4 TangentL : TANGENT;
 };
 
-struct VertexOut {
+struct VertexOut
+{
     float4 PosH : SV_POSITION;
     float3 PosW : POSITION;
     float3 NormalW : NORMAL;
     float3 TangentW : TANGENT;
-    float3 BitangentW : BINORMAL;
+    //float3 BitangentW : BINORMAL;
     float2 TexC : TEXCOORD;
 };
 
+float ComputeShadowFactorWS(float3 posWS)
+{
+    float4 posL = mul(float4(posWS, 1.0f), gLightViewProj);
+    float  invW = rcp(max(abs(posL.w), 1e-6));
+    float3 ndc = posL.xyz * invW;
+    float2 uv = ndc.xy * 0.5f + 0.5f;
+    float  zRef = ndc.z - SHADOW_BIAS;
+
+    if (any(uv < 0.0) || any(uv > 1.0) || zRef <= 0.0 || zRef >= 1.0)
+        return 1.0;
+
+#ifdef SHADOW_PCF_3x3
+    if (gShadowTexelSize.x > 0 && gShadowTexelSize.y > 0)
+    {
+        float sum = 0.0f;
+        [unroll] for (int y = -1; y <= 1; ++y)
+        {
+            [unroll] for (int x = -1; x <= 1; ++x)
+            {
+                float2 off = float2(x, y) * gShadowTexelSize;
+                sum += gShadowMap.SampleCmpLevelZero(gsamShadow, uv + off, zRef);
+            }
+        }
+        return sum / 9.0f;
+    }
+#endif
+
+    return gShadowMap.SampleCmpLevelZero(gsamShadow, uv, zRef);
+}
+
 VertexOut VSMain(VertexIn vin)
 {
-    VertexOut v = (VertexOut)0;
+    VertexOut vout = (VertexOut)0.0f;
 
-    float4 posW = mul(float4(vin.PosL, 1), gObject[gObjectId].gWorlds);
-    v.PosW = posW.xyz;
+    // Fetch the material data.
+    MaterialParam matParam = gMaterials[gMaterialIndex];
 
-    float3x3 world3 = transpose((float3x3)gObject[gObjectId].gWorlds);   // = W
-    float3x3 normalMat = transpose(inverse3x3(world3));                   // = (W^-1)^T
+    // Transform to world space.
+    float4 posW = mul(float4(vin.PosL, 1.0f), gObject[gObjectId].gWorlds);
+    vout.PosW = posW.xyz;
 
-    v.NormalW = normalize(mul(vin.NormalL, normalMat));
-    v.TangentW = normalize(mul(vin.TangentL.xyz, world3));
-    v.BitangentW = normalize(cross(v.NormalW, v.TangentW) * vin.TangentL.w);
+    // Assumes nonuniform scaling; otherwise, need to use inverse-transpose of world matrix.
+    vout.NormalW = mul(vin.NormalL, (float3x3)gObject[gObjectId].gWorlds);
 
-    v.PosH = mul(posW, gViewProj);
-    v.TexC = mul(float4(vin.TexC, 0, 1), gObject[gObjectId].gTransform).xy;
-    v.TexC = mul(float4(v.TexC, 0, 1), gMaterials[gMaterialIndex].gMatTransform).xy;
-    return v;
+    vout.TangentW = mul(vin.TangentL.xyz, (float3x3)gObject[gObjectId].gWorlds);
+
+    // Transform to homogeneous clip space.
+    vout.PosH = mul(posW, gViewProj);
+
+    // Output vertex attributes for interpolation across triangle.
+    float4 texC = mul(float4(vin.TexC, 0.0f, 1.0f), gObject[gObjectId].gTransform);
+    vout.TexC = mul(texC, gMaterials[gMaterialIndex].gMatTransform).xy;
+
+    return vout;
 }
 
 float4 PSMain(VertexOut pin) : SV_Target
 {
-    MaterialParam M = gMaterials[gMaterialIndex];
+    // Fetch the material data.
+    MaterialParam matParam = gMaterials[gMaterialIndex];
+    float4 diffuseAlbedo = matParam.gDiffuseAlbedo;
+    float3 fresnelR0 = matParam.gFresnelR0;
+    float  roughness = matParam.gMetallic;
+    uint diffuseMapIndex = matParam.gBaseColorIdx;
+    uint normalMapIndex = matParam.gNormalIdx;
 
-    // BaseColor
-    if (M.gBaseColorIdx >= NUM_TEXTURE) return float4(1,1,1,1);
-    float2 uv = pin.TexC;
-    float4 baseSRGB = gDiffuseMap[NonUniformResourceIndex(M.gBaseColorIdx)]
-                        .Sample(gsamAnisotropicWrap, uv);
-    float3 baseColor = (baseSRGB * M.gDiffuseAlbedo).rgb;
+    // Dynamically look up the texture in the array.
+    diffuseAlbedo *= gDiffuseMap[diffuseMapIndex].Sample(gsamAnisotropicWrap, pin.TexC);
 
-    // MR Linear
-    float rough = saturate(M.gRoughness);
-    float metal = saturate(M.gMetallic);
-    if (M.gORMIdx < NUM_TEXTURE) {
-        float2 gb = gDiffuseMap[NonUniformResourceIndex(M.gORMIdx)]
-            .Sample(gsamLinearWrap, uv).gb;
-        rough = saturate(rough * gb.x);
-        metal = saturate(metal * gb.y);
-    }
+#ifdef ALPHA_TEST
+    // Discard pixel if texture alpha < 0.1.  We do this test as soon 
+    // as possible in the shader so that we can potentially exit the
+    // shader early, thereby skipping the rest of the shader code.
+    clip(diffuseAlbedo.a - 0.1f);
+#endif
 
-    // AO Linear
-    float ao = 1.0;
-    if (M.gOcclusionIndex < NUM_TEXTURE) {
-        float occ = gDiffuseMap[NonUniformResourceIndex(M.gOcclusionIndex)]
-            .Sample(gsamLinearWrap, uv).r;
-        ao = lerp(1.0, occ, M.gOcclusionStrength);
-    }
+    // Interpolating normal can unnormalize it, so renormalize it.
+    pin.NormalW = normalize(pin.NormalW);
 
-    // Normal Linear
-    float3 N = normalize(pin.NormalW);
-    if (M.gNormalIdx < NUM_TEXTURE) {
-        float3 nTS = gDiffuseMap[NonUniformResourceIndex(M.gNormalIdx)]
-            .Sample(gsamAnisotropicWrap, pin.TexC).xyz * 2.0 - 1.0;
-        nTS.xy *= M.gNormalScale;
+    float4 normalMapSample = gDiffuseMap[normalMapIndex].Sample(gsamAnisotropicWrap, pin.TexC);
+    float3 bumpedNormalW = NormalSampleToWorldSpace(normalMapSample.rgb, pin.NormalW, pin.TangentW);
 
-        float3 N = normalize(nTS.x * pin.TangentW + nTS.y * pin.BitangentW + nTS.z * pin.NormalW);
-    }
+    // Uncomment to turn off normal mapping.
+    //bumpedNormalW = pin.NormalW;
 
-    // lights
-    float3 V = normalize(gEyePosW - pin.PosW);
-    float3 Lo = 0;
-    #if (NUM_DIR_LIGHTS > 0)
-        [unroll] for (int i = 0; i < NUM_DIR_LIGHTS; ++i) {
-            float3 L = normalize(-gLights[i].Direction);
-            float3 E = gLights[i].Color * gLights[i].Intensity; // lux
-            Lo += DirectPBR(L, E, N, V, baseColor, metal, rough);
-        }
-    #endif
-    #if (NUM_POINT_LIGHTS > 0)
-        [unroll] for (int i = NUM_DIR_LIGHTS; i < NUM_DIR_LIGHTS + NUM_POINT_LIGHTS; ++i) {
-            float3 Lvec = gLights[i].Position - pin.PosW;
-            float  d = length(Lvec); float3 L = Lvec / max(d,1e-4);
-            float3 E = gLights[i].Color * (gLights[i].Intensity / max(d * d,1e-6));
-            E *= RangeAttenuation(d, gLights[i].Range);
-            Lo += DirectPBR(L, E, N, V, baseColor, metal, rough);
-        }
-    #endif
-    #if (NUM_SPOT_LIGHTS > 0)
-        [unroll] for (int i = NUM_DIR_LIGHTS + NUM_POINT_LIGHTS; i < NUM_DIR_LIGHTS + NUM_POINT_LIGHTS + NUM_SPOT_LIGHTS; ++i) {
-            float3 Lvec = gLights[i].Position - pin.PosW;
-            float  d = length(Lvec); float3 L = Lvec / max(d,1e-4);
-            float3 E = gLights[i].Color * (gLights[i].Intensity / max(d * d,1e-6));
-            E *= RangeAttenuation(d, gLights[i].Range);
-            float ct = dot(-L, gLights[i].Direction);
-            float spot = SpotAttenuation(ct, gLights[i].InnerCos, gLights[i].OuterCos);
-            Lo += DirectPBR(L, E * spot, N, V, baseColor, metal, rough);
-        }
-    #endif
+    // Vector from point being lit to eye. 
+    float3 toEyeW = normalize(gEyePosW - pin.PosW);
 
-    float3 ambient = gAmbientLight.rgb * baseColor * ao;
-    float3 emissive = 0;
-    if (M.gEmissiveIdx < NUM_TEXTURE) {
-        float3 e = gDiffuseMap[NonUniformResourceIndex(M.gEmissiveIdx)]
-                        .Sample(gsamLinearWrap, uv).rgb;
-        emissive = e * M.gEmissiveFactor * M.gEmissiveStrength;
-    }
+    // -------- 섀도우 계산 추가 --------
+    float S = ComputeShadowFactorWS(pin.PosW); // 0~1
 
-    float3 colorLin = ambient + Lo + emissive;
-    colorLin = colorLin / (1.0 + colorLin);
-    float3 outSRGB = pow(saturate(colorLin), 1.0 / 2.2);
-    return float4(outSRGB, baseSRGB.a);
+    // ComputeLighting은 directional에 한해 shadowFactor[i] 곱을 기대하므로,
+    // NUM_DIR_LIGHTS 개수에 맞춰 채움(나머지는 1.0)
+    float3 shadowFactor =
+#if (NUM_DIR_LIGHTS >= 3)
+        float3(S, S, S);
+#elif (NUM_DIR_LIGHTS == 2)
+        float3(S, S, 1.0);
+#elif (NUM_DIR_LIGHTS == 1)
+        float3(S, 1.0, 1.0);
+#else
+        float3(1.0, 1.0, 1.0);
+#endif
+
+    // ----------------------------------
+    
+    // Light terms.
+    float4 ambient = gAmbientLight * diffuseAlbedo;
+
+    const float shininess = (1.0f - roughness) * normalMapSample.a;
+    Material mat = { diffuseAlbedo, fresnelR0, shininess };
+    float4 directLight = ComputeLighting(gLights, mat, pin.PosW,
+        bumpedNormalW, toEyeW, shadowFactor);
+
+    float4 litColor = ambient + directLight;
+
+    // Add in specular reflections.
+    float3 r = reflect(-toEyeW, bumpedNormalW);
+    //float4 reflectionColor = gCubeMap.Sample(gsamLinearWrap, r);
+    float3 fresnelFactor = SchlickFresnel(fresnelR0, bumpedNormalW, r);
+    litColor.rgb += shininess * fresnelFactor;
+
+    // Common convention to take alpha from diffuse albedo.
+    litColor.a = diffuseAlbedo.a;
+
+    return litColor;
 }

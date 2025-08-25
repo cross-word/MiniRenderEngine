@@ -307,3 +307,40 @@ void DX12ResourceTexture::CreateUploadBuffer(ID3D12Device* device, UINT byteSize
 		nullptr,
 		IID_PPV_ARGS(&m_uploadBuffer)));
 }
+
+void DX12ResourceTexture::CreateShadowResource(
+	ID3D12Device* device,
+	uint32_t shadowWidth,
+	uint32_t shadowHeight,
+	DXGI_FORMAT shadowResourceFormat,
+	DXGI_FORMAT shadowDSVFormat)
+{
+	//create RTVDesc
+	D3D12_RESOURCE_DESC texDesc = {};
+	texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	texDesc.Alignment = 0;
+	texDesc.Width = shadowWidth;
+	texDesc.Height = shadowHeight;
+	texDesc.DepthOrArraySize = 1;
+	texDesc.MipLevels = 1;
+	texDesc.Format = shadowResourceFormat;
+	texDesc.SampleDesc = { 1, 0 };
+	texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+	texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+
+	D3D12_CLEAR_VALUE clearVal = {};
+	clearVal.Format = shadowDSVFormat;
+	clearVal.DepthStencil.Depth = 1.0f;
+	clearVal.DepthStencil.Stencil = 0;
+
+	CD3DX12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+	ThrowIfFailed(device->CreateCommittedResource(
+		&heapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&texDesc,
+		D3D12_RESOURCE_STATE_DEPTH_WRITE,
+		&clearVal,
+		IID_PPV_ARGS(&m_resource)));
+
+	m_currentState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+}

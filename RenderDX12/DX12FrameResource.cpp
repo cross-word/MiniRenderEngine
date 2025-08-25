@@ -46,19 +46,19 @@ void DX12FrameResource::CreateSRV(ID3D12Device* device, DX12DescriptorHeap* dx12
 void DX12FrameResource::UploadPassConstant(D3DCamera* d3dCamera, std::vector<Light>& lights)
 {
 	PassConstants passConst;
-	passConst.AmbientLight = { 0.15f, 0.15f, 0.15f, 1.0f };
+	passConst.AmbientLight = { 0.35f, 0.35f, 0.35f, 1.0f };
 	Light sun{}; //sun light
 
 	sun.Type = LIGHT_TYPE_DIRECTIONAL;
 	sun.Color = { 1.0f, 1.0f, 1.0f };
-	sun.Intensity = 10.5f;
+	sun.Intensity = 300.5f;
 	sun.Direction = { 0.0f, -1.0f, 0.0f };
 	sun.Range = -1.0f;
 	sun.Position = { 0.0f, 0.0f, 0.0f };
 	sun.InnerCos = 0.0f;
 	sun.OuterCos = -1.0f;
 	passConst.Lights[0] = sun;
-
+	
 	//gather lights from .gltf
 	for (uint16_t i = 0; i < lights.size(); ++i)
 	{
@@ -86,6 +86,21 @@ void DX12FrameResource::UploadPassConstant(D3DCamera* d3dCamera, std::vector<Lig
 	XMStoreFloat3(&passConst.EyePosW, iV.r[3]);
 	XMStoreFloat4x4(&passConst.InvProj, XMMatrixTranspose(iP));
 	XMStoreFloat4x4(&passConst.InvViewProj, XMMatrixTranspose(iVP));
+
+
+	// ── 3) 방향광 Light View/Proj 계산 → gLightViewProj
+	XMVECTOR lightDirWS = XMVector3Normalize(XMLoadFloat3(&sun.Direction));
+
+	XMMATRIX lightView, lightProj;
+	BuildDirLightViewProj(lightDirWS, iVP, lightView, lightProj);
+
+	XMMATRIX LVP = XMMatrixMultiply(lightView, lightProj);
+	XMStoreFloat4x4(&passConst.LightViewProj, XMMatrixTranspose(LVP));
+
+	// ── 4) 섀도 텍셀 크기(있으면 PCF 사용)
+	// ShadowManager(또는 EngineConfig)에 섀도맵 크기를 보관했다면 그걸 사용.
+	// 예: constexpr uint32_t ShadowW=2048, ShadowH=2048;
+	passConst.ShadowTexelSize = { 1.0f / 2048.0f, 1.0f / 2048.0f };
 
 	m_DX12PassConstantBuffer->CopyAndUploadResource(
 		m_DX12PassConstantBuffer->GetResource(),

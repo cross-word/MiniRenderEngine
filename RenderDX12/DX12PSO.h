@@ -24,7 +24,8 @@ public:
 		DXGI_FORMAT depthStencilFormat,
 		DXGI_FORMAT renderTargetFormat,
 		ID3DBlob* vertexShader,
-		ID3DBlob* pixelShader);
+		ID3DBlob* pixelShader,
+		UINT numRenderTarget);
 	ID3D12PipelineState* GetPipelineState();
 	ID3D12PipelineState* GetPipelineState(int index);
 private:

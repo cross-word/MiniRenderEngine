@@ -43,7 +43,7 @@ void DX12TextureManager::LoadAndCreateTextureResource(
         OutputDebugStringW(ss.str().c_str());
         ThrowIfFailed(hr);
     }
-
+    metaData.format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
     m_textureResource = std::make_unique<DX12ResourceTexture>();
     m_textureResource->CreateTexture(
         device,
@@ -81,7 +81,7 @@ void DX12TextureManager::CreateDummyTextureResource(
     ScratchImage img;
     meta.width = 1; meta.height = 1;
     meta.arraySize = 1; meta.mipLevels = 1;
-    meta.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    meta.format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
     meta.dimension = TEX_DIMENSION_TEXTURE2D;
     ThrowIfFailed(img.Initialize2D(meta.format, meta.width, meta.height, 1, 1));
 
@@ -90,8 +90,7 @@ void DX12TextureManager::CreateDummyTextureResource(
         device,
         dx12CommandList,
         &meta,
-        &img
-    );
+        &img);
 
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;

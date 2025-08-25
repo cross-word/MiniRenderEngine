@@ -27,6 +27,12 @@ public:
         ID3D12Device* device,
         DX12CommandList* dx12CommandList,
         const D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle);
+    void LoadAndCreateCubeTextureResource(
+        ID3D12Device* device,
+        DX12CommandList* dx12CommandList,
+        const D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle,
+        const wchar_t* filename,
+        const std::string textureName);
 
     inline DX12ResourceTexture* GetTextureResource() const noexcept { return m_textureResource.get(); }
     inline DX12View* GetDX12TextureView() const noexcept { return m_DX12TextureView.get(); }
