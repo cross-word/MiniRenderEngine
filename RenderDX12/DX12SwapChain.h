@@ -34,7 +34,7 @@ private:
 	UINT m_swapChainBufferCount = EngineConfig::SwapChainBufferCount;
 	ComPtr<IDXGISwapChain3> m_swapChain;
 
-	DXGI_FORMAT m_renderTargetFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+	DXGI_FORMAT m_renderTargetFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 	DXGI_FORMAT m_depthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
 	UINT m_clientWidth = EngineConfig::DefaultWidth;

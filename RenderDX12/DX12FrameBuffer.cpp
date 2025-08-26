@@ -60,12 +60,22 @@ void DX12FrameBuffer::CreateRenderTargetsAndViews(DX12Device* dx12Device)
 	for (UINT i = 0; i < dx12Device->GetDX12SwapChain()->GetSwapChainBufferCount(); i++)
 	{
 		ThrowIfFailed(dx12Device->GetDX12SwapChain()->GetSwapChain()->GetBuffer(i, IID_PPV_ARGS(m_DX12RenderTargets[i]->GetAddressOf())));
+
+		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+		rtvDesc.Format = dx12Device->GetDX12SwapChain()->GetRenderTargetFormat();
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+
 		m_DX12RenderTargets[i]->TransitionState(dx12Device->GetDX12CommandList(), D3D12_RESOURCE_STATE_PRESENT);
 		m_DX12RenderTargetViews[i] = std::make_unique<DX12View>(
 			dx12Device->GetDevice(),
 			EViewType::ERenderTargetView,
 			m_DX12RenderTargets[i].get(),
-			RTVHeapHandle);
+			RTVHeapHandle,
+			nullptr,
+			nullptr,
+			nullptr,
+			nullptr,
+			&rtvDesc);
 		RTVHeapHandle.Offset(1, dx12Device->GetDX12RTVHeap()->GetDescIncSize());
 	}
 }
@@ -111,11 +121,21 @@ void DX12FrameBuffer::CreateMsaaRenderTargetAndView(DX12Device* dx12Device)
 			 dx12Device->GetDX12SwapChain()->GetClientHeight(),
 			 dx12Device->GetDX12SwapChain()->GetMsaaSampleCount(),
 			 dx12Device->GetDX12SwapChain()->GetRenderTargetFormat());
+
+		 D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+		 rtvDesc.Format = dx12Device->GetDX12SwapChain()->GetRenderTargetFormat();
+		 rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+
 		 m_DX12MsaaRenderTargetViews[i] = std::make_unique<DX12View>(
 			 dx12Device->GetDevice(),
 			 EViewType::ERenderTargetView,
 			 m_DX12MsaaRenderTargets[i].get(),
-			 tmpMsaaRTVOffsetHandle);
+			 tmpMsaaRTVOffsetHandle,
+			 nullptr,
+			 nullptr,
+			 nullptr,
+			 nullptr,
+			 &rtvDesc);
 		 tmpMsaaRTVOffsetHandle.Offset(1, dx12Device->GetDX12RTVHeap()->GetDescIncSize());
 	}
 }

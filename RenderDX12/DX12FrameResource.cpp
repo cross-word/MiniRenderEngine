@@ -51,7 +51,7 @@ void DX12FrameResource::UploadPassConstant(D3DCamera* d3dCamera, std::vector<Lig
 
 	sun.Type = LIGHT_TYPE_DIRECTIONAL;
 	sun.Color = { 1.0f, 1.0f, 1.0f };
-	sun.Intensity = 300.5f;
+	sun.Intensity = 1000.5f;
 	sun.Direction = { 0.0f, -1.0f, 0.0f };
 	sun.Range = -1.0f;
 	sun.Position = { 0.0f, 0.0f, 0.0f };

@@ -106,7 +106,7 @@ void RenderDX12::InitializeDX12(HWND hWnd)
 	info.Device = m_DX12Device.GetDevice();
 	info.CommandQueue = m_DX12Device.GetDX12CommandList()->GetCommandQueue();
 	info.NumFramesInFlight = EngineConfig::SwapChainBufferCount;
-	info.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+	info.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 	info.DSVFormat = DXGI_FORMAT_UNKNOWN;
 	info.SrvDescriptorHeap = m_DX12Device.GetDX12ImGuiHeap()->GetDescHeap();
 	info.SrvDescriptorAllocFn = [](ImGui_ImplDX12_InitInfo*, D3D12_CPU_DESCRIPTOR_HANDLE* outCPU, D3D12_GPU_DESCRIPTOR_HANDLE* outGPU) {

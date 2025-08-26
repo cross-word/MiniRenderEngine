@@ -54,7 +54,6 @@ void DX12SwapChain::InitializeSwapChain(DX12CommandList* dx12CommandList, IDXGIF
 		&swapChainDesc,
 		nullptr,
 		nullptr,
-		&tmpSwapChain
-	));
+		&tmpSwapChain));
 	ThrowIfFailed(tmpSwapChain.As(&m_swapChain));
 }
