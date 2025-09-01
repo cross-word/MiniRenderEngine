@@ -54,7 +54,7 @@ static XMFLOAT4X4 XMMatIdentity()
     return XMFLOAT4X4({ 1, 0, 0, 0,
                         0, 1, 0, 0,
                         0, 0, 1, 0,
-                        0, 0, 0, 1});
+                        0, 0, 0, 1 });
 }
 
 struct PassConstants // to slot b0 (per camera)
@@ -111,7 +111,7 @@ struct MaterialConstants
     //float _pad0 = 0.f;
 
     uint32_t BaseColorIndex = UINT32_MAX;
-    uint32_t NormalIndex = UINT32_MAX; 
+    uint32_t NormalIndex = UINT32_MAX;
     uint32_t ORMIndex = UINT32_MAX;
     uint32_t OcclusionIndex = UINT32_MAX;
     uint32_t EmissiveIndex = UINT32_MAX;

@@ -3,8 +3,6 @@
 #include "D3DCamera.h"
 #include "../FileLoader/SimpleLoader.h"
 
-#include <atlbase.h>
-
 DX12Device::DX12Device()
 {
 	m_fenceEvent = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
@@ -22,12 +20,13 @@ void DX12Device::Initialize(HWND hWnd, const std::wstring& sceneFile)
 	// create hardware device
 	// make hardware adaptor if it can. if not, make warp adapator.
 	// *** require dx12 hardware ***
-	ThrowIfFailed(CreateDXGIFactory2(0, IID_PPV_ARGS(&m_factory)));
+	ThrowIfFailed(CreateDXGIFactory1(IID_PPV_ARGS(&m_factory)));
 
 	HRESULT HardwareResult = D3D12CreateDevice(
 		nullptr,
 		D3D_FEATURE_LEVEL_12_0,
-		IID_PPV_ARGS(&m_device));
+		IID_PPV_ARGS(&m_device)
+	);
 
 	if (FAILED(HardwareResult))
 	{
@@ -36,21 +35,11 @@ void DX12Device::Initialize(HWND hWnd, const std::wstring& sceneFile)
 		ThrowIfFailed(D3D12CreateDevice(
 			warpAdapter.Get(),
 			D3D_FEATURE_LEVEL_12_0,
-			IID_PPV_ARGS(&m_device)));
+			IID_PPV_ARGS(&m_device)
+		));
 	}
 
-	CComPtr<ID3D12Debug> spDebugController0;
-	CComPtr<ID3D12Debug1> spDebugController1;
-	assert(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&spDebugController0))));
-	assert(SUCCEEDED(spDebugController0->QueryInterface(IID_PPV_ARGS(&spDebugController1))));
-	spDebugController1->SetEnableGPUBasedValidation(true);
-
 	ThrowIfFailed(CoInitializeEx(nullptr, COINIT_MULTITHREADED));
-
-	HRESULT removed = m_device->GetDeviceRemovedReason();
-	char buf[128];
-	sprintf_s(buf, "GetDeviceRemovedReason = 0x%08X\n", removed);
-	OutputDebugStringA(buf);
 
 	InitDX12RTVDescHeap();
 	InitDX12DSVDescHeap();
@@ -222,7 +211,7 @@ void DX12Device::CreateDX12PSO()
 		m_inputLayout,
 		m_DX12RootSignature->GetRootSignature(),
 		m_DX12ShadowManager->GetShadowDepthStencilFormat(),
-		DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
+		DXGI_FORMAT_UNKNOWN,
 		m_shadowVertexShader.Get(),
 		m_shadowPixelShader.Get(),
 		0);
@@ -372,7 +361,7 @@ void DX12Device::PrepareInitialResource()
 	m_renderItems.clear();
 	m_renderItems.reserve(m_sceneData.instances.size());
 
-	auto MakeWorldInvTranspose = [&](const XMFLOAT4X4& world)->XMFLOAT4X4{
+	auto MakeWorldInvTranspose = [&](const XMFLOAT4X4& world)->XMFLOAT4X4 {
 		XMMATRIX W = XMLoadFloat4x4(&world);
 		W.r[3] = XMVectorSet(0.f, 0.f, 0.f, 1.f);
 		XMMATRIX invT = XMMatrixTranspose(XMMatrixInverse(nullptr, W));
@@ -433,8 +422,8 @@ void DX12Device::InitDX12ShadowManager()
 	m_DX12ShadowManager = std::make_unique<DX12ShadowManager>();
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE tmpDSVOffsetHandle = static_cast<CD3DX12_CPU_DESCRIPTOR_HANDLE>(GetOffsetCPUHandle(
-			m_DX12DSVHeap->GetDescHeap()->GetCPUDescriptorHandleForHeapStart(),
-			2 * m_DX12SwapChain->GetSwapChainBufferCount(), // maind render + msaa render,
+		m_DX12DSVHeap->GetDescHeap()->GetCPUDescriptorHandleForHeapStart(),
+		2 * m_DX12SwapChain->GetSwapChainBufferCount(), // maind render + msaa render,
 		m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV)));
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE tmpRTVOffsetHandle = static_cast<CD3DX12_CPU_DESCRIPTOR_HANDLE>(m_DX12SRVHeap->Offset(

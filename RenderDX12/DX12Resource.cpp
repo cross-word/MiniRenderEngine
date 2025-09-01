@@ -304,7 +304,7 @@ void DX12ResourceTexture::CreateUploadBuffer(ID3D12Device* device, UINT byteSize
 		&heapProp,
 		D3D12_HEAP_FLAG_NONE,
 		&descBuffer,
-		D3D12_RESOURCE_STATE_GENERIC_READ, 
+		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
 		IID_PPV_ARGS(&m_uploadBuffer)));
 }

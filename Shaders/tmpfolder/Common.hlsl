@@ -4,23 +4,23 @@
 
 // Defaults for number of lights.
 #ifndef NUM_DIR_LIGHTS
-    #define NUM_DIR_LIGHTS 1
+#define NUM_DIR_LIGHTS 1
 #endif
 
 #ifndef NUM_POINT_LIGHTS
-    #define NUM_POINT_LIGHTS 0
+#define NUM_POINT_LIGHTS 0
 #endif
 
 #ifndef NUM_SPOT_LIGHTS
-    #define NUM_SPOT_LIGHTS 24
+#define NUM_SPOT_LIGHTS 24
 #endif
 
 #ifndef NUM_TEXTURE
-    #define NUM_TEXTURE 72
+#define NUM_TEXTURE 72
 #endif
 
 #ifndef NUM_LIGHTS
-    #define NUM_LIGHTS 25
+#define NUM_LIGHTS 25
 #endif
 // Include structures and functions for lighting.
 #include "LightingUtil.hlsl"
@@ -58,11 +58,11 @@ StructuredBuffer<MaterialParam> gMaterialData : register(t0, space1);
 StructuredBuffer<ObjectParam>   gObject    : register(t1, space1);
 Texture2D gShadowMap : register(t2, space1);
 
-SamplerState gsamPointWrap        : register(s0);
-SamplerState gsamPointClamp       : register(s1);
-SamplerState gsamLinearWrap       : register(s2);
-SamplerState gsamLinearClamp      : register(s3);
-SamplerState gsamAnisotropicWrap  : register(s4);
+SamplerState gsamPointWrap : register(s0);
+SamplerState gsamPointClamp : register(s1);
+SamplerState gsamLinearWrap : register(s2);
+SamplerState gsamLinearClamp : register(s3);
+SamplerState gsamAnisotropicWrap : register(s4);
 SamplerState gsamAnisotropicClamp : register(s5);
 SamplerComparisonState gsamShadow : register(s6);
 
@@ -110,10 +110,10 @@ float3 NormalSampleToWorldSpace(float3 normalMapSample, float3 unitNormalW, floa
     float  z = sqrt(saturate(1.0f - dot(rg, rg)));
     float3 normalT = normalize(float3(rg, z));
 
-	// Uncompress each component from [0,1] to [-1,1].
-	//float3 normalT = 2.0f*normalMapSample - 1.0f;
+    // Uncompress each component from [0,1] to [-1,1].
+    //float3 normalT = 2.0f*normalMapSample - 1.0f;
 
-	// Build orthonormal basis.
+    // Build orthonormal basis.
 
     float3 N = normalize(unitNormalW);
     float3 T = tangent.xyz;
@@ -128,10 +128,10 @@ float3 NormalSampleToWorldSpace(float3 normalMapSample, float3 unitNormalW, floa
 
     float3x3 TBN = float3x3(T, B, N);
 
-	// Transform from tangent space to world space.
-	float3 bumpedNormalW = normalize(mul(normalT, TBN));
+    // Transform from tangent space to world space.
+    float3 bumpedNormalW = normalize(mul(normalT, TBN));
 
-	return bumpedNormalW;
+    return bumpedNormalW;
 }
 
 //---------------------------------------------------------------------------------------
@@ -161,12 +161,12 @@ float CalcShadowFactor(float4 shadowPosH)
     };
 
     [unroll]
-    for(int i = 0; i < 9; ++i)
-    {
-        percentLit += gShadowMap.SampleCmpLevelZero(gsamShadow,
-            shadowPosH.xy + offsets[i], depth).r;
-    }
-    
+        for (int i = 0; i < 9; ++i)
+        {
+            percentLit += gShadowMap.SampleCmpLevelZero(gsamShadow,
+                shadowPosH.xy + offsets[i], depth).r;
+        }
+
     return percentLit / 9.0f;
 }
 

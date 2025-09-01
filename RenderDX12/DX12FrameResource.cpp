@@ -58,7 +58,7 @@ void DX12FrameResource::UploadPassConstant(D3DCamera* d3dCamera, std::vector<Lig
 	sun.InnerCos = 0.0f;
 	sun.OuterCos = -1.0f;
 	passConst.Lights[0] = sun;
-	
+
 	//gather lights from .gltf
 	for (uint16_t i = 0; i < lights.size(); ++i)
 	{
@@ -109,7 +109,7 @@ void DX12FrameResource::UploadPassConstant(D3DCamera* d3dCamera, std::vector<Lig
 }
 
 void DX12FrameResource::UploadObjectConstant(
-	ID3D12Device* device, 
+	ID3D12Device* device,
 	DX12CommandList* dx12CommandList,
 	std::vector<Render::RenderItem>& renderItems,
 	DX12ObjectConstantManager* dx12ObjectConstantManager)
@@ -132,7 +132,7 @@ void DX12FrameResource::UploadObjectConstant(
 			dx12ObjectConstantManager->PushObjectConstant(renderItems[i].GetObjectConstant());
 			renderItems[i].SetObjConstantIndex(i);
 		}
-		else 
+		else
 		{
 			dx12ObjectConstantManager->GetObjectConstant(i)
 				= renderItems[i].GetObjectConstant();

@@ -15,7 +15,7 @@ void DX12ConstantManager::InitialzieUploadBuffer(ID3D12Device* device, ID3D12Gra
 {
     m_DX12ConstantUploader = std::make_unique<DX12ResourceTexture>();
     m_DX12ConstantUploader->CreateMaterialorObjectResource(
-		device,
+        device,
         byteSize);
 }
 
@@ -165,7 +165,7 @@ void DX12ObjectConstantManager::RecordObjectConstants(DX12CommandList* dx12Comma
     m_DX12ConstantUploader->TransitionState(dx12CommandList, D3D12_RESOURCE_STATE_COPY_DEST);
     dx12CommandList->RecordResourceStateTransition();
 
-    for (const auto& uploadAddressResion : m_regions) 
+    for (const auto& uploadAddressResion : m_regions)
     {
         dx12CommandList->GetCommandList()->CopyBufferRegion(
             m_DX12ConstantUploader->GetResource(),

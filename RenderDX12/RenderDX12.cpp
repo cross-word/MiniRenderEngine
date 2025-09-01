@@ -71,17 +71,17 @@ void RenderDX12::InitializeDX12(HWND hWnd)
 	assert(hWnd);
 	UINT dxgiFactoryFlags = 0;
 
-//enable debug layer
+	//enable debug layer
 #if defined(DEBUG) || defined(_DEBUG)
-{
-	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&m_debugController))))
 	{
-		m_debugController->EnableDebugLayer();
-		// Enable additional debug layers.
-		dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
-	}
+		if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&m_debugController))))
+		{
+			m_debugController->EnableDebugLayer();
+			// Enable additional debug layers.
+			dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
+		}
 
-}
+	}
 #endif
 	m_DX12Device.Initialize(hWnd, EngineConfig::SceneFilePath);
 	m_DX12FrameBuffer.Initialize(&m_DX12Device);
@@ -106,7 +106,7 @@ void RenderDX12::InitializeDX12(HWND hWnd)
 	info.Device = m_DX12Device.GetDevice();
 	info.CommandQueue = m_DX12Device.GetDX12CommandList()->GetCommandQueue();
 	info.NumFramesInFlight = EngineConfig::SwapChainBufferCount;
-	info.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+	info.RTVFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 	info.DSVFormat = DXGI_FORMAT_UNKNOWN;
 	info.SrvDescriptorHeap = m_DX12Device.GetDX12ImGuiHeap()->GetDescHeap();
 	info.SrvDescriptorAllocFn = [](ImGui_ImplDX12_InitInfo*, D3D12_CPU_DESCRIPTOR_HANDLE* outCPU, D3D12_GPU_DESCRIPTOR_HANDLE* outGPU) {
@@ -127,7 +127,7 @@ void RenderDX12::OnResize()
 {
 	assert(m_DX12Device.GetDevice());
 	assert(m_DX12Device.GetDX12SwapChain());
-	for(int i = 0; i < EngineConfig::SwapChainBufferCount; i++) assert(m_DX12Device.GetFrameResource(i)->GetCommandAllocator());
+	for (int i = 0; i < EngineConfig::SwapChainBufferCount; i++) assert(m_DX12Device.GetFrameResource(i)->GetCommandAllocator());
 
 	// Flush before changing any resources.
 	m_DX12Device.GetDX12CommandList()->FlushCommandQueue();
@@ -158,11 +158,11 @@ void RenderDX12::RecordAndSubmit_Single()
 	m_DX12Device.GetDX12CommandList()->ResetList(m_DX12Device.GetDX12PSO()->GetPipelineState(), m_DX12Device.GetFrameResource(currBackBufferIndex)->GetCommandAllocator());
 
 	m_timer.BeginCPU(currBackBufferIndex); // << imgui CPU TIMER START
-	
+
 	PIXBeginEvent(m_DX12Device.GetDX12CommandList()->GetCommandList(), PIX_COLOR(0, 180, 255), L"BeginFrame"); // pix marking ~ frame start setting
 
 	m_timer.BeginGPU(m_DX12Device.GetDX12CommandList()->GetCommandList(), currBackBufferIndex); // << imgui GPU TIMER START
-	
+
 	m_DX12Device.UpdateFrameResource();
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE tmpDSVOffsetHandle = static_cast<CD3DX12_CPU_DESCRIPTOR_HANDLE>(m_DX12Device.GetOffsetCPUHandle(
@@ -174,7 +174,7 @@ void RenderDX12::RecordAndSubmit_Single()
 	PIXEndEvent(m_DX12Device.GetDX12CommandList()->GetCommandList()); //pix frame start setting marking end
 
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootSignature(m_DX12Device.GetDX12RootSignature()->GetRootSignature());
-	ID3D12DescriptorHeap* descriptorHeaps[] = { m_DX12Device.GetDX12CBVSRVHeap()->GetDescHeap()};
+	ID3D12DescriptorHeap* descriptorHeaps[] = { m_DX12Device.GetDX12CBVSRVHeap()->GetDescHeap() };
 
 	auto* cbvSrvHeap = m_DX12Device.GetDX12CBVSRVHeap();
 	constexpr uint32_t numDescPerFrame = EngineConfig::ConstantBufferCount;
@@ -259,7 +259,7 @@ void RenderDX12::RecordAndSubmit_Single()
 	sFrameId++;
 }
 
-void RenderDX12::RecordAndSubmit_Multi() 
+void RenderDX12::RecordAndSubmit_Multi()
 {
 
 }
