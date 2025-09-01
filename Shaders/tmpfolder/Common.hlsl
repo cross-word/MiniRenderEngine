@@ -48,10 +48,12 @@ struct MaterialParam
 struct ObjectParam
 {
     float4x4 gWorlds;
+    float4x4 gWorldInverseTranspose;
     float4x4 gTransform;
 };
 
-Texture2D    gTextureMaps[NUM_TEXTURE] : register(t0, space0);
+Texture2D    gTextureMapsSRGB[NUM_TEXTURE] : register(t0, space0);
+Texture2D    gTextureMapsLinear[NUM_TEXTURE] : register(t0, space2);
 StructuredBuffer<MaterialParam> gMaterialData : register(t0, space1);
 StructuredBuffer<ObjectParam>   gObject    : register(t1, space1);
 Texture2D gShadowMap : register(t2, space1);
@@ -100,20 +102,34 @@ cbuffer cbMaterialIndex : register(b2)
 //---------------------------------------------------------------------------------------
 // Transforms a normal map sample to world space.
 //---------------------------------------------------------------------------------------
-float3 NormalSampleToWorldSpace(float3 normalMapSample, float3 unitNormalW, float3 tangentW)
+float3 NormalSampleToWorldSpace(float3 normalMapSample, float3 unitNormalW, float4 tangent, float normalScale)
 {
+    float2 rg = normalMapSample.xy * 2.0f - 1.0f;
+    rg.y = -rg.y;
+    rg *= normalScale;
+    float  z = sqrt(saturate(1.0f - dot(rg, rg)));
+    float3 normalT = normalize(float3(rg, z));
+
 	// Uncompress each component from [0,1] to [-1,1].
-	float3 normalT = 2.0f*normalMapSample - 1.0f;
+	//float3 normalT = 2.0f*normalMapSample - 1.0f;
 
 	// Build orthonormal basis.
-	float3 N = unitNormalW;
-	float3 T = normalize(tangentW - dot(tangentW, N)*N);
-	float3 B = cross(N, T);
 
-	float3x3 TBN = float3x3(T, B, N);
+    float3 N = normalize(unitNormalW);
+    float3 T = tangent.xyz;
+    float tLen2 = dot(T, T);
+    if (tLen2 < 1e-6 || dot(N, N) < 1e-6)
+    {
+        return N;
+    }
+    T = normalize(T);
+    T = normalize(T - N * dot(T, N));       // ±×·¥-½´¹ÌÆ®
+    float3 B = tangent.w * normalize(cross(N, T));
+
+    float3x3 TBN = float3x3(T, B, N);
 
 	// Transform from tangent space to world space.
-	float3 bumpedNormalW = mul(normalT, TBN);
+	float3 bumpedNormalW = normalize(mul(normalT, TBN));
 
 	return bumpedNormalW;
 }

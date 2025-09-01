@@ -258,6 +258,7 @@ void DX12ResourceTexture::CreateTexture(
 
 	UpdateSubresources(dx12CommandList->GetCommandList(), m_resource.Get(), m_uploadBuffer.Get(), 0, 0, (UINT)subResourceData.size(), subResourceData.data());
 	TransitionState(dx12CommandList, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	dx12CommandList->RecordResourceStateTransition();
 }
 
 void DX12ResourceTexture::CreateMaterialorObjectResource(

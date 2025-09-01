@@ -39,7 +39,7 @@ void DX12FrameBuffer::Resize(DX12Device* dx12Device)
 		dx12Device->GetDX12SwapChain()->GetSwapChainBufferCount(),
 		dx12Device->GetDX12SwapChain()->GetClientWidth(),
 		dx12Device->GetDX12SwapChain()->GetClientHeight(),
-		dx12Device->GetDX12SwapChain()->GetRenderTargetFormat(),
+		dx12Device->GetDX12SwapChain()->GetBackBufferFormat(),
 		DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH));
 
 	CreateRenderTargetsAndViews(dx12Device);

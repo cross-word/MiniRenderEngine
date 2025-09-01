@@ -25,6 +25,7 @@ public:
 	inline IDXGISwapChain3* GetSwapChain() const noexcept { return m_swapChain.Get(); }
 	inline UINT GetSwapChainBufferCount() const noexcept { return m_swapChainBufferCount; }
 	inline DXGI_FORMAT GetRenderTargetFormat() const noexcept { return m_renderTargetFormat; }
+	inline DXGI_FORMAT GetBackBufferFormat() const noexcept { return m_backBufferFormat; }
 	inline DXGI_FORMAT GetDepthStencilFormat() const noexcept { return m_depthStencilFormat; }
 	inline int GetClientWidth() const noexcept { return m_clientWidth; }
 	inline int GetClientHeight() const noexcept { return m_clientHeight; }
@@ -34,7 +35,8 @@ private:
 	UINT m_swapChainBufferCount = EngineConfig::SwapChainBufferCount;
 	ComPtr<IDXGISwapChain3> m_swapChain;
 
-	DXGI_FORMAT m_renderTargetFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+	DXGI_FORMAT m_renderTargetFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+	DXGI_FORMAT m_backBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 	DXGI_FORMAT m_depthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
 	UINT m_clientWidth = EngineConfig::DefaultWidth;

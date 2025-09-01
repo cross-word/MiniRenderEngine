@@ -15,9 +15,11 @@ DX12TextureManager::~DX12TextureManager()
 void DX12TextureManager::LoadAndCreateTextureResource(
     ID3D12Device* device,
     DX12CommandList* dx12CommandList,
-    const D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle,
+    const D3D12_CPU_DESCRIPTOR_HANDLE* SRGBCpuHandle,
+    const D3D12_CPU_DESCRIPTOR_HANDLE* LinearCpuHandle,
     const wchar_t* filename,
-    const std::string textureName)
+    const std::string textureName,
+    TextureColorSpace colorSpace)
 {
     //resource
     TexMetadata metaData;
@@ -31,8 +33,10 @@ void DX12TextureManager::LoadAndCreateTextureResource(
     }
     else
     {
-        hr = LoadFromWICFile(filename, WIC_FLAGS_FORCE_SRGB, &metaData, img);
+        auto flags = (colorSpace == TextureColorSpace::SRGB) ? WIC_FLAGS_FORCE_SRGB : WIC_FLAGS_NONE;
+        hr = LoadFromWICFile(filename, flags, &metaData, img);
     }
+
     if (FAILED(hr))
     {
         _com_error err(hr);
@@ -43,31 +47,66 @@ void DX12TextureManager::LoadAndCreateTextureResource(
         OutputDebugStringW(ss.str().c_str());
         ThrowIfFailed(hr);
     }
-    metaData.format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+
+    if (metaData.mipLevels <= 1) {
+        ScratchImage mip;
+        ThrowIfFailed(GenerateMipMaps(
+            img.GetImages(), img.GetImageCount(), img.GetMetadata(),
+            TEX_FILTER_DEFAULT, 0, mip));
+        img = std::move(mip);
+        metaData = img.GetMetadata(); // mipLevels °»½Å
+    }
+
+    if (colorSpace == TextureColorSpace::SRGB)
+    {
+        metaData.format = DXGI_FORMAT_R8G8B8A8_TYPELESS;
+    }
+    else
+    {
+        metaData.format = DXGI_FORMAT_R8G8B8A8_TYPELESS;
+    }
+
     m_textureResource = std::make_unique<DX12ResourceTexture>();
     m_textureResource->CreateTexture(
         device,
         dx12CommandList,
         &metaData,
         &img);
-
-    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-    srvDesc.Format = m_textureResource->GetResource()->GetDesc().Format;
-    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-    srvDesc.Texture2D.MostDetailedMip = 0;
-    srvDesc.Texture2D.MipLevels = m_textureResource->GetResource()->GetDesc().MipLevels;
-    srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+    ////////////////////////////////////////////////////////////////////
+    D3D12_SHADER_RESOURCE_VIEW_DESC SRGBSrvDesc{};
+    SRGBSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    SRGBSrvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    SRGBSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+    SRGBSrvDesc.Texture2D.MostDetailedMip = 0;
+    SRGBSrvDesc.Texture2D.MipLevels = m_textureResource->GetResource()->GetDesc().MipLevels;
+    SRGBSrvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
 
     //view
-    m_DX12TextureView = std::make_unique<DX12View>(
+    m_DX12SRGBTextureView = std::make_unique<DX12View>(
         device,
         EViewType::EShaderResourceView,
         m_textureResource.get(),
-        *cpuHandle,
+        *SRGBCpuHandle,
         nullptr,
-        &srvDesc);
+        &SRGBSrvDesc);
 
+    D3D12_SHADER_RESOURCE_VIEW_DESC LinearSrvDesc{};
+    LinearSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    LinearSrvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    LinearSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+    LinearSrvDesc.Texture2D.MostDetailedMip = 0;
+    LinearSrvDesc.Texture2D.MipLevels = m_textureResource->GetResource()->GetDesc().MipLevels;
+    LinearSrvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+
+    //view
+    m_DX12SRGBTextureView = std::make_unique<DX12View>(
+        device,
+        EViewType::EShaderResourceView,
+        m_textureResource.get(),
+        *LinearCpuHandle,
+        nullptr,
+        &LinearSrvDesc);
+    ////////////////////////////////////////////////////////////////////
     m_fileName = filename;
     m_textureName = textureName;
 }
@@ -99,7 +138,7 @@ void DX12TextureManager::CreateDummyTextureResource(
     srvDesc.Texture2D.MipLevels = 1;
 
     //view
-    m_DX12TextureView = std::make_unique<DX12View>(
+    m_DX12SRGBTextureView = std::make_unique<DX12View>(
         device,
         EViewType::EShaderResourceView,
         m_textureResource.get(),

@@ -21,12 +21,17 @@ void DX12RootSignature::Initialize(ID3D12Device* device)
 	CD3DX12_DESCRIPTOR_RANGE1 cbvTable;
 	cbvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
 
-	CD3DX12_DESCRIPTOR_RANGE1 srvTexTable;//t0 space 0 texture
-	srvTexTable.Init(
+	CD3DX12_DESCRIPTOR_RANGE1 srvTexTable[2];
+	srvTexTable[0].Init(
 		D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
 		EngineConfig::MaxTextureCount,
 		0,
-		0);
+		0);//t0 space 0 SRGB texture
+	srvTexTable[1].Init(
+		D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+		EngineConfig::MaxTextureCount,
+		0,
+		2);//t0 space 2 Linear texture
 
 	CD3DX12_DESCRIPTOR_RANGE1 srvTable[3]; //t0 space 1 materials, t1 space 1 worlds, t2 space1 shadow
 	srvTable[0].Init(
@@ -49,7 +54,7 @@ void DX12RootSignature::Initialize(ID3D12Device* device)
 
 	// A root signature is an array of root parameters.
 	slotRootParameter[0].InitAsDescriptorTable(1, &cbvTable);
-	slotRootParameter[1].InitAsDescriptorTable(1, &srvTexTable, D3D12_SHADER_VISIBILITY_PIXEL);
+	slotRootParameter[1].InitAsDescriptorTable(2, srvTexTable, D3D12_SHADER_VISIBILITY_PIXEL);
 	slotRootParameter[2].InitAsDescriptorTable(3, srvTable, D3D12_SHADER_VISIBILITY_ALL);
 	slotRootParameter[3].InitAsConstants(3, 2, 0); // index of textur/material/world
 

@@ -90,6 +90,7 @@ struct PassConstants // to slot b0 (per camera)
 struct ObjectConstants
 {
     XMFLOAT4X4 World = XMMatIdentity();
+    XMFLOAT4X4 WorldInverseTranspose = XMMatIdentity();
     XMFLOAT4X4 TexTransform = XMMatIdentity();
 };
 
@@ -117,6 +118,7 @@ struct MaterialConstants
 };
 static_assert(sizeof(MaterialConstants) % 16 == 0, "CB/SSBO align");
 
+struct UseFlags { bool SRGB = false, Linear = false; };
 struct Material // to slot b2 (per object)
 {
     // Unique material name for lookup.
@@ -136,6 +138,8 @@ struct Material // to slot b2 (per object)
     // update to each FrameResource.  Thus, when we modify a material we should set 
     // NumFramesDirty = gNumFrameResources so that each frame resource gets the update.
     int NumFramesDirty = EngineConfig::SwapChainBufferCount;
+
+    //UseFlags useFlag;
 
     MaterialConstants matConstant;
 };

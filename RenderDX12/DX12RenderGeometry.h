@@ -68,6 +68,7 @@ namespace Render
 		void SetStartIndexLocation(UINT index) { m_startIndexLocation = index; }
 		void SetBaseVertexLocation(UINT index) { m_baseVertexLocation = index; }
 		void SetObjWorldMatrix(const XMFLOAT4X4& worldMatrix) { m_objectConst.World = worldMatrix; m_bObjectDirty = true; }
+		void SetObjWorldInverseTransposeMatrix(const XMFLOAT4X4& worldMatrix) { m_objectConst.WorldInverseTranspose = worldMatrix; m_bObjectDirty = true; }
 		void SetObjTransformMatrix(const XMFLOAT4X4& transformMatrix) { m_objectConst.TexTransform = transformMatrix; m_bObjectDirty = true; }
 		void SetObjConstantIndex(UINT index) { m_objectIndex = index; }
 		void SetDirtyFlag(bool bdirty) { m_bObjectDirty = bdirty; }

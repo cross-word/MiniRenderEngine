@@ -48,6 +48,7 @@ void DX12ConstantManager::UploadConstant(ID3D12Device* device, DX12CommandList* 
     dx12CommandList->RecordResourceStateTransition();
     dx12CommandList->GetCommandList()->CopyBufferRegion(m_DX12ConstantUploader->GetResource(), 0, m_DX12ConstantUploader->GetUploadBuffer(), 0, byteSize);
     m_DX12ConstantUploader->TransitionState(dx12CommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+    dx12CommandList->RecordResourceStateTransition();
 }
 
 DX12MaterialConstantManager::DX12MaterialConstantManager()
