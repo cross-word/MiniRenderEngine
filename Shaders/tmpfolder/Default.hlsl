@@ -68,7 +68,7 @@ VertexOut VS(VertexIn vin)
     vout.TexC = mul(texC, matData.MatTransform).xy;
 
     // Generate projective tex-coords to project shadow map onto scene.
-    vout.ShadowPosH = mul(posW, gShadowTransform);
+    vout.ShadowPosH = mul(posW, gLightViewProj);
 
     return vout;
 }
@@ -85,7 +85,7 @@ float4 PS(VertexOut pin) : SV_Target
 
     // Dynamically look up the texture in the array.
     diffuseAlbedo *= gTextureMapsSRGB[diffuseMapIndex].Sample(gsamAnisotropicWrap, pin.TexC);
-
+    if (diffuseMapIndex >= NUM_TEXTURE) diffuseAlbedo = matData.DiffuseAlbedo;
 #ifdef ALPHA_TEST
     // Discard pixel if texture alpha < 0.1.  We do this test as soon 
     // as possible in the shader so that we can potentially exit the
@@ -97,25 +97,33 @@ float4 PS(VertexOut pin) : SV_Target
     pin.NormalW = normalize(pin.NormalW);
     float4 normalMapSample = gTextureMapsLinear[normalMapIndex].Sample(gsamAnisotropicWrap, pin.TexC);
     float3 bumpedNormalW = NormalSampleToWorldSpace(normalMapSample.rgb, pin.NormalW, pin.Tangent, matData.gNormalScale);
-    if (matData.NormalMapIndex > NUM_TEXTURE) bumpedNormalW = pin.NormalW;
+    if (normalMapIndex >= NUM_TEXTURE) bumpedNormalW = pin.NormalW;
     // Uncomment to turn off normal mapping.
     // bumpedNormalW = pin.NormalW;
 
     // Vector from point being lit to eye. 
     float3 toEyeW = normalize(gEyePosW - pin.PosW);
 
-    // Light terms.
-    float4 ambient = gAmbientLight * diffuseAlbedo;
+    float3 orm = gTextureMapsLinear[matData.gORMIdx].Sample(gsamAnisotropicWrap, pin.TexC).rgb;
+    if (matData.gORMIdx >= NUM_TEXTURE) orm = float3(1.0f, 1.0f, 0.0f);
+    float ao = lerp(1.0, orm.r, saturate(matData.gOcclusionStrength));
+    float rough = saturate(matData.Roughness * orm.g);
+    float metal = saturate(matData.gMetallic * orm.b);
 
     // Only the first light casts a shadow.
     float3 shadowFactor = float3(1.0f, 1.0f, 1.0f);
     shadowFactor[0] = CalcShadowFactor(pin.ShadowPosH);
 
-    const float shininess = (1.0f - roughness);
+    const float shininess = (1.0 - roughness) * (1.0 - roughness);
+    fresnelR0 = lerp(fresnelR0, diffuseAlbedo.rgb, metal);
+    diffuseAlbedo.rgb *= (1.0 - metal);
+
     Material mat = { diffuseAlbedo, fresnelR0, shininess };
     float4 directLight = ComputeLighting(gLights, mat, pin.PosW,
         bumpedNormalW, toEyeW, shadowFactor);
 
+    // Light terms.
+    float4 ambient = ao * gAmbientLight * diffuseAlbedo;
     float4 litColor = ambient + directLight;
 
     // Add in specular reflections.

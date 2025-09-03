@@ -66,9 +66,6 @@ struct PassConstants // to slot b0 (per camera)
     XMFLOAT4X4 ViewProj = XMMatIdentity();
     XMFLOAT4X4 InvViewProj = XMMatIdentity();
 
-    XMFLOAT4X4 LightViewProj;
-    XMFLOAT2   ShadowTexelSize; float _pad1[2];
-
     XMFLOAT3 EyePosW = XMFLOAT3{ 0.0f, 0.0f, 0.0f };
     float cbPerObjectPad1 = 0.0f;
     XMFLOAT2 RenderTargetSize = XMFLOAT2{ 0.0f, 0.0f };
@@ -79,6 +76,9 @@ struct PassConstants // to slot b0 (per camera)
     float DeltaTime = 0.0f;
 
     XMFLOAT4 AmbientLight = XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f };
+
+    XMFLOAT4X4 LightViewProj;
+    XMFLOAT2   ShadowTexelSize; float _pad1[2];
 
     // Indices [0, NUM_DIR_LIGHTS) are directional lights;
     // indices [NUM_DIR_LIGHTS, NUM_DIR_LIGHTS+NUM_POINT_LIGHTS) are point lights;
