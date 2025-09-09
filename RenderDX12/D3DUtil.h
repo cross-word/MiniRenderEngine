@@ -189,11 +189,10 @@ static void BuildDirLightViewProj(
     XMMATRIX& outLightView,
     XMMATRIX& outLightProj)
 {
-    // 1) 카메라 프러스텀 8점(World)
+    // camera frustum
     XMVECTOR cornersWS[8];
     GetFrustumCornersWS(invCameraViewProj, cornersWS);
 
-    // 2) 중심 & 반지름(대충 커버용)
     XMVECTOR center = XMVectorZero();
     for (int i = 0; i < 8; ++i) center = XMVectorAdd(center, cornersWS[i]);
     center = XMVectorScale(center, 1.0f / 8.0f);
@@ -205,18 +204,15 @@ static void BuildDirLightViewProj(
         maxRadius = max(maxRadius, d);
     }
 
-    // 3) 라이트 뷰 만들기
-    XMVECTOR L = XMVector3Normalize(lightDirWS);        // 광선 진행방향
-    // Up 선택(빛 방향과 평행 회피)
+    XMVECTOR L = XMVector3Normalize(lightDirWS);// light direction
     XMVECTOR up = XMVectorSet(0, 1, 0, 0);
     if (fabsf(XMVectorGetX(XMVector3Dot(up, L))) > 0.99f)
         up = XMVectorSet(0, 0, 1, 0);
 
-    // 라이트 위치: 중심 뒤쪽으로 약간 떨어뜨림(반지름 만큼)
     XMVECTOR eye = XMVectorSubtract(center, XMVectorScale(L, maxRadius + 10.0f));
     outLightView = XMMatrixLookAtLH(eye, center, up);
 
-    // 4) 코너들을 라이트 뷰 공간으로 보냄 → extents
+    // map corners to light-view space
     XMVECTOR minPt = XMVectorSet(+FLT_MAX, +FLT_MAX, +FLT_MAX, 1);
     XMVECTOR maxPt = XMVectorSet(-FLT_MAX, -FLT_MAX, -FLT_MAX, 1);
     for (int i = 0; i < 8; ++i)
@@ -229,11 +225,9 @@ static void BuildDirLightViewProj(
     // 5) Off-center Ortho (LH)
     const float minX = XMVectorGetX(minPt), maxX = XMVectorGetX(maxPt);
     const float minY = XMVectorGetY(minPt), maxY = XMVectorGetY(maxPt);
-    // near/far는 라이트 뷰 z 범위를 그대로 사용
     float minZ = XMVectorGetZ(minPt), maxZ = XMVectorGetZ(maxPt);
 
     // 여유 패딩 (셔머/클리핑 방지)
-    const float pad = 0.0f; // 필요하면 5~20 정도 가산
-    outLightProj = XMMatrixOrthographicOffCenterLH(
-        minX - pad, maxX + pad, minY - pad, maxY + pad, minZ - pad, maxZ + pad);
+    const float pad = 0.0f;
+    outLightProj = XMMatrixOrthographicOffCenterLH(minX - pad, maxX + pad, minY - pad, maxY + pad, minZ - pad, maxZ + pad);
 }

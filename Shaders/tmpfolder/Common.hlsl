@@ -108,7 +108,7 @@ cbuffer cbMaterialIndex : register(b2)
 float3 NormalSampleToWorldSpace(float3 normalMapSample, float3 unitNormalW, float4 tangent, float normalScale)
 {
     float2 rg = normalMapSample.xy * 2.0f - 1.0f;
-    rg.y = -rg.y;
+    //rg.y = -rg.y;
     rg *= normalScale;
     float  z = sqrt(saturate(1.0f - dot(rg, rg)));
     float3 normalT = normalize(float3(rg, z));
@@ -126,7 +126,7 @@ float3 NormalSampleToWorldSpace(float3 normalMapSample, float3 unitNormalW, floa
         return N;
     }
     T = normalize(T);
-    T = normalize(T - N * dot(T, N));       // ±×·¥-½´¹ÌÆ®
+    T = normalize(T - N * dot(T, N));       // ê·¸ëž¨-ìŠˆë¯¸íŠ¸
     float3 B = tangent.w * normalize(cross(N, T));
 
     float3x3 TBN = float3x3(T, B, N);
@@ -137,39 +137,107 @@ float3 NormalSampleToWorldSpace(float3 normalMapSample, float3 unitNormalW, floa
     return bumpedNormalW;
 }
 
-//---------------------------------------------------------------------------------------
-// PCF for shadow mapping.
-//---------------------------------------------------------------------------------------
-
 float CalcShadowFactor(float4 shadowPosH)
 {
-    // Complete projection by doing division by w.
-    shadowPosH.xyz /= shadowPosH.w;
+    // perspective divide
+    float3 proj = shadowPosH.xyz / shadowPosH.w;
+    float2 shadowUV = proj.xy * float2(0.5f, -0.5f) + 0.5f;
 
-    // Depth in NDC space.
-    float depth = shadowPosH.z;
-
-    uint width, height, numMips;
-    gShadowMap.GetDimensions(0, width, height, numMips);
-
-    // Texel size.
-    float dx = 1.0f / (float)width;
-
-    float percentLit = 0.0f;
-    const float2 offsets[9] =
+    // frustum
+    if (proj.z < 0.0f || proj.z > 1.0f ||
+        shadowUV.x < 0.0f || shadowUV.x > 1.0f ||
+        shadowUV.y < 0.0f || shadowUV.y > 1.0f)
     {
-        float2(-dx,  -dx), float2(0.0f,  -dx), float2(dx,  -dx),
-        float2(-dx, 0.0f), float2(0.0f, 0.0f), float2(dx, 0.0f),
-        float2(-dx,  +dx), float2(0.0f,  +dx), float2(dx,  +dx)
+        return 1.0f;
+    }
+
+    const float bias = 0.005f;
+    uint w, h, mips;
+    gShadowMap.GetDimensions(0, w, h, mips);
+    float2 texel = 1.0 / float2(w, h);
+
+    // 16-tap Poisson PCF
+    const float2 poisson[16] =
+    {
+        float2(-0.94201624, -0.39906216), float2(0.94558609, -0.76890725),
+        float2(-0.09418410, -0.92938870), float2(0.34495938,  0.29387760),
+        float2(-0.91588581,  0.45771432), float2(-0.81544232, -0.87912464),
+        float2(-0.38277543,  0.27676845), float2(0.97484398,  0.75648379),
+        float2(0.44323325, -0.97511554), float2(0.53742981, -0.47373420),
+        float2(-0.26496911, -0.41893023), float2(0.79197514,  0.19090188),
+        float2(-0.24188840,  0.99706507), float2(-0.81409955,  0.91437590),
+        float2(0.19984126,  0.78641367), float2(0.14383161, -0.14100790)
     };
 
-    [unroll]
-        for (int i = 0; i < 9; ++i)
-        {
-            percentLit += gShadowMap.SampleCmpLevelZero(gsamShadow,
-                shadowPosH.xy + offsets[i], depth).r;
-        }
+    // soft scaling
+    float radius = 2.5f + 2.5f * proj.z;
 
-    return percentLit / 9.0f;
+    float lit = 0.0f;
+    [unroll] for (int i = 0; i < 16; ++i)
+    {
+        float2 uv = shadowUV + poisson[i] * radius * texel;
+        lit += gShadowMap.SampleCmpLevelZero(gsamShadow, uv, proj.z - bias).r;
+    }
+    return lit * (1.0 / 16.0);
 }
 
+float ShadowFactor(float4 shadowPosH, float3 N)
+{
+    float3 proj = shadowPosH.xyz / shadowPosH.w;
+    float2 uv = proj.xy * float2(0.5f, -0.5f) + 0.5f;
+
+    if (proj.z < 0 || proj.z > 1 || any(uv < 0) || any(uv > 1))
+        return 1.0;
+
+    float3 Ldir = normalize(-gLights[0].Direction);
+    float ndotl = saturate(dot(N, Ldir));
+    float bias = max(0.0004f, 0.0015f * (1.0f - ndotl));
+
+    uint w, h, mips; gShadowMap.GetDimensions(0, w, h, mips);
+    float2 texel = 1.0 / float2(w, h);
+
+    const float2 poisson[16] =
+    {
+        float2(-0.94201624, -0.39906216), float2(0.94558609, -0.76890725),
+        float2(-0.09418410, -0.92938870), float2(0.34495938,  0.29387760),
+        float2(-0.91588581,  0.45771432), float2(-0.81544232, -0.87912464),
+        float2(-0.38277543,  0.27676845), float2(0.97484398,  0.75648379),
+        float2(0.44323325, -0.97511554), float2(0.53742981, -0.47373420),
+        float2(-0.26496911, -0.41893023), float2(0.79197514,  0.19090188),
+        float2(-0.24188840,  0.99706507), float2(-0.81409955,  0.91437590),
+        float2(0.19984126,  0.78641367), float2(0.14383161, -0.14100790)
+    };
+    float radius = 2.0 + 2.0 * proj.z;
+
+    float lit = 0;
+    [unroll] for (int i = 0; i < 16; ++i)
+    {
+        lit += gShadowMap.SampleCmpLevelZero(gsamShadow, uv + poisson[i] * radius * texel, proj.z - bias).r;
+    }
+    return lit * (1.0 / 16.0);
+}
+
+float3 RRTAndODTFit(float3 v)
+{
+    float3 a = v * (v + 0.0245786) - 0.000090537;
+    float3 b = v * (0.983729 * v + 0.4329510) + 0.238081;
+    return a / b;
+}
+
+float3 ACESFitted(float3 c)
+{
+    const float3x3 ACESIn = float3x3(
+        0.59719, 0.35458, 0.04823,
+        0.07600, 0.90834, 0.01566,
+        0.02840, 0.13383, 0.83777);
+
+    const float3x3 ACESOut = float3x3(
+        1.60475, -0.53108, -0.07367,
+        -0.10208, 1.10813, -0.00605,
+        -0.00327, -0.07276, 1.07602);
+
+    c = mul(ACESIn, c);
+    c = RRTAndODTFit(c);
+    c = mul(ACESOut, c);
+    return saturate(c);
+}
