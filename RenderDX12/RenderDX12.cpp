@@ -3,6 +3,7 @@
 
 #include <d3d12sdklayers.h>
 #include <pix3.h>
+#include <thread>
 
 #include "../external/imgui/imgui.h"
 #include "../external/imgui/backends/imgui_impl_win32.h"
@@ -136,7 +137,8 @@ void RenderDX12::OnResize()
 	m_DX12FrameBuffer.Resize(&m_DX12Device);
 }
 
-void RenderDX12::Draw() {
+void RenderDX12::Draw()
+{
 	if (EngineConfig::UseMultiThread && workerCount > 0)
 		RecordAndSubmit_Multi();
 	else
@@ -261,7 +263,151 @@ void RenderDX12::RecordAndSubmit_Single()
 
 void RenderDX12::RecordAndSubmit_Multi()
 {
+	/*
+	// current version of multi-thread method was implemented only on drawing commands
+	*/
+	PIXBeginEvent(m_DX12Device.GetDX12CommandList()->GetCommandQueue(), PIX_COLOR(0, 255, 0), L"Frame %u", sFrameId); //pix marking ~ total frame
 
+	m_DX12Device.SetCurrentBackBufferIndex(m_DX12Device.GetDX12SwapChain()->GetSwapChain()->GetCurrentBackBufferIndex());
+	const uint32_t currBackBufferIndex = m_DX12Device.GetDX12SwapChain()->GetSwapChain()->GetCurrentBackBufferIndex();
+
+	m_DX12FrameBuffer.CheckFence(&m_DX12Device, currBackBufferIndex); // << GPU WAIT
+	////////////////imgui timer set
+	float gpuMS = m_timer.GetElapsedGPUMS(currBackBufferIndex);
+	float cpuMS = m_timer.GetElapsedCPUMS(currBackBufferIndex);
+	m_DX12Device.GetFrameResource(currBackBufferIndex)->ResetAllAllocators();
+	m_DX12Device.GetFrameResource(currBackBufferIndex)->EnsureWorkerCapacity(m_DX12Device.GetDevice(), EngineConfig::NumThreadWorker);
+	m_DX12Device.GetDX12CommandList()->ResetList(m_DX12Device.GetDX12PSO()->GetPipelineState(), m_DX12Device.GetFrameResource(currBackBufferIndex)->GetCommandAllocator()); //main thread reset
+
+	m_timer.BeginCPU(currBackBufferIndex); // << imgui CPU TIMER START
+
+	PIXBeginEvent(m_DX12Device.GetDX12CommandList()->GetCommandList(), PIX_COLOR(0, 180, 255), L"BeginFrame"); // pix marking ~ frame start setting
+
+	m_timer.BeginGPU(m_DX12Device.GetDX12CommandList()->GetCommandList(), currBackBufferIndex); // << imgui GPU TIMER START
+
+	m_DX12Device.UpdateFrameResource();
+
+	CD3DX12_CPU_DESCRIPTOR_HANDLE tmpDSVOffsetHandle = static_cast<CD3DX12_CPU_DESCRIPTOR_HANDLE>(m_DX12Device.GetOffsetCPUHandle(
+		m_DX12Device.GetDX12DSVHeap()->GetDescHeap()->GetCPUDescriptorHandleForHeapStart(),
+		2 * m_DX12Device.GetDX12SwapChain()->GetSwapChainBufferCount(), // maind render + msaa render,
+		m_DX12Device.GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV)));
+
+	m_DX12FrameBuffer.BeginFrame(m_DX12Device.GetDX12CommandList(), currBackBufferIndex, m_DX12Device.GetDX12ShadowManager(), tmpDSVOffsetHandle);
+	PIXEndEvent(m_DX12Device.GetDX12CommandList()->GetCommandList()); //pix frame start setting marking end
+	m_DX12Device.GetDX12CommandList()->GetCommandList()->Close();
+
+	auto* cbvSrvHeap = m_DX12Device.GetDX12CBVSRVHeap();
+	constexpr uint32_t numDescPerFrame = EngineConfig::ConstantBufferCount;
+	constexpr uint32_t numDescPerThread = 0;
+	constexpr uint32_t maxWorkers = 0;
+	const uint32_t numWorkers = m_DX12Device.GetFrameResource(currBackBufferIndex)->GetWorkerAllocatorCount();
+	const uint32_t frameIndex = currBackBufferIndex;
+	const uint32_t threadIndex = 0;
+	const uint32_t numItems = m_DX12Device.GetRenderItemSize();
+	const uint32_t chunkSize = (numItems + numWorkers - 1) / numWorkers;
+
+	std::vector<std::thread> workerThreads;
+	workerThreads.reserve(numWorkers);
+
+	uint32_t cbvSliceIndex = cbvSrvHeap->CalcHeapSliceShareBlock(frameIndex, threadIndex, numDescPerFrame, numDescPerThread, maxWorkers);
+	HeapSlice cbvSlice = cbvSrvHeap->Offset(cbvSliceIndex);
+	HeapSlice texSlice = cbvSrvHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount);
+	HeapSlice matSlice = cbvSrvHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + 2 * EngineConfig::MaxTextureCount);
+
+	for (int i = 0; i < numWorkers; i++)
+	{
+		workerThreads.emplace_back([&, i]()
+			{
+				const uint32_t beginIndex = i * chunkSize;
+				const uint32_t endIndex = min(beginIndex + chunkSize, numItems);
+				if (beginIndex >= endIndex) return;
+				m_DX12Device.GetWorkerDX12CommandList(i)->ResetList(
+					m_DX12Device.GetDX12PSO()->GetPipelineState(), m_DX12Device.GetFrameResource(currBackBufferIndex)->GetWorkerCommandAllocator(i)); //worker thread reset
+				m_DX12FrameBuffer.SetRenderViewPort(m_DX12Device.GetWorkerDX12CommandList(i), currBackBufferIndex);
+				m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList()->SetGraphicsRootSignature(m_DX12Device.GetDX12RootSignature()->GetRootSignature());
+				ID3D12DescriptorHeap* descriptorHeaps[] = { m_DX12Device.GetDX12CBVSRVHeap()->GetDescHeap() };
+
+				m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList()->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+				m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList()->SetGraphicsRootDescriptorTable(0, cbvSlice.gpuDescHandle);
+				m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList()->SetGraphicsRootDescriptorTable(1, texSlice.gpuDescHandle);
+				m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList()->SetGraphicsRootDescriptorTable(2, matSlice.gpuDescHandle);
+				PIXBeginEvent(m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList(), PIX_COLOR(0, 128, 255), L"[MT] Draw worker %d (%d~%d)", i, beginIndex, endIndex); //pix marking ~ worker thread draw
+
+				for (int renderItemIndex = beginIndex; renderItemIndex < endIndex; renderItemIndex++)
+				{
+					UINT matIndex = m_DX12Device.GetDX12RenderItem(renderItemIndex).GetMaterialIndex();
+					UINT texIndex = m_DX12Device.GetDX12RenderItem(renderItemIndex).GetTextureIndex();
+					UINT objIndex = m_DX12Device.GetDX12RenderItem(renderItemIndex).GetObjectConstantIndex();
+					struct RootPush { UINT matIdx; UINT texIdx; UINT worldIdx; } push{ matIndex, texIndex, objIndex };
+
+					m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList()->SetGraphicsRoot32BitConstants(3, 3, &push, 0);
+
+					m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList()->IASetPrimitiveTopology(m_DX12Device.GetDX12RenderItem(renderItemIndex).GetRenderGeometry()->GetPrimitiveTopologyType());
+					m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList()->IASetVertexBuffers(0, 1, m_DX12Device.GetDX12RenderItem(renderItemIndex).GetRenderGeometry()->GetDX12VertexBufferView()->GetVertexBufferView());
+					m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList()->IASetIndexBuffer(m_DX12Device.GetDX12RenderItem(renderItemIndex).GetRenderGeometry()->GetDX12IndexBufferView()->GetIndexBufferView());
+					m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList()->DrawIndexedInstanced(
+						m_DX12Device.GetDX12RenderItem(renderItemIndex).GetRenderGeometry()->GetIndexCount(),
+						1,
+						m_DX12Device.GetDX12RenderItem(renderItemIndex).GetStartIndexLocation(),
+						m_DX12Device.GetDX12RenderItem(renderItemIndex).GetBaseVertexLocation(),
+						0);
+				}
+				PIXEndEvent(m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList());//pix worker thread draw marking end
+
+				m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList()->Close();
+			});
+	}
+
+	m_DX12Device.GettmpDX12CommandList()->ResetList(m_DX12Device.GetDX12PSO()->GetPipelineState(), m_DX12Device.GetFrameResource(currBackBufferIndex)->GetCommandAllocator());
+
+	PIXBeginEvent(m_DX12Device.GettmpDX12CommandList()->GetCommandList(), PIX_COLOR(255, 128, 0), L"EndFrame/Resolve"); //pix marking ~ resorve RTV
+	m_DX12FrameBuffer.EndFrame(m_DX12Device.GettmpDX12CommandList(), currBackBufferIndex, m_DX12Device.GetDX12SwapChain()->GetRenderTargetFormat(), m_DX12Device.GetDX12ShadowManager());
+	PIXEndEvent(m_DX12Device.GettmpDX12CommandList()->GetCommandList());
+	//////////////////////////////////imgui drawing
+	// imgui render block
+	PIXBeginEvent(m_DX12Device.GettmpDX12CommandList()->GetCommandList(), PIX_COLOR(255, 0, 255), L"ImGui"); //pix marking ~ imgui rendering
+	ImGui_ImplDX12_NewFrame();
+	ImGui_ImplWin32_NewFrame();
+	ImGui::NewFrame();
+
+	ImGui::Begin("Frame Times");
+	ImGui::Text("CPU: %.3f ms \nGPU: %.3f ms", cpuMS, gpuMS);
+	ImGui::End();
+	ImGui::Render();
+
+	//current bind to MSAA render target view (see func : DX12FrameBuffer::EndFrame)
+	//rebinding to back buffer is needed to draw IMGUI on real screen!
+	auto backBufferBase = m_DX12Device.GetDX12RTVHeap()->GetDescHeap()->GetCPUDescriptorHandleForHeapStart();
+	auto backBufferInc = m_DX12Device.GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE backbufRTV(backBufferBase, currBackBufferIndex, backBufferInc);
+
+	m_DX12Device.GettmpDX12CommandList()->GetCommandList()->OMSetRenderTargets(1, &backbufRTV, FALSE, nullptr);
+	ID3D12DescriptorHeap* SRVheaps[] = { m_DX12Device.GetDX12ImGuiHeap()->GetDescHeap() };
+	m_DX12Device.GettmpDX12CommandList()->GetCommandList()->SetDescriptorHeaps(1, SRVheaps);
+
+	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_DX12Device.GettmpDX12CommandList()->GetCommandList());
+	PIXEndEvent(m_DX12Device.GettmpDX12CommandList()->GetCommandList()); //pix imgui marking end
+	m_DX12FrameBuffer.SetBackBufferPresent(m_DX12Device.GettmpDX12CommandList(), currBackBufferIndex);
+	m_timer.EndGPU(m_DX12Device.GettmpDX12CommandList()->GetCommandList(), currBackBufferIndex); // << GPU TIMER END
+	//////////////////////////////////////////////////////////////////////////////////
+	for (auto& wThread : workerThreads) wThread.join();
+
+	std::vector<ID3D12CommandList*> submitCommandLists;
+	submitCommandLists.reserve(2 + numWorkers); // main + workers + tmp
+	submitCommandLists.push_back(m_DX12Device.GetDX12CommandList()->GetCommandList());
+	for (int i = 0; i < m_DX12Device.GetWorkerDX12CommandListSize(); i++) submitCommandLists.push_back(m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList());
+	submitCommandLists.push_back(m_DX12Device.GettmpDX12CommandList()->GetCommandList());
+
+	m_DX12Device.GettmpDX12CommandList()->GetCommandList()->Close();
+	m_DX12Device.GetDX12CommandList()->GetCommandQueue()->ExecuteCommandLists((UINT)submitCommandLists.size(), submitCommandLists.data());
+
+	const uint64_t fenceValue = m_DX12Device.GetDX12CommandList()->Signal();
+	m_DX12Device.GetFrameResource(currBackBufferIndex)->SetFenceValue(fenceValue);
+	m_timer.EndCPU(currBackBufferIndex); // << CPU TIMER END
+	m_DX12FrameBuffer.Present(&m_DX12Device);
+
+	PIXEndEvent(m_DX12Device.GetDX12CommandList()->GetCommandQueue()); //pix frame marking end
+	sFrameId++;
 }
 
 void RenderDX12::ShutDown()

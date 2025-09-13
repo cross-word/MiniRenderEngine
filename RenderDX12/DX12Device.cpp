@@ -61,6 +61,17 @@ void DX12Device::InitDX12CommandList(ID3D12CommandAllocator* commandAllocator)
 	//create command queue/list/fence
 	m_DX12CommandList = std::make_unique<DX12CommandList>();
 	m_DX12CommandList->Initialize(m_device.Get(), commandAllocator, m_fenceEvent);
+
+	m_tmpDX12CommandList = std::make_unique<DX12CommandList>();
+	m_tmpDX12CommandList->Initialize(m_device.Get(), commandAllocator, m_fenceEvent);
+
+	m_workerDX12CommandList.reserve(EngineConfig::NumThreadWorker);
+	for (int i = 0; i < EngineConfig::NumThreadWorker; i++)
+	{
+		auto tmpCmdList = std::make_unique<DX12CommandList>();
+		tmpCmdList->Initialize(m_device.Get(), commandAllocator, m_fenceEvent);
+		m_workerDX12CommandList.push_back(std::move(tmpCmdList));
+	}
 }
 
 void DX12Device::InitDX12SwapChain(HWND hWnd)
@@ -439,14 +450,8 @@ void DX12Device::UpdateFrameResource()
 {
 	// Has the GPU finished processing the commands of the current frame resource?
 	// If not, wait until the GPU has completed commands up to this fence point.
-	if (m_DX12FrameResource[m_currBackBufferIndex]->GetFenceValue() != 0 && m_DX12CommandList->GetFence()->GetCompletedValue() < m_DX12FrameResource[m_currBackBufferIndex]->GetFenceValue())
-	{
-		ThrowIfFailed(m_DX12CommandList->GetFence()->SetEventOnCompletion(m_DX12FrameResource[m_currBackBufferIndex]->GetFenceValue(), m_fenceEvent));
-		WaitForSingleObject(m_fenceEvent, INFINITE);
-	}
-
-	m_DX12FrameResource[m_currBackBufferIndex]->UploadPassConstant(m_camera.get(), m_sceneData.lights);
-	m_DX12FrameResource[m_currBackBufferIndex]->UploadObjectConstant(m_device.Get(), m_DX12CommandList.get(), m_renderItems, m_DX12ObjectConstantManager.get());
+	m_DX12FrameResource[GetCurrentBackBufferIndex()]->UploadPassConstant(m_camera.get(), m_sceneData.lights);
+	m_DX12FrameResource[GetCurrentBackBufferIndex()]->UploadObjectConstant(m_device.Get(), m_DX12CommandList.get(), m_renderItems, m_DX12ObjectConstantManager.get());
 }
 
 UINT DX12Device::GetTextureIndexAsTextureName(const std::string textureName)

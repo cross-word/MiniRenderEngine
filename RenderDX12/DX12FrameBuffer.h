@@ -33,6 +33,7 @@ public:
         UINT currBackBufferIndex,
         DX12ShadowManager* dx12ShadowManager,
         CD3DX12_CPU_DESCRIPTOR_HANDLE shadowDepthStencilCPUHandle);
+    void SetRenderViewPort(DX12CommandList* dx12CommandList, UINT currBackBufferIndex);
     void EndFrame(
         DX12CommandList* dx12CommandList,
         UINT currBackBufferIndex,

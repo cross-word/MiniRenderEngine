@@ -64,6 +64,11 @@ public:
 	void UpdateFrameResource();
 	UINT GetTextureIndexAsTextureName(const std::string textureName);
 	UINT GetMaterialIndexAsMaterialName(const std::string materialName);
+
+	//for multi-thread
+	inline DX12CommandList* GetWorkerDX12CommandList(uint32_t workerIndex) const { assert(workerIndex < m_workerDX12CommandList.size()); return m_workerDX12CommandList[workerIndex].get(); }
+	inline size_t GetWorkerDX12CommandListSize() const { return m_workerDX12CommandList.size(); }
+	inline DX12CommandList* GettmpDX12CommandList() const noexcept { return m_tmpDX12CommandList.get(); }
 private:
 	void InitDX12CommandList(ID3D12CommandAllocator* commandAllocator);
 	void InitDX12SwapChain(HWND hWnd);
@@ -81,7 +86,7 @@ private:
 private:
 	ComPtr<IDXGIFactory4> m_factory;
 	ComPtr<ID3D12Device> m_device;
-	std::unique_ptr<DX12CommandList> m_DX12CommandList;
+	std::unique_ptr<DX12CommandList> m_DX12CommandList; //for single-thread or main thread in multi-thread setting
 	std::unique_ptr<DX12RootSignature> m_DX12RootSignature;
 	std::unique_ptr<DX12PSO> m_DX12PSO;
 
@@ -114,4 +119,8 @@ private:
 
 	SceneData m_sceneData;
 	std::vector<std::unique_ptr<DX12RenderGeometry>> m_sceneGeometry;
+
+	//for multi-thread
+	std::vector<std::unique_ptr<DX12CommandList>> m_workerDX12CommandList;
+	std::unique_ptr<DX12CommandList> m_tmpDX12CommandList;
 };

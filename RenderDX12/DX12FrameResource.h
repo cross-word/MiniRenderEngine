@@ -30,10 +30,6 @@ public:
     void ResetAllocator() { ThrowIfFailed(m_commandAllocator->Reset()); }
     void CreateSRV(ID3D12Device* device, DX12DescriptorHeap* dx12DescriptorHeap, uint32_t frameIndex);
 
-    //prepare for multi-thread
-    void EnsureWorkerCapacity(ID3D12Device* device, uint32_t workerCount);
-    ID3D12CommandAllocator* GetWorkerAllocator(uint32_t i) { return m_workerAlloc[i].Get(); }
-
     void UploadPassConstant(D3DCamera* d3dCamera, std::vector<Light>& lights);
     void UploadObjectConstant(
         ID3D12Device* device,
@@ -41,10 +37,17 @@ public:
         std::vector<Render::RenderItem>& renderItems,
         DX12ObjectConstantManager* dx12ObjectConstantManager);
 
+    //prepare for multi-thread
+    void EnsureWorkerCapacity(ID3D12Device* device, uint32_t workerCount);
+    ID3D12CommandAllocator* GetWorkerCommandAllocator(uint32_t i) { return m_workerAlloc[i].Get(); }
+    void ResetAllAllocators();
+    inline ID3D12CommandAllocator* GetCommandAllocator(uint32_t workerIndex) const { assert(workerIndex < m_workerAlloc.size()); return m_workerAlloc[workerIndex].Get(); }
+    uint32_t GetWorkerAllocatorCount() const { return m_workerAlloc.size(); }
+
 private:
     // 명령 할당자는 GPU가 명령들을 다 처리한 후 재설정해야한다.
     // 따라서 프레임마다 할당자가 필요하다.
-    ComPtr<ID3D12CommandAllocator> m_commandAllocator;
+    ComPtr<ID3D12CommandAllocator> m_commandAllocator; //for single-thread or main thread in multi-thread setting
 
     // 상수 버퍼는 그것을 참조하는 명령들을 GPU가 전부 처리한 후 갱신해야한다.
     // 따라서 여러 명령 할당자를 쓰면 프레임마다 상수버퍼가 필요하다.
@@ -58,5 +61,5 @@ private:
     // 이 값은 GPU가 이 프레임의 자원들을 사용하고 있는지 판정한다. 따라서 FrameResource에서 GPU의 명령 할당자를 바꾸는 척도가 된다.
     uint64_t m_fence = 0;
 
-    std::vector<ComPtr<ID3D12CommandAllocator>> m_workerAlloc;
+    std::vector<ComPtr<ID3D12CommandAllocator>> m_workerAlloc; //for multi-thread workers
 };

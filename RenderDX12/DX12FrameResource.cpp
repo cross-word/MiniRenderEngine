@@ -8,6 +8,18 @@ DX12FrameResource::DX12FrameResource(ID3D12Device* device)
 		D3D12_COMMAND_LIST_TYPE_DIRECT,
 		IID_PPV_ARGS(m_commandAllocator.GetAddressOf())
 	));
+
+	//CREATE CMD ALLOC FOR WORKERS
+	m_workerAlloc.reserve(EngineConfig::NumThreadWorker);
+	for (int i = 0; i < m_workerAlloc.size(); i++)
+	{
+		ComPtr<ID3D12CommandAllocator> tmpAllocator;
+		ThrowIfFailed(device->CreateCommandAllocator(
+			D3D12_COMMAND_LIST_TYPE_DIRECT,
+			IID_PPV_ARGS(tmpAllocator.GetAddressOf())
+		));
+		m_workerAlloc.push_back(tmpAllocator);
+	}
 }
 
 DX12FrameResource::~DX12FrameResource()
@@ -168,4 +180,10 @@ void DX12FrameResource::EnsureWorkerCapacity(ID3D12Device* device, uint32_t n) {
 			D3D12_COMMAND_LIST_TYPE_DIRECT,
 			IID_PPV_ARGS(m_workerAlloc[i].GetAddressOf())));
 	}
+}
+
+void DX12FrameResource::ResetAllAllocators()
+{
+	m_commandAllocator->Reset();
+	for (auto& a : m_workerAlloc) a->Reset();
 }
