@@ -21,6 +21,11 @@ using namespace DirectX;
 #include "D3DCamera.h"
 #include "D3DTimer.h"
 
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <vector>
+
 /*
 CLASS RENDERDX12
 MAIN WORK:
@@ -54,6 +59,27 @@ private:
     DX12FrameBuffer m_DX12FrameBuffer;
     DX12Device m_DX12Device;
     D3DTimer m_timer;
+
+    struct WorkerJobDrawing
+    {
+        uint32_t beginIndex = 0;
+        uint32_t endIndex = 0;
+        uint32_t currBackBufferIndex = 0;
+        HeapSlice cbvSlice{};
+        HeapSlice texSlice{};
+        HeapSlice matSlice{};
+        bool ready = false;
+    };
+
+    std::vector<std::thread> m_workerThreads;
+    std::vector<WorkerJobDrawing> m_workerJobDrawing; //should be managed mutual exclusively
+    std::mutex m_workerMutex;
+    std::condition_variable m_workerCV; //for wake up worker-thread
+    std::condition_variable m_workerDoneCV; //for waiting worker-thread
+    uint32_t m_pendingWorkers = 0;
+    bool m_terminateWorkers = false; //for shut down worker-threads safely
+
+    void AllocateWorkerDrawingCommand(uint32_t index);
 
     uint32_t workerCount = EngineConfig::NumThreadWorker;
     void RecordAndSubmit_Single();
