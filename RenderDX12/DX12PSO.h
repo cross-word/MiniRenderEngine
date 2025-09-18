@@ -17,7 +17,7 @@ class DX12PSO
 public:
 	DX12PSO();
 	~DX12PSO();
-	void CreatePSO(
+	void CreateMainPassPSO(
 		ID3D12Device* device,
 		const std::vector<D3D12_INPUT_ELEMENT_DESC>& inputLayout,
 		ID3D12RootSignature* rootSignature,
@@ -25,7 +25,18 @@ public:
 		DXGI_FORMAT renderTargetFormat,
 		ID3DBlob* vertexShader,
 		ID3DBlob* pixelShader,
-		UINT numRenderTarget);
+		UINT numRenderTarget,
+		UINT sampleCount);
+	void CreateShadowPassPSO(
+		ID3D12Device* device,
+		const std::vector<D3D12_INPUT_ELEMENT_DESC>& inputLayout,
+		ID3D12RootSignature* rootSignature,
+		DXGI_FORMAT depthStencilFormat,
+		DXGI_FORMAT renderTargetFormat,
+		ID3DBlob* vertexShader,
+		ID3DBlob* pixelShader,
+		UINT numRenderTarget,
+		UINT sampleCount);
 	ID3D12PipelineState* GetPipelineState();
 	ID3D12PipelineState* GetPipelineState(int index);
 private:

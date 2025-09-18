@@ -68,7 +68,7 @@ public:
 	//for multi-thread
 	inline DX12CommandList* GetWorkerDX12CommandList(uint32_t workerIndex) const { assert(workerIndex < m_workerDX12CommandList.size()); return m_workerDX12CommandList[workerIndex].get(); }
 	inline size_t GetWorkerDX12CommandListSize() const { return m_workerDX12CommandList.size(); }
-	inline DX12CommandList* GettmpDX12CommandList() const noexcept { return m_tmpDX12CommandList.get(); }
+	inline DX12CommandList* GetPostDrawDX12CommandList() const noexcept { return m_postDrawDX12CommandList.get(); }
 private:
 	void InitDX12CommandList(ID3D12CommandAllocator* commandAllocator);
 	void InitDX12SwapChain(HWND hWnd);
@@ -122,5 +122,5 @@ private:
 
 	//for multi-thread
 	std::vector<std::unique_ptr<DX12CommandList>> m_workerDX12CommandList;
-	std::unique_ptr<DX12CommandList> m_tmpDX12CommandList;
+	std::unique_ptr<DX12CommandList> m_postDrawDX12CommandList; //command list to finish frame
 };

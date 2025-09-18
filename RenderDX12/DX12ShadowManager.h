@@ -21,6 +21,8 @@ public:
 	inline DXGI_FORMAT GetShadowDepthStencilFormat() const noexcept { return m_shadowDepthStencilFormat; }
 	inline DXGI_FORMAT GetShadowShaderResourceFormat() const noexcept { return m_shadowShaderResourceFormat; }
 	inline DX12ResourceTexture* GetShadowResource() const noexcept { return m_DX12ShadowResource.get(); }
+	inline UINT GetShadowWidth() const noexcept { return m_shadowWidth; }
+	inline UINT GetShadowHeight() const noexcept { return m_shadowHeight; }
 private:
 	std::unique_ptr<DX12ResourceTexture> m_DX12ShadowResource;
 	std::unique_ptr<DX12View> m_DX12ShadowDescriptorView;

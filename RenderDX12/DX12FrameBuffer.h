@@ -28,13 +28,11 @@ public:
     void Initialize(DX12Device* dx12Device);
     void Resize(DX12Device* dx12Device);
     void CheckFence(DX12Device* dx12Device, UINT currBackBufferIndex);
-    void BeginFrame(
+    void BeginMainPass(
         DX12CommandList* dx12CommandList,
-        UINT currBackBufferIndex,
-        DX12ShadowManager* dx12ShadowManager,
-        CD3DX12_CPU_DESCRIPTOR_HANDLE shadowDepthStencilCPUHandle);
+        UINT currBackBufferIndex);
     void SetRenderViewPort(DX12CommandList* dx12CommandList, UINT currBackBufferIndex);
-    void EndFrame(
+    void EndMainPass(
         DX12CommandList* dx12CommandList,
         UINT currBackBufferIndex,
         DXGI_FORMAT renderTargetFormat,
@@ -43,6 +41,8 @@ public:
     void Present(DX12Device* dx12Device);
 
     void BeginShadowRender(DX12CommandList* dx12CommandList, DX12ShadowManager* dx12ShadowManager, CD3DX12_CPU_DESCRIPTOR_HANDLE shadowDepthStencilCPUHandle);
+    void EndShadowRender(DX12CommandList* dx12CommandList, DX12ShadowManager* dx12ShadowManager);
+
 private:
     void CreateRenderTargetsAndViews(DX12Device* dx12Device);
     void CreateDepthStencilAndView(DX12Device* dx12Device);

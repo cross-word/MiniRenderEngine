@@ -62,8 +62,8 @@ void DX12Device::InitDX12CommandList(ID3D12CommandAllocator* commandAllocator)
 	m_DX12CommandList = std::make_unique<DX12CommandList>();
 	m_DX12CommandList->Initialize(m_device.Get(), commandAllocator, m_fenceEvent);
 
-	m_tmpDX12CommandList = std::make_unique<DX12CommandList>();
-	m_tmpDX12CommandList->Initialize(m_device.Get(), commandAllocator, m_fenceEvent);
+	m_postDrawDX12CommandList = std::make_unique<DX12CommandList>();
+	m_postDrawDX12CommandList->Initialize(m_device.Get(), commandAllocator, m_fenceEvent);
 
 	m_workerDX12CommandList.reserve(EngineConfig::NumThreadWorker);
 	for (int i = 0; i < EngineConfig::NumThreadWorker; i++)
@@ -206,7 +206,7 @@ void DX12Device::CreateDX12PSO()
 {
 	m_DX12PSO = std::make_unique<DX12PSO>();
 	//main render PSO
-	m_DX12PSO->CreatePSO(
+	m_DX12PSO->CreateMainPassPSO(
 		GetDevice(),
 		m_inputLayout,
 		m_DX12RootSignature->GetRootSignature(),
@@ -214,10 +214,11 @@ void DX12Device::CreateDX12PSO()
 		m_DX12SwapChain->GetRenderTargetFormat(),
 		m_vertexShader.Get(),
 		m_pixelShader.Get(),
-		1);
+		1,
+		EngineConfig::MsaaSampleCount);
 
 	//shadow PSO
-	m_DX12PSO->CreatePSO(
+	m_DX12PSO->CreateShadowPassPSO(
 		GetDevice(),
 		m_inputLayout,
 		m_DX12RootSignature->GetRootSignature(),
@@ -225,7 +226,8 @@ void DX12Device::CreateDX12PSO()
 		DXGI_FORMAT_UNKNOWN,
 		m_shadowVertexShader.Get(),
 		m_shadowPixelShader.Get(),
-		0);
+		0,
+		1);
 }
 
 void DX12Device::PrepareInitialResource()

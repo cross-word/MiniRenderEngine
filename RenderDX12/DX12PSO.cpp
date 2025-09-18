@@ -11,7 +11,7 @@ DX12PSO::~DX12PSO()
 
 }
 
-void DX12PSO::CreatePSO(
+void DX12PSO::CreateMainPassPSO(
 	ID3D12Device* device,
 	const std::vector<D3D12_INPUT_ELEMENT_DESC>& inputLayout,
 	ID3D12RootSignature* rootSignature,
@@ -19,7 +19,8 @@ void DX12PSO::CreatePSO(
 	DXGI_FORMAT renderTargetFormat,
 	ID3DBlob* vertexShader,
 	ID3DBlob* pixelShader,
-	UINT numRenderTarget)
+	UINT numRenderTarget,
+	UINT sampleCount)
 {
 	// Describe and create the graphics pipeline state object (PSO).
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
@@ -37,9 +38,57 @@ void DX12PSO::CreatePSO(
 	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	psoDesc.NumRenderTargets = numRenderTarget;
 	psoDesc.RTVFormats[0] = renderTargetFormat;
-	psoDesc.SampleDesc.Count = EngineConfig::MsaaSampleCount;
+	psoDesc.SampleDesc.Count = sampleCount;
 	psoDesc.SampleDesc.Quality = 0;
-	psoDesc.RasterizerState.MultisampleEnable = TRUE;
+	psoDesc.RasterizerState.MultisampleEnable = (sampleCount > 1);
+
+	// allocate PSO to vector
+	ComPtr<ID3D12PipelineState> tmpPSO;
+	ThrowIfFailed(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&tmpPSO)));
+	m_pipelineStates.push_back(tmpPSO);
+
+	return;
+}
+
+void DX12PSO::CreateShadowPassPSO(
+	ID3D12Device* device,
+	const std::vector<D3D12_INPUT_ELEMENT_DESC>& inputLayout,
+	ID3D12RootSignature* rootSignature,
+	DXGI_FORMAT depthStencilFormat,
+	DXGI_FORMAT renderTargetFormat,
+	ID3DBlob* vertexShader,
+	ID3DBlob* pixelShader,
+	UINT numRenderTarget,
+	UINT sampleCount)
+{
+	// Describe and create the graphics pipeline state object (PSO).
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+	psoDesc.InputLayout = { inputLayout.data(), (UINT)inputLayout.size() };
+	psoDesc.pRootSignature = rootSignature;
+	psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader);
+	psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader);
+
+	D3D12_RASTERIZER_DESC rs = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	rs.CullMode = D3D12_CULL_MODE_FRONT;      // ¶Ç´Â FRONT·Î ¹Ù²ã acne ÁÙÀÌ±â
+	rs.DepthBias = 3000;                     // ÇØ»óµµ/¾À¿¡ ¸ÂÃç Æ©´× (¿¹: 500~3000)
+	rs.SlopeScaledDepthBias = 4.5f;          // 1.0~4.0 »çÀÌ Æ©´×
+	rs.DepthBiasClamp = 0.0f;
+	psoDesc.RasterizerState = rs;
+	//psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+
+
+	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+	psoDesc.DSVFormat = depthStencilFormat;
+	psoDesc.SampleDesc.Count = 1;
+	psoDesc.SampleDesc.Quality = 0;
+	psoDesc.SampleMask = UINT_MAX;
+	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	psoDesc.NumRenderTargets = numRenderTarget;
+	psoDesc.RTVFormats[0] = renderTargetFormat;
+	psoDesc.SampleDesc.Count = sampleCount;
+	psoDesc.SampleDesc.Quality = 0;
+	psoDesc.RasterizerState.MultisampleEnable = (sampleCount > 1);
 
 	// allocate PSO to vector
 	ComPtr<ID3D12PipelineState> tmpPSO;
