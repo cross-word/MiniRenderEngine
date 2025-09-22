@@ -242,6 +242,7 @@ void RenderDX12::RecordAndSubmit_Single()
 	HeapSlice cbvSlice = cbvSrvHeap->Offset(cbvSliceIndex);
 	HeapSlice texSlice = cbvSrvHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount);
 	HeapSlice matSlice = cbvSrvHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + 2 * EngineConfig::MaxTextureCount);
+	HeapSlice shadowMapSlice = cbvSrvHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + 2 * EngineConfig::MaxTextureCount + 2);
 	///////////////shadow test block
 	CD3DX12_CPU_DESCRIPTOR_HANDLE shadowDSVOffsetHandle = static_cast<CD3DX12_CPU_DESCRIPTOR_HANDLE>(m_DX12Device.GetOffsetCPUHandle(
 		m_DX12Device.GetDX12DSVHeap()->GetDescHeap()->GetCPUDescriptorHandleForHeapStart(),
@@ -260,7 +261,7 @@ void RenderDX12::RecordAndSubmit_Single()
 		UINT tex = m_DX12Device.GetDX12RenderItem(i).GetTextureIndex();
 		UINT obj = m_DX12Device.GetDX12RenderItem(i).GetObjectConstantIndex();
 		struct RootPush { UINT m, t, o; } push{ mat, tex, obj };
-		m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRoot32BitConstants(3, 3, &push, 0);
+		m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRoot32BitConstants(4, 3, &push, 0);
 
 		m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetPrimitiveTopology(m_DX12Device.GetDX12RenderItem(i).GetRenderGeometry()->GetPrimitiveTopologyType());
 		m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetVertexBuffers(0, 1, m_DX12Device.GetDX12RenderItem(i).GetRenderGeometry()->GetDX12VertexBufferView()->GetVertexBufferView());
@@ -273,6 +274,7 @@ void RenderDX12::RecordAndSubmit_Single()
 			0);
 	}
 	m_DX12FrameBuffer.EndShadowRender(m_DX12Device.GetDX12CommandList(), m_DX12Device.GetDX12ShadowManager());
+	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootDescriptorTable(3, shadowMapSlice.gpuDescHandle);
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetPipelineState(m_DX12Device.GetDX12PSO()->GetPipelineState(0));
 	//////////////
 
@@ -296,7 +298,7 @@ void RenderDX12::RecordAndSubmit_Single()
 		UINT texIndex = m_DX12Device.GetDX12RenderItem(renderItemIndex).GetTextureIndex();
 		UINT objIndex = m_DX12Device.GetDX12RenderItem(renderItemIndex).GetObjectConstantIndex();
 		struct RootPush { UINT matIdx; UINT texIdx; UINT worldIdx; } push{ matIndex, texIndex, objIndex };
-		m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRoot32BitConstants(3, 3, &push, 0);
+		m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRoot32BitConstants(4, 3, &push, 0);
 
 		m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetPrimitiveTopology(m_DX12Device.GetDX12RenderItem(renderItemIndex).GetRenderGeometry()->GetPrimitiveTopologyType());
 		m_DX12Device.GetDX12CommandList()->GetCommandList()->IASetVertexBuffers(0, 1, m_DX12Device.GetDX12RenderItem(renderItemIndex).GetRenderGeometry()->GetDX12VertexBufferView()->GetVertexBufferView());

@@ -15,7 +15,7 @@ DX12RootSignature::~DX12RootSignature()
 void DX12RootSignature::Initialize(ID3D12Device* device)
 {
 	// Root parameter can be a table, root descriptor or root constants.
-	CD3DX12_ROOT_PARAMETER1 slotRootParameter[4];
+	CD3DX12_ROOT_PARAMETER1 slotRootParameter[5];
 
 	// Create a single descriptor table of CBVs.
 	CD3DX12_DESCRIPTOR_RANGE1 cbvTable;
@@ -33,7 +33,7 @@ void DX12RootSignature::Initialize(ID3D12Device* device)
 		0,
 		2);//t0 space 2 Linear texture
 
-	CD3DX12_DESCRIPTOR_RANGE1 srvTable[3]; //t0 space 1 materials, t1 space 1 worlds, t2 space1 shadow
+	CD3DX12_DESCRIPTOR_RANGE1 srvTable[2]; //t0 space 1 materials, t1 space 1 worlds
 	srvTable[0].Init(
 		D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
 		1,
@@ -44,7 +44,9 @@ void DX12RootSignature::Initialize(ID3D12Device* device)
 		1,
 		1,
 		1);
-	srvTable[2].Init(
+
+	CD3DX12_DESCRIPTOR_RANGE1 shadowMapTable; //t2 space1 shadow
+	shadowMapTable.Init(
 		D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
 		1,
 		2,
@@ -55,10 +57,11 @@ void DX12RootSignature::Initialize(ID3D12Device* device)
 	// A root signature is an array of root parameters.
 	slotRootParameter[0].InitAsDescriptorTable(1, &cbvTable);
 	slotRootParameter[1].InitAsDescriptorTable(2, srvTexTable, D3D12_SHADER_VISIBILITY_PIXEL);
-	slotRootParameter[2].InitAsDescriptorTable(3, srvTable, D3D12_SHADER_VISIBILITY_ALL);
-	slotRootParameter[3].InitAsConstants(3, 2, 0); // index of textur/material/world
+	slotRootParameter[2].InitAsDescriptorTable(2, srvTable, D3D12_SHADER_VISIBILITY_ALL);
+	slotRootParameter[3].InitAsDescriptorTable(1, &shadowMapTable, D3D12_SHADER_VISIBILITY_ALL);
+	slotRootParameter[4].InitAsConstants(3, 2, 0); // index of textur/material/world
 
-	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc(4, slotRootParameter, (UINT)staticSamplers.size(), staticSamplers.data(), D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc(5, slotRootParameter, (UINT)staticSamplers.size(), staticSamplers.data(), D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	ComPtr<ID3DBlob> signature = nullptr;
 	ComPtr<ID3DBlob> errorBlob = nullptr;
