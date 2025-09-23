@@ -45,7 +45,8 @@ private:
 class DX12ObjectConstantManager : public DX12ConstantManager
 {
 public:
-	struct ConstantCopyRegion {
+	struct ConstantCopyRegion
+	{
 		uint64_t srcOffset;
 		uint64_t dstOffset;
 		uint64_t byteSize;

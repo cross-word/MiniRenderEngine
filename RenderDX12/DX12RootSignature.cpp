@@ -21,6 +21,7 @@ void DX12RootSignature::Initialize(ID3D12Device* device)
 	CD3DX12_DESCRIPTOR_RANGE1 cbvTable;
 	cbvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
 
+	// Create descriptor table of texture.
 	CD3DX12_DESCRIPTOR_RANGE1 srvTexTable[2];
 	srvTexTable[0].Init(
 		D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
@@ -33,24 +34,26 @@ void DX12RootSignature::Initialize(ID3D12Device* device)
 		0,
 		2);//t0 space 2 Linear texture
 
-	CD3DX12_DESCRIPTOR_RANGE1 srvTable[2]; //t0 space 1 materials, t1 space 1 worlds
+	// Create descriptor table of material/world vectors.
+	CD3DX12_DESCRIPTOR_RANGE1 srvTable[2];
 	srvTable[0].Init(
 		D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
 		1,
 		0,
-		1);
+		1);//t0 space 1 materials
 	srvTable[1].Init(
 		D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
 		1,
 		1,
-		1);
+		1);//t1 space 1 worlds
 
-	CD3DX12_DESCRIPTOR_RANGE1 shadowMapTable; //t2 space1 shadow
+	// Create a single descriptor table of shadow map.
+	CD3DX12_DESCRIPTOR_RANGE1 shadowMapTable;
 	shadowMapTable.Init(
 		D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
 		1,
 		2,
-		1);
+		1); //t2 space1 shadow
 
 	auto staticSamplers = GetStaticSamplers();
 

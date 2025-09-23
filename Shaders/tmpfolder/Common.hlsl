@@ -113,9 +113,6 @@ float3 NormalSampleToWorldSpace(float3 normalMapSample, float3 unitNormalW, floa
     float  z = sqrt(saturate(1.0f - dot(rg, rg)));
     float3 normalT = normalize(float3(rg, z));
 
-    // Uncompress each component from [0,1] to [-1,1].
-    //float3 normalT = 2.0f*normalMapSample - 1.0f;
-
     // Build orthonormal basis.
 
     float3 N = normalize(unitNormalW);
@@ -135,51 +132,6 @@ float3 NormalSampleToWorldSpace(float3 normalMapSample, float3 unitNormalW, floa
     float3 bumpedNormalW = normalize(mul(normalT, TBN));
 
     return bumpedNormalW;
-}
-
-float CalcShadowFactor(float4 shadowPosH)
-{
-    // perspective divide
-    float3 proj = shadowPosH.xyz / shadowPosH.w;
-    float2 shadowUV = proj.xy * float2(0.5f, -0.5f) + 0.5f;
-
-    // frustum
-    if (proj.z < 0.0f || proj.z > 1.0f ||
-        shadowUV.x < 0.0f || shadowUV.x > 1.0f ||
-        shadowUV.y < 0.0f || shadowUV.y > 1.0f)
-    {
-        return 1.0f;
-    }
-
-    uint w, h, mips;
-    gShadowMap.GetDimensions(0, w, h, mips);
-    float2 texel = 1.0 / float2(w, h);
-    float receiverPlaneBias = max(texel.x, texel.y);
-    float bias = receiverPlaneBias * (1.5f + proj.z);
-
-    // 16-tap Poisson PCF
-    const float2 poisson[16] =
-    {
-        float2(-0.94201624, -0.39906216), float2(0.94558609, -0.76890725),
-        float2(-0.09418410, -0.92938870), float2(0.34495938,  0.29387760),
-        float2(-0.91588581,  0.45771432), float2(-0.81544232, -0.87912464),
-        float2(-0.38277543,  0.27676845), float2(0.97484398,  0.75648379),
-        float2(0.44323325, -0.97511554), float2(0.53742981, -0.47373420),
-        float2(-0.26496911, -0.41893023), float2(0.79197514,  0.19090188),
-        float2(-0.24188840,  0.99706507), float2(-0.81409955,  0.91437590),
-        float2(0.19984126,  0.78641367), float2(0.14383161, -0.14100790)
-    };
-
-    // soft scaling
-    float radius = 2.5f + 2.5f * proj.z;
-
-    float lit = 0.0f;
-    [unroll] for (int i = 0; i < 16; ++i)
-    {
-        float2 uv = shadowUV + poisson[i] * radius * texel;
-        lit += gShadowMap.SampleCmpLevelZero(gsamShadow, uv, proj.z - bias).r;
-    }
-    return lit * (1.0 / 16.0);
 }
 
 float ShadowFactor(float4 shadowPosH, float3 N)

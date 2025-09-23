@@ -175,12 +175,6 @@ void DX12FrameBuffer::BeginMainPass(
 	DX12CommandList* dx12CommandList,
 	UINT currBackBufferIndex)
 {
-	//begin shadow
-	//dx12CommandList->GetCommandList()->OMSetRenderTargets(0, nullptr, FALSE, &shadowDepthStencilCPUHandle);
-	//dx12CommandList->GetCommandList()->ClearDepthStencilView(shadowDepthStencilCPUHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
-	//dx12ShadowManager->GetShadowResource()->TransitionState(dx12CommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-	//dx12CommandList->RecordResourceStateTransition();
-
 	//begin main render
 	dx12CommandList->GetCommandList()->RSSetViewports(1, &m_viewport);
 	dx12CommandList->GetCommandList()->RSSetScissorRects(1, &m_scissor);

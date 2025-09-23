@@ -72,7 +72,7 @@ void DX12TextureManager::LoadAndCreateTextureResource(
         dx12CommandList,
         &metaData,
         &img);
-    ////////////////////////////////////////////////////////////////////
+
     D3D12_SHADER_RESOURCE_VIEW_DESC SRGBSrvDesc{};
     SRGBSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
     SRGBSrvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
@@ -99,14 +99,14 @@ void DX12TextureManager::LoadAndCreateTextureResource(
     LinearSrvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
 
     //view
-    m_DX12SRGBTextureView = std::make_unique<DX12View>(
+    m_DX12LinearTextureView = std::make_unique<DX12View>(
         device,
         EViewType::EShaderResourceView,
         m_textureResource.get(),
         *LinearCpuHandle,
         nullptr,
         &LinearSrvDesc);
-    ////////////////////////////////////////////////////////////////////
+
     m_fileName = filename;
     m_textureName = textureName;
 }

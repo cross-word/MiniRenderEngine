@@ -24,7 +24,7 @@ struct EngineConfig
     static inline constexpr const wchar_t* ShadowShaderFilePath = LR"(..\..\\Shaders\\tmpfolder\\Shadows.hlsl)"; // tmp
     static inline constexpr const wchar_t* SceneFilePath = LR"(D:\MiniEngine\main_sponza\NewSponza_Main_glTF_003.gltf)"; // tmp
     static constexpr UINT NumThreadWorker = 4;
-    static constexpr bool UseMultiThread = false;
+    static constexpr bool UseMultiThread = true;
     static constexpr UINT MaxTextureCount = 80;
 
 };

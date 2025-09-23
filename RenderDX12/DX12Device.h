@@ -78,7 +78,7 @@ private:
 	void InitDX12ImGuiHeap();
 	void InitDX12RootSignature();
 	void CreateDX12PSO();
-	void InitShader(); //temp func
+	void InitShader();
 
 	void InitDX12FrameResource();
 	void CreateDX12FrameResourceSRV();

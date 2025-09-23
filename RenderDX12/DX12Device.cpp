@@ -35,8 +35,7 @@ void DX12Device::Initialize(HWND hWnd, const std::wstring& sceneFile)
 		ThrowIfFailed(D3D12CreateDevice(
 			warpAdapter.Get(),
 			D3D_FEATURE_LEVEL_12_0,
-			IID_PPV_ARGS(&m_device)
-		));
+			IID_PPV_ARGS(&m_device)));
 	}
 
 	ThrowIfFailed(CoInitializeEx(nullptr, COINIT_MULTITHREADED));
@@ -111,7 +110,7 @@ void DX12Device::InitDX12SRVHeap()
 		2 * EngineConfig::MaxTextureCount
 		+ 1
 		+ 1
-		+ 1, // 1 constant(b0) * 3 frames + 2 * texture amount + 1 material vectors + 1 world vectors + 1 shadow map
+		+ 1, // 1 constant * 3 frames + 2 * texture amount + 1 material vectors + 1 world vectors + 1 shadow map
 		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
 		D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE);
 }
@@ -252,11 +251,12 @@ void DX12Device::PrepareInitialResource()
 	}
 
 	// build texture SRV
+	// create each texture resource sRGB/Linear.
 	m_DX12TextureManager.clear();
 	m_DX12TextureManager.reserve(m_sceneData.textures.size());
 	for (size_t i = 0; i < m_sceneData.textures.size(); ++i)
 	{
-		auto SRVCpuHandle = m_DX12SRVHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + (UINT)i).cpuDescHandle;
+		auto SRGBCpuHandle = m_DX12SRVHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + (UINT)i).cpuDescHandle;
 		auto LinearCpuHandle = m_DX12SRVHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + EngineConfig::MaxTextureCount + (UINT)i).cpuDescHandle;
 
 		auto tmpTexture = std::make_unique<DX12TextureManager>();
@@ -264,7 +264,7 @@ void DX12Device::PrepareInitialResource()
 		tmpTexture->LoadAndCreateTextureResource(
 			m_device.Get(),
 			m_DX12CommandList.get(),
-			&SRVCpuHandle,
+			&SRGBCpuHandle,
 			&LinearCpuHandle,
 			m_sceneData.textures[i].c_str(),
 			texName,
@@ -272,6 +272,7 @@ void DX12Device::PrepareInitialResource()
 		m_DX12TextureManager.push_back(std::move(tmpTexture));
 	}
 
+	// fill the remaining texture srv space with dummy textures.
 	const uint32_t dummyStartIndex = m_sceneData.textures.size();
 	for (uint32_t i = dummyStartIndex; i < EngineConfig::MaxTextureCount; ++i)
 	{
@@ -293,13 +294,8 @@ void DX12Device::PrepareInitialResource()
 	}
 
 	// build material SRV
-	auto sanitize = [&](uint32_t idx)->uint32_t {
-		return (idx == UINT32_MAX || idx >= EngineConfig::MaxTextureCount) ? 0u : idx;
-		};
-
-	auto mark = [&](UseFlags* useFlag, uint32_t idx, TextureColorSpace cs) {
-		if (idx == UINT32_MAX || idx >= m_sceneData.textures.size()) return;
-		if (cs == TextureColorSpace::SRGB) useFlag->SRGB = true; else useFlag->Linear = true;
+	auto sanitizeIndex = [&](uint32_t idx)->uint32_t{
+			return (idx == UINT32_MAX || idx >= EngineConfig::MaxTextureCount) ? 0u : idx;
 		};
 
 	m_DX12MaterialConstantManager = std::make_unique<DX12MaterialConstantManager>();
@@ -312,12 +308,6 @@ void DX12Device::PrepareInitialResource()
 		int baseIdx = m_sceneData.materials[i].BaseColorIndex >= 0 ? m_sceneData.materials[i].BaseColorIndex : 0;
 		tmpMaterial->DiffuseSrvHeapIndex = (UINT)baseIdx;
 
-		//mark(&(tmpMaterial->useFlag), m_sceneData.materials[i].BaseColorIndex, TextureColorSpace::SRGB);
-		//mark(&(tmpMaterial->useFlag), m_sceneData.materials[i].EmissiveIndex, TextureColorSpace::SRGB);
-		//mark(&(tmpMaterial->useFlag), m_sceneData.materials[i].NormalIndex, TextureColorSpace::Linear);
-		//mark(&(tmpMaterial->useFlag), m_sceneData.materials[i].OcclusionIndex, TextureColorSpace::Linear);
-		//mark(&(tmpMaterial->useFlag), m_sceneData.materials[i].ORMIndex, TextureColorSpace::Linear);
-
 		MaterialConstants tmpMaterialConstant{};
 		tmpMaterialConstant.DiffuseAlbedo = m_sceneData.materials[i].DiffuseAlbedo;
 		tmpMaterialConstant.FresnelR0 = m_sceneData.materials[i].FresnelR0;
@@ -327,11 +317,11 @@ void DX12Device::PrepareInitialResource()
 		tmpMaterialConstant.OcclusionStrength = m_sceneData.materials[i].OcclusionStrength;
 		tmpMaterialConstant.EmissiveStrength = m_sceneData.materials[i].EmissiveStrength;
 		tmpMaterialConstant.EmissiveFactor = m_sceneData.materials[i].EmissiveFactor;
-		tmpMaterialConstant.BaseColorIndex = sanitize(m_sceneData.materials[i].BaseColorIndex);
-		tmpMaterialConstant.NormalIndex = sanitize(m_sceneData.materials[i].NormalIndex);
-		tmpMaterialConstant.ORMIndex = sanitize(m_sceneData.materials[i].ORMIndex);
-		tmpMaterialConstant.OcclusionIndex = sanitize(m_sceneData.materials[i].OcclusionIndex);
-		tmpMaterialConstant.EmissiveIndex = sanitize(m_sceneData.materials[i].EmissiveIndex);
+		tmpMaterialConstant.BaseColorIndex = sanitizeIndex(m_sceneData.materials[i].BaseColorIndex);
+		tmpMaterialConstant.NormalIndex = sanitizeIndex(m_sceneData.materials[i].NormalIndex);
+		tmpMaterialConstant.ORMIndex = sanitizeIndex(m_sceneData.materials[i].ORMIndex);
+		tmpMaterialConstant.OcclusionIndex = sanitizeIndex(m_sceneData.materials[i].OcclusionIndex);
+		tmpMaterialConstant.EmissiveIndex = sanitizeIndex(m_sceneData.materials[i].EmissiveIndex);
 
 		tmpMaterial->matConstant = tmpMaterialConstant;
 
@@ -374,26 +364,17 @@ void DX12Device::PrepareInitialResource()
 	m_renderItems.clear();
 	m_renderItems.reserve(m_sceneData.instances.size());
 
-	auto MakeWorldInvTranspose = [&](const XMFLOAT4X4& world)->XMFLOAT4X4 {
-		XMMATRIX W = XMLoadFloat4x4(&world);
-		W.r[3] = XMVectorSet(0.f, 0.f, 0.f, 1.f);
-		XMMATRIX invT = XMMatrixTranspose(XMMatrixInverse(nullptr, W));
-		XMFLOAT4X4 out;
-		XMStoreFloat4x4(&out, invT);
-		return out;
-		};
-
 	for (auto& instance : m_sceneData.instances)
 	{
 		Render::RenderItem renderItem{};
 		XMFLOAT4X4 worldTranspose;
 		renderItem.SetObjWorldMatrix(instance.world);
-		renderItem.SetObjWorldInverseTransposeMatrix(MakeWorldInvTranspose(instance.world));
+		renderItem.SetObjWorldInverseTransposeMatrix((instance.world));
 		renderItem.SetRenderGeometry(m_sceneGeometry[instance.primitive].get());
 		UINT matIndex = (UINT)(m_sceneData.primitives[instance.primitive].material >= 0 ? m_sceneData.primitives[instance.primitive].material : 0);
 		renderItem.SetMaterialIndex(matIndex);
-		int tex = m_sceneData.materials[matIndex].BaseColorIndex; // baseColor로
-		if (tex < 0 || tex >= (int)EngineConfig::MaxTextureCount) tex = 0; // 디폴트 화이트
+		int tex = m_sceneData.materials[matIndex].BaseColorIndex; // baseColor
+		if (tex < 0 || tex >= (int)EngineConfig::MaxTextureCount) tex = 0; // default white
 		renderItem.SetTextureIndex((UINT)tex);
 		m_renderItems.push_back(std::move(renderItem));
 	}
@@ -411,7 +392,6 @@ void DX12Device::PrepareInitialResource()
 		m_DX12RenderGeometry[i]->GetDX12IndexBuffer()->ResetUploadBuffer();
 	}
 	m_DX12MaterialConstantManager->GetMaterialResource()->ResetUploadBuffer();
-	/////////////
 }
 
 void DX12Device::InitDX12FrameResource()
@@ -443,7 +423,7 @@ void DX12Device::InitDX12ShadowManager()
 		EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount +
 		2 * EngineConfig::MaxTextureCount
 		+ 1
-		+ 1).cpuDescHandle);
+		+ 1).cpuDescHandle);// 1 constant * 3 frames + 2 * texture amount + 1 material vectors + 1 world vectors, after 1 shadow map
 
 	m_DX12ShadowManager->Initialzie(m_device.Get(), m_DX12CommandList.get(), /**/ tmpDSVOffsetHandle, /*nullptr??*/ tmpRTVOffsetHandle);
 }

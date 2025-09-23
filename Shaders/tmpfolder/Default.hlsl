@@ -115,7 +115,6 @@ float4 PS(VertexOut pin) : SV_Target
     float3 N = bumpedNormalW;
     float  s = ShadowFactor(pin.ShadowPosH, N);
     float3 shadowFactor = float3(s, s, s);
-    //shadowFactor[0] = CalcShadowFactor(pin.ShadowPosH);
 
     const float shininess = (1.0 - roughness) * (1.0 - roughness);
     fresnelR0 = lerp(fresnelR0, diffuseAlbedo.rgb, metal);
@@ -145,17 +144,12 @@ float4 PS(VertexOut pin) : SV_Target
     if (matData.gEmissiveIdx < NUM_TEXTURE)
         emissive *= gTextureMapsSRGB[matData.gEmissiveIdx].Sample(gsamLinearWrap, pin.TexC).rgb;
     litColor.rgb += emissive * matData.gEmissiveStrength;
-    // Add in specular reflections.
-    //float3 r = reflect(-toEyeW, bumpedNormalW);
-    //float4 reflectionColor = gCubeMap.Sample(gsamLinearWrap, r);
-    //float3 fresnelFactor = SchlickFresnel(fresnelR0, bumpedNormalW, r);
-    //litColor.rgb += shininess * fresnelFactor;
 
     // Common convention to take alpha from diffuse albedo.
     float3 color = litColor.rgb * 2.0f;
     color = ACESFitted(color);
     litColor.rgb = color;
-    //litColor.rgb = pow(saturate(litColor.rgb), 1.0 / 2.2);
+    //litColor.rgb = pow(saturate(litColor.rgb), 1.0 / 2.2);// gammma cor
 
     litColor.a = diffuseAlbedo.a;
     return litColor;

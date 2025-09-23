@@ -67,18 +67,7 @@ void DX12PSO::CreateShadowPassPSO(
 	psoDesc.pRootSignature = rootSignature;
 	psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader);
 	psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader);
-
-	D3D12_RASTERIZER_DESC rs = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-	rs.CullMode = D3D12_CULL_MODE_FRONT;
-	constexpr float kTargetDepthBias = 3.5e-4f;
-	constexpr float kDepthUnits = static_cast<float>(1u << 23);
-	rs.DepthBias = static_cast<INT>(kTargetDepthBias * kDepthUnits);
-	rs.SlopeScaledDepthBias = 1.25f;
-	rs.DepthBiasClamp = 0.0f;
-	psoDesc.RasterizerState = rs;
-	//psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-
-
+	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 	psoDesc.DSVFormat = depthStencilFormat;

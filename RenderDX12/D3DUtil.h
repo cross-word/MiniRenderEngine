@@ -171,7 +171,7 @@ struct HeapSlice
 
 static void GetFrustumCornersWS(const XMMATRIX& invViewProj, XMVECTOR outCorners[8])
 {
-    // NDC 큐브 8점
+    // NDC
     const XMFLOAT3 ndcPts[8] = {
         {-1,-1,0}, {+1,-1,0}, {-1,+1,0}, {+1,+1,0}, // near
         {-1,-1,1}, {+1,-1,1}, {-1,+1,1}, {+1,+1,1}  // far
@@ -180,7 +180,7 @@ static void GetFrustumCornersWS(const XMMATRIX& invViewProj, XMVECTOR outCorners
     for (int i = 0; i < 8; ++i)
     {
         XMVECTOR p = XMVectorSet(ndcPts[i].x, ndcPts[i].y, ndcPts[i].z, 1.0f);
-        XMVECTOR w = XMVector3TransformCoord(p, invViewProj); // 분모 w로 나눔
+        XMVECTOR w = XMVector3TransformCoord(p, invViewProj);
         outCorners[i] = w;
     }
 }
