@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "DX12FrameResource.h"
+#include "DX12ShadowManager.h"
 
 DX12FrameResource::DX12FrameResource(ID3D12Device* device)
 {
@@ -58,12 +59,12 @@ void DX12FrameResource::CreateSRV(ID3D12Device* device, DX12DescriptorHeap* dx12
 void DX12FrameResource::UploadPassConstant(D3DCamera* d3dCamera, std::vector<Light>& lights)
 {
 	PassConstants passConst;
-	passConst.AmbientLight = { 0.03f, 0.03f, 0.03f, 1.0f };
+	passConst.AmbientLight = { 0.18f, 0.18f, 0.18f, 1.0f };
 	Light sun{}; //sun light
 
 	sun.Type = LIGHT_TYPE_DIRECTIONAL;
 	sun.Color = { 1.0f, 1.0f, 1.0f };
-	sun.Intensity = 0.05f;
+	sun.Intensity = 0.15f;
 	sun.Direction = { 0.0f, -1.0f, 0.0f };
 	sun.Range = -1.0f;
 	sun.Position = { 0.0f, 0.0f, 0.0f };
@@ -101,7 +102,7 @@ void DX12FrameResource::UploadPassConstant(D3DCamera* d3dCamera, std::vector<Lig
 
 	XMVECTOR lightDirWS = XMVector3Normalize(XMLoadFloat3(&sun.Direction));
 	XMMATRIX lightView, lightProj;
-	BuildDirLightViewProj(lightDirWS, iVP, lightView, lightProj);
+	BuildDirLightViewProj(lightDirWS, iVP, 2048.0f, 2048.0f, lightView, lightProj);
 	XMMATRIX LVP = XMMatrixMultiply(lightView, lightProj);
 	XMStoreFloat4x4(&passConst.LightViewProj, XMMatrixTranspose(LVP));
 

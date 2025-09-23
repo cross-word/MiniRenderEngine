@@ -151,10 +151,11 @@ float CalcShadowFactor(float4 shadowPosH)
         return 1.0f;
     }
 
-    const float bias = 0.005f;
     uint w, h, mips;
     gShadowMap.GetDimensions(0, w, h, mips);
     float2 texel = 1.0 / float2(w, h);
+    float receiverPlaneBias = max(texel.x, texel.y);
+    float bias = receiverPlaneBias * (1.5f + proj.z);
 
     // 16-tap Poisson PCF
     const float2 poisson[16] =
@@ -191,10 +192,13 @@ float ShadowFactor(float4 shadowPosH, float3 N)
 
     float3 Ldir = normalize(-gLights[0].Direction);
     float ndotl = saturate(dot(N, Ldir));
-    float bias = max(0.0004f, 0.0015f * (1.0f - ndotl));
 
     uint w, h, mips; gShadowMap.GetDimensions(0, w, h, mips);
     float2 texel = 1.0 / float2(w, h);
+    float receiverPlaneBias = max(texel.x, texel.y);
+    float baseBias = receiverPlaneBias * (1.5f + proj.z);
+    float slopeBias = receiverPlaneBias * (2.0f * (1.0f - ndotl));
+    float bias = baseBias + slopeBias;
 
     const float2 poisson[16] =
     {

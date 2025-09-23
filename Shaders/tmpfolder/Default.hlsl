@@ -137,6 +137,8 @@ float4 PS(VertexOut pin) : SV_Target
     float3 kD = (1.0 - kS) * (1.0 - metal);
 
     float3 ambientRGB = ao * (kD * gAmbientLight * hemi);
+    const float ambientShadowStrength = 0.7;
+    ambientRGB *= lerp(1.0, s, ambientShadowStrength);
     float4 ambient = float4(ambientRGB, 0.0);
     float4 litColor = ambient + directLight;
     float3 emissive = matData.gEmissiveFactor;
@@ -149,11 +151,11 @@ float4 PS(VertexOut pin) : SV_Target
     //float3 fresnelFactor = SchlickFresnel(fresnelR0, bumpedNormalW, r);
     //litColor.rgb += shininess * fresnelFactor;
 
-    litColor.rgb = pow(saturate(litColor.rgb), 1.0 / 2.2); //gamma cor
     // Common convention to take alpha from diffuse albedo.
     float3 color = litColor.rgb * 2.0f;
     color = ACESFitted(color);
     litColor.rgb = color;
+    //litColor.rgb = pow(saturate(litColor.rgb), 1.0 / 2.2);
 
     litColor.a = diffuseAlbedo.a;
     return litColor;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+#include <cmath>
 #include <string>
 #include <wrl.h>
 #include <DirectXMath.h>
@@ -186,6 +188,8 @@ static void GetFrustumCornersWS(const XMMATRIX& invViewProj, XMVECTOR outCorners
 static void BuildDirLightViewProj(
     FXMVECTOR lightDirWS,
     const XMMATRIX& invCameraViewProj,
+    UINT shadowMapWidth,
+    UINT shadowMapHeight,
     XMMATRIX& outLightView,
     XMMATRIX& outLightProj)
 {
@@ -223,11 +227,44 @@ static void BuildDirLightViewProj(
     }
 
     // 5) Off-center Ortho (LH)
-    const float minX = XMVectorGetX(minPt), maxX = XMVectorGetX(maxPt);
-    const float minY = XMVectorGetY(minPt), maxY = XMVectorGetY(maxPt);
-    float minZ = XMVectorGetZ(minPt), maxZ = XMVectorGetZ(maxPt);
+    XMFLOAT3 minPtF, maxPtF;
+    XMStoreFloat3(&minPtF, minPt);
+    XMStoreFloat3(&maxPtF, maxPt);
 
-    // 여유 패딩 (셔머/클리핑 방지)
-    const float pad = 0.0f;
-    outLightProj = XMMatrixOrthographicOffCenterLH(minX - pad, maxX + pad, minY - pad, maxY + pad, minZ - pad, maxZ + pad);
+    XMFLOAT3 centerLS{
+        0.5f * (minPtF.x + maxPtF.x),
+        0.5f * (minPtF.y + maxPtF.y),
+        0.5f * (minPtF.z + maxPtF.z)
+    };
+
+    float width = maxPtF.x - minPtF.x;
+    float height = maxPtF.y - minPtF.y;
+    float depth = maxPtF.z - minPtF.z;
+
+    const float maxXYExtent = max(width, height);
+    const float xyPad = max(0.05f * maxXYExtent, 5.0f);
+    const float zPad = max(0.25f * depth, 10.0f);
+
+    width += 2.0f * xyPad;
+    height += 2.0f * xyPad;
+    depth += 2.0f * zPad;
+
+    const float invShadowMapWidth = shadowMapWidth > 0 ? 1.0f / static_cast<float>(shadowMapWidth) : 0.0f;
+    const float invShadowMapHeight = shadowMapHeight > 0 ? 1.0f / static_cast<float>(shadowMapHeight) : 0.0f;
+    const float worldUnitsPerTexel = max(width * invShadowMapWidth, height * invShadowMapHeight);
+
+    if (worldUnitsPerTexel > 0.0f)
+    {
+        centerLS.x = std::floor(centerLS.x / worldUnitsPerTexel) * worldUnitsPerTexel;
+        centerLS.y = std::floor(centerLS.y / worldUnitsPerTexel) * worldUnitsPerTexel;
+    }
+
+    const float minX = centerLS.x - width * 0.5f;
+    const float maxX = centerLS.x + width * 0.5f;
+    const float minY = centerLS.y - height * 0.5f;
+    const float maxY = centerLS.y + height * 0.5f;
+    const float minZ = centerLS.z - depth * 0.5f;
+    const float maxZ = centerLS.z + depth * 0.5f;
+
+    outLightProj = XMMatrixOrthographicOffCenterLH(minX, maxX, minY, maxY, minZ, maxZ);
 }
