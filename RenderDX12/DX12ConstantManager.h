@@ -6,6 +6,12 @@
 #include "DX12Resource.h"
 #include "DX12View.h"
 
+/*
+CLASS DX12CONSTANTMANAGER and their children.
+MAIN WORK:
+1. hold and manage constant (material, object)
+2. upload constants
+*/
 class DX12ConstantManager
 {
 public:

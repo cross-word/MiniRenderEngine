@@ -13,8 +13,16 @@ using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 namespace Render { struct RenderItem; }
 
-// CPU가 한 프레임의 명령 목록들을 구축하는데 필요한 자원들을 대표하는 클래스  
-// cmdAlloc,ConstantBuffers
+/*
+CLASS DX12FRAMERESOURCE
+MAIN WORK:
+1. represents the resources required by the CPU to build a list of instructions in a frame
+IMPORTANT MEMBER:
+1. m_commandAllocator, m_workerAlloc
+2. m_DX12PassConstantBuffer
+3. m_DX12PassConstantBufferView
+4. m_passConstant
+*/
 struct DX12FrameResource
 {
 public:
@@ -46,20 +54,11 @@ public:
     uint32_t GetWorkerAllocatorCount() const { return m_workerAlloc.size(); }
 
 private:
-    // 명령 할당자는 GPU가 명령들을 다 처리한 후 재설정해야한다.
-    // 따라서 프레임마다 할당자가 필요하다.
     ComPtr<ID3D12CommandAllocator> m_commandAllocator; //for single-thread or main thread in multi-thread setting
-
-    // 상수 버퍼는 그것을 참조하는 명령들을 GPU가 전부 처리한 후 갱신해야한다.
-    // 따라서 여러 명령 할당자를 쓰면 프레임마다 상수버퍼가 필요하다.
-    // 효율을 위해 물체에 따라 변하는 상수와 변하지 않는 상수를 구분한다.
     std::unique_ptr<DX12ResourceBuffer> m_DX12PassConstantBuffer; //b0
     std::unique_ptr<DX12View> m_DX12PassConstantBufferView;
 
     PassConstants m_passConstant;
-
-    // Fence는 현재 울타리 지점까지의 명령들을 표시하는 값이다.
-    // 이 값은 GPU가 이 프레임의 자원들을 사용하고 있는지 판정한다. 따라서 FrameResource에서 GPU의 명령 할당자를 바꾸는 척도가 된다.
     uint64_t m_fence = 0;
 
     std::vector<ComPtr<ID3D12CommandAllocator>> m_workerAlloc; //for multi-thread workers

@@ -32,10 +32,11 @@ MAIN WORK:
 1. initialize dx12Device, dx12FrameBuffer (start point of DX12 RENDERING)
 2. comunicate with MainWindow
 3. ImGUI management
+4. multi-thread job allocate
 IMPORTANT MEMBER:
 1. m_DX12Device
 2. m_FrameBuffer
-
+3. WorkerJobDrawing
 Variable Naming Rule in RenderDX12 project:
 1. d3d12 API variable && member variable -> m_~
 2. custom class DX12 valibale && member variable -> m_DX12~

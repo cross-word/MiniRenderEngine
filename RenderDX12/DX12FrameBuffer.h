@@ -13,7 +13,7 @@ CLASS DX12FRAMEBUFFER
 MAIN WORK:
 1. command For Frame Drawing
 2. create And Manage Components for Drawing frame
-3. communicate with RenderDX12 directly for Drawing
+3. communicate with RenderDX12 directly for Drawing (prepare render target/ depth stencil/ veiwports, and resources state)
 IMPORTANT MEMBER:
 1. m_renderTargets
 2. m_depthStencil

@@ -54,7 +54,7 @@ void DX12TextureManager::LoadAndCreateTextureResource(
             img.GetImages(), img.GetImageCount(), img.GetMetadata(),
             TEX_FILTER_DEFAULT, 0, mip));
         img = std::move(mip);
-        metaData = img.GetMetadata(); // mipLevels °»½Å
+        metaData = img.GetMetadata(); // mipLevels
     }
 
     if (colorSpace == TextureColorSpace::SRGB)

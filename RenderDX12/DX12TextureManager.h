@@ -13,6 +13,11 @@ using namespace DirectX;
 
 enum class TextureColorSpace { Linear, SRGB };
 
+/*
+CLASS DX12TEXTUREMANAGER
+MAIN WORK:
+1. Load texture resources from file.
+*/
 class DX12TextureManager
 {
 public:
@@ -31,12 +36,6 @@ public:
         ID3D12Device* device,
         DX12CommandList* dx12CommandList,
         const D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle);
-    void LoadAndCreateCubeTextureResource(
-        ID3D12Device* device,
-        DX12CommandList* dx12CommandList,
-        const D3D12_CPU_DESCRIPTOR_HANDLE* SRGBCpuHandle,
-        const wchar_t* filename,
-        const std::string textureName);
 
     inline DX12ResourceTexture* GetTextureResource() const noexcept { return m_textureResource.get(); }
     inline DX12View* GetDX12SRGBTextureView() const noexcept { return m_DX12SRGBTextureView.get(); }

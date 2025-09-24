@@ -9,6 +9,11 @@ using namespace DirectX;
 #include "DX12Resource.h"
 #include "DX12View.h"
 
+/*
+CLASS DX12SHADOWMANAGER
+MAIN WORK:
+1. create shadow resource and view
+*/
 class DX12ShadowManager
 {
 public:

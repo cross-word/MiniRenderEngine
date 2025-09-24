@@ -6,7 +6,8 @@ gltf file Renderer through DX12 API
 #### you need GPU which support DX12
 
 ## User environment
-#### visual studio 2022
+#### visual studio 2022 version 17.14.8
+#### Windows 10 SDK(10.0.20348.0)
 #### c++20 standard
 #### cpu : 12th Gen Intel(R) Core(TM) i5-12400F
 #### gpu : NVIDIA GeForce RTX 3060 Ti
@@ -22,10 +23,10 @@ gltf file Renderer through DX12 API
 >   > Download scene .zip file in (https://www.intel.com/content/www/us/en/developer/topic-technology/graphics-research/samples.html)     
 >   > Unzip them in the directory where this repo placed (if you want to place scene in other directory, see bellow "Other Scene Load").     
 >   > Expected result of directory tree is like this.     
->   >   > main_sponza    
->   >   >   > (main sponza scene files...)    
->   >   > MiniEngine     
->   >   >   > (MiniEngine repo code files...)    
+>   >   > -main_sponza    
+>   >   > --(main sponza scene files...)    
+>   >   > -MiniEngine     
+>   >   > --(MiniEngine repo code files...)    
 
 # Other Scene Load
 > If you want to load other scene, parse your path useing --scene_path="your_scene_path" in cmd.     
