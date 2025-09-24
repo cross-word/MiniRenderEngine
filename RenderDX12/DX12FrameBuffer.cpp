@@ -171,19 +171,14 @@ void DX12FrameBuffer::CheckFence(DX12Device* dx12Device, UINT currBackBufferInde
 	}
 }
 
-void DX12FrameBuffer::BeginMainPass(
-	DX12CommandList* dx12CommandList,
-	UINT currBackBufferIndex)
+void DX12FrameBuffer::BeginMainPass(DX12CommandList* dx12CommandList, UINT currBackBufferIndex)
 {
 	//begin main render
-	dx12CommandList->GetCommandList()->RSSetViewports(1, &m_viewport);
-	dx12CommandList->GetCommandList()->RSSetScissorRects(1, &m_scissor);
-	dx12CommandList->GetCommandList()->OMSetRenderTargets(1, &msaaRTVOffsetHandle[currBackBufferIndex], FALSE, &msaaDSVOffsetHandle[currBackBufferIndex]);
 	dx12CommandList->GetCommandList()->ClearRenderTargetView(msaaRTVOffsetHandle[currBackBufferIndex], EngineConfig::DefaultClearColor, 0, nullptr);
 	dx12CommandList->GetCommandList()->ClearDepthStencilView(msaaDSVOffsetHandle[currBackBufferIndex], D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 }
 
-void DX12FrameBuffer::SetRenderViewPort(DX12CommandList* dx12CommandList, UINT currBackBufferIndex)
+void DX12FrameBuffer::SetMainPassRenderViewPort(DX12CommandList* dx12CommandList, UINT currBackBufferIndex)
 {
 	dx12CommandList->GetCommandList()->RSSetViewports(1, &m_viewport);
 	dx12CommandList->GetCommandList()->RSSetScissorRects(1, &m_scissor);
@@ -234,15 +229,7 @@ void DX12FrameBuffer::BeginShadowRender(DX12CommandList* dx12CommandList, DX12Sh
 	//begin shadow
 	dx12ShadowManager->GetShadowResource()->TransitionState(dx12CommandList, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 	dx12CommandList->RecordResourceStateTransition();
-	dx12CommandList->GetCommandList()->OMSetRenderTargets(0, nullptr, FALSE, &shadowDepthStencilCPUHandle);
 	dx12CommandList->GetCommandList()->ClearDepthStencilView(shadowDepthStencilCPUHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
-
-	float shadowWidth = dx12ShadowManager->GetShadowWidth();
-	float shadowHeight = dx12ShadowManager->GetShadowHeight();
-	D3D12_VIEWPORT shadowViewPort{ 0, 0, shadowWidth, shadowHeight, 0.0f, 1.0f };
-	D3D12_RECT shadowScissor{ 0, 0, (LONG)shadowWidth, (LONG)shadowHeight };
-	dx12CommandList->GetCommandList()->RSSetViewports(1, &shadowViewPort);
-	dx12CommandList->GetCommandList()->RSSetScissorRects(1, &shadowScissor);
 }
 
 void DX12FrameBuffer::EndShadowRender(DX12CommandList* dx12CommandList, DX12ShadowManager* dx12ShadowManager)
@@ -250,4 +237,15 @@ void DX12FrameBuffer::EndShadowRender(DX12CommandList* dx12CommandList, DX12Shad
 	//shadow state reset
 	dx12ShadowManager->GetShadowResource()->TransitionState(dx12CommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	dx12CommandList->RecordResourceStateTransition();
+}
+
+void DX12FrameBuffer::SetShadowRenderViewPort(DX12CommandList* dx12CommandList, DX12ShadowManager* dx12ShadowManager, D3D12_CPU_DESCRIPTOR_HANDLE shadowDepthStencilCPUHandle)
+{
+	float shadowWidth = dx12ShadowManager->GetShadowWidth();
+	float shadowHeight = dx12ShadowManager->GetShadowHeight();
+	D3D12_VIEWPORT shadowViewPort{ 0.0f, 0.0f, shadowWidth, shadowHeight, 0.0f, 1.0f };
+	D3D12_RECT shadowScissor{ 0, 0, shadowWidth, shadowHeight };
+	dx12CommandList->GetCommandList()->RSSetViewports(1, &shadowViewPort);
+	dx12CommandList->GetCommandList()->RSSetScissorRects(1, &shadowScissor);
+	dx12CommandList->GetCommandList()->OMSetRenderTargets(0, nullptr, FALSE, &shadowDepthStencilCPUHandle);
 }

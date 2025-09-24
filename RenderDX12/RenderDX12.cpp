@@ -150,43 +150,72 @@ void RenderDX12::AllocateWorkerDrawingCommand(uint32_t i)
 			job = m_workerJobDrawing[i];
 		}
 
-		//draw commands
 		const uint32_t beginIndex = job.beginIndex;
 		const uint32_t endIndex = job.endIndex;
 		const uint32_t currBackBufferIndex = job.currBackBufferIndex;
+
+		DX12CommandList* workerCommandList = job.passType == WorkerJobDrawing::PassType::Shadow ?
+			m_DX12Device.GetWorkerShadowDX12CommandList(i) :
+			m_DX12Device.GetWorkerDX12CommandList(i);
+
+		workerCommandList->ResetList(
+			m_DX12Device.GetDX12PSO()->GetPipelineState(job.passType == WorkerJobDrawing::PassType::Shadow ? 1 : 0),
+			m_DX12Device.GetFrameResource(currBackBufferIndex)->GetWorkerCommandAllocator(i));
+
+		if (job.passType == WorkerJobDrawing::PassType::Shadow)
+		{
+			m_DX12FrameBuffer.SetShadowRenderViewPort(workerCommandList, m_DX12Device.GetDX12ShadowManager(), job.shadowDSVHandle);
+		}
+		else
+		{
+			m_DX12FrameBuffer.SetMainPassRenderViewPort(workerCommandList, currBackBufferIndex);
+		}
+
+		auto* commandList = workerCommandList->GetCommandList();
+		commandList->SetGraphicsRootSignature(m_DX12Device.GetDX12RootSignature()->GetRootSignature());
+		ID3D12DescriptorHeap* descriptorHeaps[] = { m_DX12Device.GetDX12CBVSRVHeap()->GetDescHeap() };
+		commandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+		commandList->SetGraphicsRootDescriptorTable(0, job.cbvSlice.gpuDescHandle);
+		commandList->SetGraphicsRootDescriptorTable(1, job.texSlice.gpuDescHandle);
+		commandList->SetGraphicsRootDescriptorTable(2, job.matSlice.gpuDescHandle);
+		if (job.passType == WorkerJobDrawing::PassType::Main)
+		{
+			commandList->SetGraphicsRootDescriptorTable(3, job.shadowSlice.gpuDescHandle);
+		}
+
 		if (beginIndex < endIndex)
 		{
-			m_DX12Device.GetWorkerDX12CommandList(i)->ResetList(
-				m_DX12Device.GetDX12PSO()->GetPipelineState(),
-				m_DX12Device.GetFrameResource(currBackBufferIndex)->GetWorkerCommandAllocator(i));
-			m_DX12FrameBuffer.SetRenderViewPort(m_DX12Device.GetWorkerDX12CommandList(i), currBackBufferIndex);
-			m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList()->SetGraphicsRootSignature(m_DX12Device.GetDX12RootSignature()->GetRootSignature());
-			ID3D12DescriptorHeap* descriptorHeaps[] = { m_DX12Device.GetDX12CBVSRVHeap()->GetDescHeap() };
-			m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList()->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
-			m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList()->SetGraphicsRootDescriptorTable(0, job.cbvSlice.gpuDescHandle);
-			m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList()->SetGraphicsRootDescriptorTable(1, job.texSlice.gpuDescHandle);
-			m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList()->SetGraphicsRootDescriptorTable(2, job.matSlice.gpuDescHandle);
-			PIXBeginEvent(m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList(), PIX_COLOR(0, 128, 255), L"[MT] Draw worker %d (%d~%d)", i, beginIndex, endIndex);
+			if (job.passType == WorkerJobDrawing::PassType::Shadow)
+			{
+				PIXBeginEvent(commandList, PIX_COLOR(128, 128, 255), L"[MT] Shadow worker %d (%d~%d)", i, beginIndex, endIndex);
+			}
+			else
+			{
+				PIXBeginEvent(commandList, PIX_COLOR(0, 128, 255), L"[MT] Draw worker %d (%d~%d)", i, beginIndex, endIndex);
+			}
+
 			for (uint32_t renderItemIndex = beginIndex; renderItemIndex < endIndex; renderItemIndex++)
 			{
 				UINT matIndex = m_DX12Device.GetDX12RenderItem(renderItemIndex).GetMaterialIndex();
 				UINT texIndex = m_DX12Device.GetDX12RenderItem(renderItemIndex).GetTextureIndex();
 				UINT objIndex = m_DX12Device.GetDX12RenderItem(renderItemIndex).GetObjectConstantIndex();
 				struct RootPush { UINT matIdx; UINT texIdx; UINT worldIdx; } push{ matIndex, texIndex, objIndex };
-				m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList()->SetGraphicsRoot32BitConstants(3, 3, &push, 0);
-				m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList()->IASetPrimitiveTopology(m_DX12Device.GetDX12RenderItem(renderItemIndex).GetRenderGeometry()->GetPrimitiveTopologyType());
-				m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList()->IASetVertexBuffers(0, 1, m_DX12Device.GetDX12RenderItem(renderItemIndex).GetRenderGeometry()->GetDX12VertexBufferView()->GetVertexBufferView());
-				m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList()->IASetIndexBuffer(m_DX12Device.GetDX12RenderItem(renderItemIndex).GetRenderGeometry()->GetDX12IndexBufferView()->GetIndexBufferView());
-				m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList()->DrawIndexedInstanced(
+				commandList->SetGraphicsRoot32BitConstants(4, 3, &push, 0);
+				commandList->IASetPrimitiveTopology(m_DX12Device.GetDX12RenderItem(renderItemIndex).GetRenderGeometry()->GetPrimitiveTopologyType());
+				commandList->IASetVertexBuffers(0, 1, m_DX12Device.GetDX12RenderItem(renderItemIndex).GetRenderGeometry()->GetDX12VertexBufferView()->GetVertexBufferView());
+				commandList->IASetIndexBuffer(m_DX12Device.GetDX12RenderItem(renderItemIndex).GetRenderGeometry()->GetDX12IndexBufferView()->GetIndexBufferView());
+				commandList->DrawIndexedInstanced(
 					m_DX12Device.GetDX12RenderItem(renderItemIndex).GetRenderGeometry()->GetIndexCount(),
 					1,
 					m_DX12Device.GetDX12RenderItem(renderItemIndex).GetStartIndexLocation(),
 					m_DX12Device.GetDX12RenderItem(renderItemIndex).GetBaseVertexLocation(),
 					0);
 			}
-			PIXEndEvent(m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList());
-			m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList()->Close();
+
+			PIXEndEvent(commandList);
 		}
+
+		commandList->Close();
 
 		{//mutex block
 			std::lock_guard<std::mutex> lock(m_workerMutex);
@@ -226,7 +255,6 @@ void RenderDX12::RecordAndSubmit_Single()
 
 	m_DX12Device.UpdateFrameResource();
 
-
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootSignature(m_DX12Device.GetDX12RootSignature()->GetRootSignature());
 	ID3D12DescriptorHeap* descriptorHeaps[] = { m_DX12Device.GetDX12CBVSRVHeap()->GetDescHeap() };
 
@@ -249,6 +277,7 @@ void RenderDX12::RecordAndSubmit_Single()
 		2 * m_DX12Device.GetDX12SwapChain()->GetSwapChainBufferCount(), // maind render + msaa render,
 		m_DX12Device.GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV)));
 	m_DX12FrameBuffer.BeginShadowRender(m_DX12Device.GetDX12CommandList(), m_DX12Device.GetDX12ShadowManager(), shadowDSVOffsetHandle);
+	m_DX12FrameBuffer.SetShadowRenderViewPort(m_DX12Device.GetDX12CommandList(), m_DX12Device.GetDX12ShadowManager(), shadowDSVOffsetHandle);
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetPipelineState(m_DX12Device.GetDX12PSO()->GetPipelineState(1));
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootDescriptorTable(0, cbvSlice.gpuDescHandle);
@@ -278,18 +307,14 @@ void RenderDX12::RecordAndSubmit_Single()
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetPipelineState(m_DX12Device.GetDX12PSO()->GetPipelineState(0));
 	//////////////
 
-
 	CD3DX12_CPU_DESCRIPTOR_HANDLE tmpDSVOffsetHandle = static_cast<CD3DX12_CPU_DESCRIPTOR_HANDLE>(m_DX12Device.GetOffsetCPUHandle(
 		m_DX12Device.GetDX12DSVHeap()->GetDescHeap()->GetCPUDescriptorHandleForHeapStart(),
 		2 * m_DX12Device.GetDX12SwapChain()->GetSwapChainBufferCount(), // maind render + msaa render,
 		m_DX12Device.GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV)));
 
 	m_DX12FrameBuffer.BeginMainPass(m_DX12Device.GetDX12CommandList(), currBackBufferIndex);
+	m_DX12FrameBuffer.SetMainPassRenderViewPort(m_DX12Device.GetDX12CommandList(), currBackBufferIndex);
 	PIXEndEvent(m_DX12Device.GetDX12CommandList()->GetCommandList()); //pix frame start setting marking end
-
-	//m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootDescriptorTable(0, cbvSlice.gpuDescHandle);
-	//m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootDescriptorTable(1, texSlice.gpuDescHandle);
-	//m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootDescriptorTable(2, matSlice.gpuDescHandle);
 
 	PIXBeginEvent(m_DX12Device.GetDX12CommandList()->GetCommandList(), PIX_COLOR(0, 128, 255), L"MainDraw (%d items)", m_DX12Device.GetRenderItemSize()); //pix marking ~ main draw
 	for (int renderItemIndex = 0; renderItemIndex < m_DX12Device.GetRenderItemSize(); renderItemIndex++)
@@ -360,6 +385,8 @@ void RenderDX12::RecordAndSubmit_Multi()
 {
 	/*
 	// current version of multi-thread method was implemented only on drawing commands
+	// command recording sequence : shadow render setting(main thread) => shadow rendering(worker thread) => execute =>
+	// => main render setting(main thread) => main rendering(worker thread) => finish commands(main thread) => execute.
 	*/
 	PIXBeginEvent(m_DX12Device.GetDX12CommandList()->GetCommandQueue(), PIX_COLOR(0, 255, 0), L"Frame %u", sFrameId); //pix marking ~ total frame
 
@@ -382,14 +409,12 @@ void RenderDX12::RecordAndSubmit_Multi()
 
 	m_DX12Device.UpdateFrameResource();
 
-	CD3DX12_CPU_DESCRIPTOR_HANDLE tmpDSVOffsetHandle = static_cast<CD3DX12_CPU_DESCRIPTOR_HANDLE>(m_DX12Device.GetOffsetCPUHandle(
+	CD3DX12_CPU_DESCRIPTOR_HANDLE shadowDSVOffsetHandle = static_cast<CD3DX12_CPU_DESCRIPTOR_HANDLE>(m_DX12Device.GetOffsetCPUHandle(
 		m_DX12Device.GetDX12DSVHeap()->GetDescHeap()->GetCPUDescriptorHandleForHeapStart(),
 		2 * m_DX12Device.GetDX12SwapChain()->GetSwapChainBufferCount(), // maind render + msaa render,
 		m_DX12Device.GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV)));
 
-	m_DX12FrameBuffer.BeginMainPass(m_DX12Device.GetDX12CommandList(), currBackBufferIndex);
-	PIXEndEvent(m_DX12Device.GetDX12CommandList()->GetCommandList()); //pix frame start setting marking end
-	m_DX12Device.GetDX12CommandList()->GetCommandList()->Close();
+	m_DX12FrameBuffer.BeginShadowRender(m_DX12Device.GetDX12CommandList(), m_DX12Device.GetDX12ShadowManager(), shadowDSVOffsetHandle);
 
 	auto* cbvSrvHeap = m_DX12Device.GetDX12CBVSRVHeap();
 	constexpr uint32_t numDescPerFrame = EngineConfig::ConstantBufferCount;
@@ -399,7 +424,7 @@ void RenderDX12::RecordAndSubmit_Multi()
 	const uint32_t frameIndex = currBackBufferIndex;
 	const uint32_t threadIndex = 0;
 	const uint32_t numItems = m_DX12Device.GetRenderItemSize();
-	const uint32_t chunkSize = (numItems + numWorkers - 1) / numWorkers;
+	const uint32_t chunkSize = numWorkers > 0 ? (numItems + numWorkers - 1) / numWorkers : 0;
 
 	//if empty, create worker thread which do RenderDX12::AllocateWorkerDrawingCommand
 	if (m_workerThreads.empty())
@@ -408,23 +433,83 @@ void RenderDX12::RecordAndSubmit_Multi()
 		for (uint32_t i = 0; i < numWorkers; ++i)
 			m_workerThreads.emplace_back(&RenderDX12::AllocateWorkerDrawingCommand, this, i);
 	}
+	if (m_workerJobDrawing.size() < numWorkers)
+	{
+		m_workerJobDrawing.resize(numWorkers);
+	}
 
 	uint32_t cbvSliceIndex = cbvSrvHeap->CalcHeapSliceShareBlock(frameIndex, threadIndex, numDescPerFrame, numDescPerThread, maxWorkers);
 	HeapSlice cbvSlice = cbvSrvHeap->Offset(cbvSliceIndex);
 	HeapSlice texSlice = cbvSrvHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount);
 	HeapSlice matSlice = cbvSrvHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + 2 * EngineConfig::MaxTextureCount);
+	HeapSlice shadowMapSlice = cbvSrvHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + 2 * EngineConfig::MaxTextureCount + 2);
 
-	{//mutex block
-		std::unique_lock<std::mutex> lock(m_workerMutex);
-		m_pendingWorkers = numWorkers;
-		for (uint32_t i = 0; i < numWorkers; ++i)
-		{
-			uint32_t beginIndex = i * chunkSize;
-			uint32_t endIndex = min(beginIndex + chunkSize, numItems);
-			m_workerJobDrawing[i] = { beginIndex, endIndex, currBackBufferIndex, cbvSlice, texSlice, matSlice, true };
+	if (numWorkers > 0)
+	{
+		{//mutex block
+			std::unique_lock<std::mutex> lock(m_workerMutex);
+			m_pendingWorkers = numWorkers;
+			for (uint32_t i = 0; i < numWorkers; ++i)
+			{
+				uint32_t beginIndex = i * chunkSize;
+				uint32_t endIndex = min(beginIndex + chunkSize, numItems);
+				WorkerJobDrawing job{};
+				job.beginIndex = beginIndex;
+				job.endIndex = endIndex;
+				job.currBackBufferIndex = currBackBufferIndex;
+				job.cbvSlice = cbvSlice;
+				job.texSlice = texSlice;
+				job.matSlice = matSlice;
+				job.shadowDSVHandle = shadowDSVOffsetHandle;
+				job.passType = WorkerJobDrawing::PassType::Shadow;
+				job.ready = true;
+				m_workerJobDrawing[i] = job;
+			}
 		}
+		m_workerCV.notify_all();//wake up workers (record shadow commands)
+
+		{//mutex block
+			std::unique_lock<std::mutex> lock(m_workerMutex);
+			m_workerDoneCV.wait(lock, [&] { return m_pendingWorkers == 0; });
+		}//wait shadow recording done
 	}
-	m_workerCV.notify_all();//wake up workers (do drawing commands)
+	std::vector<ID3D12CommandList*> submitShadowCommandLists; //commands should be submitted as sequentially
+	submitShadowCommandLists.reserve(1 + numWorkers); //main + shadow workers
+	submitShadowCommandLists.push_back(m_DX12Device.GetDX12CommandList()->GetCommandList());
+	for (uint32_t i = 0; i < numWorkers; ++i) submitShadowCommandLists.push_back(m_DX12Device.GetWorkerShadowDX12CommandList(i)->GetCommandList());
+	m_DX12Device.GetDX12CommandList()->GetCommandList()->Close();
+	m_DX12Device.GetDX12CommandList()->GetCommandQueue()->ExecuteCommandLists((UINT)submitShadowCommandLists.size(), submitShadowCommandLists.data());
+
+	m_DX12Device.GetDX12CommandList()->ResetList(m_DX12Device.GetDX12PSO()->GetPipelineState(), m_DX12Device.GetFrameResource(currBackBufferIndex)->GetCommandAllocator()); //main thread reset
+	m_DX12FrameBuffer.EndShadowRender(m_DX12Device.GetDX12CommandList(), m_DX12Device.GetDX12ShadowManager());
+	m_DX12FrameBuffer.BeginMainPass(m_DX12Device.GetDX12CommandList(), currBackBufferIndex);
+	PIXEndEvent(m_DX12Device.GetDX12CommandList()->GetCommandList()); //pix frame start setting marking end
+	m_DX12Device.GetDX12CommandList()->GetCommandList()->Close();
+
+	if (numWorkers > 0)
+	{
+		{//mutex block
+			std::unique_lock<std::mutex> lock(m_workerMutex);
+			m_pendingWorkers = numWorkers;
+			for (uint32_t i = 0; i < numWorkers; ++i)
+			{
+				uint32_t beginIndex = i * chunkSize;
+				uint32_t endIndex = min(beginIndex + chunkSize, numItems);
+				WorkerJobDrawing job{};
+				job.beginIndex = beginIndex;
+				job.endIndex = endIndex;
+				job.currBackBufferIndex = currBackBufferIndex;
+				job.cbvSlice = cbvSlice;
+				job.texSlice = texSlice;
+				job.matSlice = matSlice;
+				job.shadowSlice = shadowMapSlice;
+				job.passType = WorkerJobDrawing::PassType::Main;
+				job.ready = true;
+				m_workerJobDrawing[i] = job;
+			}
+		}
+		m_workerCV.notify_all();//wake up workers (do main drawing commands)
+	}
 
 	m_DX12Device.GetPostDrawDX12CommandList()->ResetList(m_DX12Device.GetDX12PSO()->GetPipelineState(), m_DX12Device.GetFrameResource(currBackBufferIndex)->GetCommandAllocator());
 
@@ -458,13 +543,16 @@ void RenderDX12::RecordAndSubmit_Multi()
 	m_DX12FrameBuffer.SetBackBufferPresent(m_DX12Device.GetPostDrawDX12CommandList(), currBackBufferIndex);
 	m_timer.EndGPU(m_DX12Device.GetPostDrawDX12CommandList()->GetCommandList(), currBackBufferIndex); // << GPU TIMER END
 	//////////////////////////////////////////////////////////////////////////////////
-	std::unique_lock<std::mutex> lock(m_workerMutex);
-	m_workerDoneCV.wait(lock, [&] { return m_pendingWorkers == 0; }); //wait until notify(workers do all of their works)
+	if (numWorkers > 0)
+	{
+		std::unique_lock<std::mutex> lock(m_workerMutex);
+		m_workerDoneCV.wait(lock, [&] { return m_pendingWorkers == 0; }); //wait until notify(workers do all of their works)
+	}
 
 	std::vector<ID3D12CommandList*> submitCommandLists; //commands should be submitted as sequentially
-	submitCommandLists.reserve(2 + numWorkers); //main + workers + finish
+	submitCommandLists.reserve(2 + numWorkers); //main + main workers + finish
 	submitCommandLists.push_back(m_DX12Device.GetDX12CommandList()->GetCommandList());
-	for (int i = 0; i < m_DX12Device.GetWorkerDX12CommandListSize(); i++) submitCommandLists.push_back(m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList());
+	for (uint32_t i = 0; i < numWorkers; ++i) submitCommandLists.push_back(m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList());
 	submitCommandLists.push_back(m_DX12Device.GetPostDrawDX12CommandList()->GetCommandList());
 
 	m_DX12Device.GetPostDrawDX12CommandList()->GetCommandList()->Close();

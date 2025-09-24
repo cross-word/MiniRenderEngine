@@ -62,12 +62,21 @@ private:
 
     struct WorkerJobDrawing
     {
+        enum class PassType
+        {
+            Main,
+            Shadow
+        };
+
         uint32_t beginIndex = 0;
         uint32_t endIndex = 0;
         uint32_t currBackBufferIndex = 0;
         HeapSlice cbvSlice{};
         HeapSlice texSlice{};
         HeapSlice matSlice{};
+        HeapSlice shadowSlice{};
+        D3D12_CPU_DESCRIPTOR_HANDLE shadowDSVHandle{};
+        PassType passType = PassType::Main;
         bool ready = false;
     };
 

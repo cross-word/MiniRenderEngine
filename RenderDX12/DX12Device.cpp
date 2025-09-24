@@ -71,6 +71,14 @@ void DX12Device::InitDX12CommandList(ID3D12CommandAllocator* commandAllocator)
 		tmpCmdList->Initialize(m_device.Get(), commandAllocator, m_fenceEvent);
 		m_workerDX12CommandList.push_back(std::move(tmpCmdList));
 	}
+
+	m_workerShadowDX12CommandList.reserve(EngineConfig::NumThreadWorker);
+	for (int i = 0; i < EngineConfig::NumThreadWorker; i++)
+	{
+		auto tmpCmdList = std::make_unique<DX12CommandList>();
+		tmpCmdList->Initialize(m_device.Get(), commandAllocator, m_fenceEvent);
+		m_workerShadowDX12CommandList.push_back(std::move(tmpCmdList));
+	}
 }
 
 void DX12Device::InitDX12SwapChain(HWND hWnd)

@@ -31,7 +31,7 @@ public:
     void BeginMainPass(
         DX12CommandList* dx12CommandList,
         UINT currBackBufferIndex);
-    void SetRenderViewPort(DX12CommandList* dx12CommandList, UINT currBackBufferIndex);
+    void SetMainPassRenderViewPort(DX12CommandList* dx12CommandList, UINT currBackBufferIndex);
     void EndMainPass(
         DX12CommandList* dx12CommandList,
         UINT currBackBufferIndex,
@@ -42,6 +42,7 @@ public:
 
     void BeginShadowRender(DX12CommandList* dx12CommandList, DX12ShadowManager* dx12ShadowManager, CD3DX12_CPU_DESCRIPTOR_HANDLE shadowDepthStencilCPUHandle);
     void EndShadowRender(DX12CommandList* dx12CommandList, DX12ShadowManager* dx12ShadowManager);
+    void SetShadowRenderViewPort(DX12CommandList* dx12CommandList, DX12ShadowManager* dx12ShadowManager, D3D12_CPU_DESCRIPTOR_HANDLE shadowDepthStencilCPUHandle);
 
 private:
     void CreateRenderTargetsAndViews(DX12Device* dx12Device);
