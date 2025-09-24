@@ -12,10 +12,10 @@ DX12Device::~DX12Device()
 	m_DX12FrameResource.clear(); ////wt
 }
 
-void DX12Device::Initialize(HWND hWnd, const std::wstring& sceneFile)
+void DX12Device::Initialize(HWND hWnd, const std::wstring& sceneFilePath)
 {
 	assert(hWnd);
-	m_sceneData = LoadGLTFScene(sceneFile);
+	m_sceneData = LoadGLTFScene(sceneFilePath);
 
 	// create hardware device
 	// make hardware adaptor if it can. if not, make warp adapator.

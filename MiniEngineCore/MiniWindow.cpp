@@ -3,11 +3,13 @@
 #include <windows.h>
 #include <Windowsx.h>
 #include <d2d1.h>
+#include <shellapi.h>
 
 #include <list>
 #include <memory>
 
 #pragma comment(lib, "d2d1")
+#pragma comment(lib, "Shell32.lib")
 
 #include "MiniWindow.h"
 #include "resource.h"
@@ -28,14 +30,41 @@ template <class T> void SafeRelease(T** ppT)
 float DPIScale::scaleX = 1.0f;
 float DPIScale::scaleY = 1.0f;
 
+static std::wstring GetOption(int argc, wchar_t** argv, std::wstring_view name) {
+    const std::wstring prefix = L"--" + std::wstring(name);
+    for (int i = 1; i < argc; ++i) {
+        std::wstring_view a = argv[i];
+        // --scene_path=VALUE
+        if (a.rfind(prefix, 0) == 0 && a.size() > prefix.size() && a[prefix.size()] == L'=') {
+            return std::wstring(a.substr(prefix.size() + 1));
+        }
+        // --scene_path VALUE
+        if (a == prefix && i + 1 < argc) {
+            return std::wstring(argv[i + 1]);
+        }
+    }
+    return L"";
+}
+
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
 {
     MainWindow win;
 
     if (!win.Create(L"Draw Circles", WS_OVERLAPPEDWINDOW))
         return 0;
+
     RenderDX12 MainRenderer;
-    MainRenderer.InitializeDX12(win.GetMainHWND());
+    int argc = 0;
+    wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+    std::wstring scenePath = GetOption(argc, argv, L"scene_path");
+    if (!scenePath.empty())
+    {
+        MainRenderer.InitializeDX12(win.GetMainHWND(), scenePath);
+    }
+    else
+    {
+        MainRenderer.InitializeDX12(win.GetMainHWND(), EngineConfig::SceneFilePath);
+    }
     win.SetRenderer(&MainRenderer);
 
     HACCEL hAccel = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDR_ACCEL1));

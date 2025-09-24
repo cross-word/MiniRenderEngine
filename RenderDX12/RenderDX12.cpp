@@ -67,7 +67,7 @@ RenderDX12::~RenderDX12()
 	ShutDown();
 }
 
-void RenderDX12::InitializeDX12(HWND hWnd)
+void RenderDX12::InitializeDX12(HWND hWnd, const std::wstring& sceneFilePath)
 {
 	assert(hWnd);
 	UINT dxgiFactoryFlags = 0;
@@ -84,7 +84,7 @@ void RenderDX12::InitializeDX12(HWND hWnd)
 
 	}
 #endif
-	m_DX12Device.Initialize(hWnd, EngineConfig::SceneFilePath);
+	m_DX12Device.Initialize(hWnd, sceneFilePath);
 	m_DX12FrameBuffer.Initialize(&m_DX12Device);
 	m_timer.Initialize(m_DX12Device.GetDevice(), m_DX12Device.GetDX12CommandList()->GetCommandQueue());
 	//////////////////////////////////////////

@@ -35,7 +35,7 @@ class DX12Device
 public:
 	DX12Device();
 	~DX12Device();
-	void Initialize(HWND hWnd, const std::wstring& sceneFile);
+	void Initialize(HWND hWnd, const std::wstring& sceneFilePath);
 
 	inline ID3D12Device* GetDevice() const noexcept { return m_device.Get(); }
 	inline DX12DescriptorHeap* GetDX12RTVHeap() const noexcept { return m_DX12RTVHeap.get(); }

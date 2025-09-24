@@ -49,7 +49,7 @@ public:
     ~RenderDX12();
 
 public:
-    void InitializeDX12(HWND hWnd);
+    void InitializeDX12(HWND hWnd, const std::wstring& sceneFilePath);
     void OnResize();
     void Draw();
     void ShutDown();
