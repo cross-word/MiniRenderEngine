@@ -23,6 +23,8 @@ public:
     void EndCPU(uint32_t frameIndex);
     float GetElapsedCPUMS(uint32_t frameIndex) const;
 
+    // total timer
+    float GetTotalTime() const noexcept { return m_totalTime; }
 private:
     Microsoft::WRL::ComPtr<ID3D12QueryHeap> m_queryHeap;
     Microsoft::WRL::ComPtr<ID3D12Resource> m_readbackBuffer;
@@ -31,4 +33,5 @@ private:
     std::vector<LARGE_INTEGER> m_cpuBegin;
     std::vector<float>        m_cpuElapsedMS;
     LARGE_INTEGER             m_cpuFreq{};
+    float m_totalTime = 0;
 };

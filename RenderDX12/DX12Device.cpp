@@ -436,11 +436,11 @@ void DX12Device::InitDX12ShadowManager()
 	m_DX12ShadowManager->Initialzie(m_device.Get(), m_DX12CommandList.get(), /**/ tmpDSVOffsetHandle, /*nullptr??*/ tmpRTVOffsetHandle);
 }
 
-void DX12Device::UpdateFrameResource()
+void DX12Device::UpdateFrameResource(D3DTimer d3dTimer)
 {
 	// Has the GPU finished processing the commands of the current frame resource?
 	// If not, wait until the GPU has completed commands up to this fence point.
-	m_DX12FrameResource[GetCurrentBackBufferIndex()]->UploadPassConstant(m_camera.get(), m_sceneData.lights);
+	m_DX12FrameResource[GetCurrentBackBufferIndex()]->UploadPassConstant(m_camera.get(), m_sceneData.lights, d3dTimer);
 	m_DX12FrameResource[GetCurrentBackBufferIndex()]->UploadObjectConstant(m_device.Get(), m_DX12CommandList.get(), m_renderItems, m_DX12ObjectConstantManager.get());
 }
 

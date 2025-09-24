@@ -64,6 +64,7 @@ void D3DTimer::EndCPU(uint32_t frameIndex)
     m_cpuElapsedMS[frameIndex] =
         static_cast<float>(end.QuadPart - m_cpuBegin[frameIndex].QuadPart) * 1000.0f /
         static_cast<float>(m_cpuFreq.QuadPart);
+    m_totalTime += m_cpuElapsedMS[frameIndex];
 }
 
 float D3DTimer::GetElapsedCPUMS(uint32_t frameIndex) const

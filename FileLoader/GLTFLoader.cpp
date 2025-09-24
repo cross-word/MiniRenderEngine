@@ -246,7 +246,7 @@ void CollectGLTFLights(
         Light g{};
 
         g.Color = { (float)L.color[0], (float)L.color[1], (float)L.color[2] };
-        g.Intensity = (float)L.intensity;
+        g.Intensity = (L.intensity == 0.0) ? 5.5f : L.intensity;
         g.Type = LightTypeToInt(L.type);
         g.Range = (L.range > 0.0) ? (float)L.range : -1.0f;
 

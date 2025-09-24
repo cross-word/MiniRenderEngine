@@ -16,6 +16,7 @@
 #include "../FileLoader/GLTFLoader.h"
 #include "DX12TextureManager.h"
 #include "DX12ShadowManager.h"
+#include "D3DTimer.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
@@ -61,7 +62,7 @@ public:
 	inline void SetCurrentBackBufferIndex(UINT newIndex) { m_currBackBufferIndex = newIndex; }
 
 	void PrepareInitialResource();
-	void UpdateFrameResource();
+	void UpdateFrameResource(D3DTimer d3dTimer);
 	UINT GetTextureIndexAsTextureName(const std::string textureName);
 	UINT GetMaterialIndexAsMaterialName(const std::string materialName);
 

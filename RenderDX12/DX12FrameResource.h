@@ -7,6 +7,7 @@
 #include "D3DCamera.h"
 #include "DX12ConstantManager.h"
 #include "DX12RenderGeometry.h"
+#include "D3DTimer.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
@@ -30,7 +31,7 @@ public:
     void ResetAllocator() { ThrowIfFailed(m_commandAllocator->Reset()); }
     void CreateSRV(ID3D12Device* device, DX12DescriptorHeap* dx12DescriptorHeap, uint32_t frameIndex);
 
-    void UploadPassConstant(D3DCamera* d3dCamera, std::vector<Light>& lights);
+    void UploadPassConstant(D3DCamera* d3dCamera, std::vector<Light>& lights, D3DTimer d3dTimer);
     void UploadObjectConstant(
         ID3D12Device* device,
         DX12CommandList* dx12CommandList,

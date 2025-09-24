@@ -56,16 +56,19 @@ void DX12FrameResource::CreateSRV(ID3D12Device* device, DX12DescriptorHeap* dx12
 		&passCBVDesc);
 }
 
-void DX12FrameResource::UploadPassConstant(D3DCamera* d3dCamera, std::vector<Light>& lights)
+void DX12FrameResource::UploadPassConstant(D3DCamera* d3dCamera, std::vector<Light>& lights, D3DTimer d3dTimer)
 {
 	PassConstants passConst;
-	passConst.AmbientLight = { 0.18f, 0.18f, 0.18f, 1.0f };
+	passConst.AmbientLight = { 0.08f, 0.08f, 0.08f, 1.0f };
 	Light sun{}; //sun light
+
+	float pi = 3.1415926535f;
+	float theta = (2 * pi) / (12000.0f) * d3dTimer.GetTotalTime(); // 12s is one period
 
 	sun.Type = LIGHT_TYPE_DIRECTIONAL;
 	sun.Color = { 1.0f, 1.0f, 1.0f };
-	sun.Intensity = 0.15f;
-	sun.Direction = { 0.0f, -1.0f, 0.0f };
+	sun.Intensity = 1.0f;
+	sun.Direction = { 0.0f, -cosf(theta), sinf(theta) };
 	sun.Range = -1.0f;
 	sun.Position = { 0.0f, 0.0f, 0.0f };
 	sun.InnerCos = 0.0f;

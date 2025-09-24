@@ -253,7 +253,7 @@ void RenderDX12::RecordAndSubmit_Single()
 
 	m_timer.BeginGPU(m_DX12Device.GetDX12CommandList()->GetCommandList(), currBackBufferIndex); // << imgui GPU TIMER START
 
-	m_DX12Device.UpdateFrameResource();
+	m_DX12Device.UpdateFrameResource(m_timer);
 
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetGraphicsRootSignature(m_DX12Device.GetDX12RootSignature()->GetRootSignature());
 	ID3D12DescriptorHeap* descriptorHeaps[] = { m_DX12Device.GetDX12CBVSRVHeap()->GetDescHeap() };
@@ -407,7 +407,7 @@ void RenderDX12::RecordAndSubmit_Multi()
 
 	m_timer.BeginGPU(m_DX12Device.GetDX12CommandList()->GetCommandList(), currBackBufferIndex); // << imgui GPU TIMER START
 
-	m_DX12Device.UpdateFrameResource();
+	m_DX12Device.UpdateFrameResource(m_timer);
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE shadowDSVOffsetHandle = static_cast<CD3DX12_CPU_DESCRIPTOR_HANDLE>(m_DX12Device.GetOffsetCPUHandle(
 		m_DX12Device.GetDX12DSVHeap()->GetDescHeap()->GetCPUDescriptorHandleForHeapStart(),
