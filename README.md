@@ -22,10 +22,10 @@ gltf file Renderer through DX12 API
 >   > Download scene .zip file in (https://www.intel.com/content/www/us/en/developer/topic-technology/graphics-research/samples.html)     
 >   > Unzip them in the directory where this repo placed (if you want to place scene in other directory, see bellow "Other Scene Load").     
 >   > Expected result of directory tree is like this.     
->   > main_sponza    
->   >   >   (main sponza scene files...)    
->   > MiniEngine     
->   >   >   (MiniEngine repo code files...)    
+>   >   > main_sponza    
+>   >   >   > (main sponza scene files...)    
+>   >   > MiniEngine     
+>   >   >   > (MiniEngine repo code files...)    
 
 # Other Scene Load
 > If you want to load other scene, parse your path useing --scene_path="your_scene_path" in cmd.     
