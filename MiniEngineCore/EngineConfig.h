@@ -20,9 +20,9 @@ struct EngineConfig
         LR"(..\..\Textures\bricks2.dds)",
         LR"(..\..\Textures\bricks3.dds)",
     }; // tmp
-    static inline constexpr const wchar_t* ShaderFilePath = LR"(..\..\\Shaders\\tmpfolder\\Default.hlsl)"; // tmp
-    static inline constexpr const wchar_t* ShadowShaderFilePath = LR"(..\..\\Shaders\\tmpfolder\\Shadows.hlsl)"; // tmp
-    static inline constexpr const wchar_t* SceneFilePath = LR"(D:\MiniEngine\main_sponza\NewSponza_Main_glTF_003.gltf)"; // tmp
+    static inline constexpr const wchar_t* ShaderFilePath = LR"(..\\Shaders\\tmpfolder\\Default.hlsl)"; // tmp
+    static inline constexpr const wchar_t* ShadowShaderFilePath = LR"(..\\Shaders\\tmpfolder\\Shadows.hlsl)"; // tmp
+    static inline constexpr const wchar_t* SceneFilePath = LR"(..\\..\\main_sponza\\NewSponza_Main_glTF_003.gltf)"; // tmp
     static constexpr UINT NumThreadWorker = 4;
     static constexpr bool UseMultiThread = true;
     static constexpr UINT MaxTextureCount = 80;
