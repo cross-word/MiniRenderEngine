@@ -105,6 +105,10 @@ external/vcpkg/packages/
 external/vcpkg/downloads/
 external/vcpkg/installed/
 vcpkg_installed/*
+.vcpkg/
+build/
+*.ipdb
+*.pdb
 # Chutzpah Test files
 _Chutzpah*
 
