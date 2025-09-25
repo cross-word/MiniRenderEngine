@@ -37,9 +37,12 @@ struct EngineConfig
     static inline const std::wstring kShaderPathS = MakePath(LR"(..\..\Shaders\tmpfolder\Default.hlsl)");
     static inline const std::wstring kShadowShaderPathS = MakePath(LR"(..\..\Shaders\tmpfolder\Shadows.hlsl)");
     static inline const std::wstring kScenePathS = MakePath(LR"(..\..\..\main_sponza\NewSponza_Main_glTF_003.gltf)");
-    static inline const wchar_t* ShaderFilePath = kShaderPathS.c_str(); // tmp
-    static inline const wchar_t* ShadowShaderFilePath = kShadowShaderPathS.c_str(); // tmp
-    static inline const wchar_t* SceneFilePath = kScenePathS.c_str(); // tmp
+    //static inline const wchar_t* ShaderFilePath = kShaderPathS.c_str(); // tmp
+    //static inline const wchar_t* ShadowShaderFilePath = kShadowShaderPathS.c_str(); // tmp
+    //static inline const wchar_t* SceneFilePath = kScenePathS.c_str(); // tmp
+    static inline const wchar_t* ShaderFilePath = LR"(D:\MiniEngine\MiniEngine\Shaders\tmpfolder\Default.hlsl)"; // tmp
+    static inline const wchar_t* ShadowShaderFilePath = LR"(D:\MiniEngine\MiniEngine\Shaders\tmpfolder\Shadows.hlsl)"; // tmp
+    static inline const wchar_t* SceneFilePath = LR"(D:\MiniEngine\main_sponza\NewSponza_Main_glTF_003.gltf)"; // tmp
     static constexpr UINT NumThreadWorker = 4;
     static constexpr bool UseMultiThread = true;
     static constexpr UINT MaxTextureCount = 80;

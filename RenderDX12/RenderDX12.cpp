@@ -2,12 +2,15 @@
 #include "RenderDX12.h"
 
 #include <d3d12sdklayers.h>
-#include <pix3.h>
 #include <algorithm>
 
 #include "../external/imgui/imgui.h"
 #include "../external/imgui/backends/imgui_impl_win32.h"
 #include "../external/imgui/backends/imgui_impl_dx12.h"
+
+#if defined(_DEBUG)
+#include <pix3.h>
+#endif // Debug
 
 
 //struct for imgui (see : https://github.com/ocornut/imgui/blob/master/examples/example_win32_directx12/main.cpp#L113 )
@@ -185,6 +188,7 @@ void RenderDX12::AllocateWorkerDrawingCommand(uint32_t i)
 
 		if (beginIndex < endIndex)
 		{
+#if defined(_DEBUG)
 			if (job.passType == WorkerJobDrawing::PassType::Shadow)
 			{
 				PIXBeginEvent(commandList, PIX_COLOR(128, 128, 255), L"[MT] Shadow worker %d (%d~%d)", i, beginIndex, endIndex);
@@ -193,7 +197,7 @@ void RenderDX12::AllocateWorkerDrawingCommand(uint32_t i)
 			{
 				PIXBeginEvent(commandList, PIX_COLOR(0, 128, 255), L"[MT] Draw worker %d (%d~%d)", i, beginIndex, endIndex);
 			}
-
+#endif
 			for (uint32_t renderItemIndex = beginIndex; renderItemIndex < endIndex; renderItemIndex++)
 			{
 				UINT matIndex = m_DX12Device.GetDX12RenderItem(renderItemIndex).GetMaterialIndex();
@@ -211,8 +215,9 @@ void RenderDX12::AllocateWorkerDrawingCommand(uint32_t i)
 					m_DX12Device.GetDX12RenderItem(renderItemIndex).GetBaseVertexLocation(),
 					0);
 			}
-
+#if defined(_DEBUG)
 			PIXEndEvent(commandList);
+#endif
 		}
 
 		commandList->Close();
@@ -235,8 +240,9 @@ void RenderDX12::Draw()
 
 void RenderDX12::RecordAndSubmit_Single()
 {
+#if defined(_DEBUG)
 	PIXBeginEvent(m_DX12Device.GetDX12CommandList()->GetCommandQueue(), PIX_COLOR(0, 255, 0), L"Frame %u", sFrameId); //pix marking ~ total frame
-
+#endif
 	m_DX12Device.SetCurrentBackBufferIndex(m_DX12Device.GetDX12SwapChain()->GetSwapChain()->GetCurrentBackBufferIndex());
 	uint32_t currBackBufferIndex = m_DX12Device.GetDX12SwapChain()->GetSwapChain()->GetCurrentBackBufferIndex();
 
@@ -248,9 +254,9 @@ void RenderDX12::RecordAndSubmit_Single()
 	m_DX12Device.GetDX12CommandList()->ResetList(m_DX12Device.GetDX12PSO()->GetPipelineState(), m_DX12Device.GetFrameResource(currBackBufferIndex)->GetCommandAllocator());
 
 	m_timer.BeginCPU(currBackBufferIndex); // << imgui CPU TIMER START
-
+#if defined(_DEBUG)
 	PIXBeginEvent(m_DX12Device.GetDX12CommandList()->GetCommandList(), PIX_COLOR(0, 180, 255), L"BeginFrame"); // pix marking ~ frame start setting
-
+#endif
 	m_timer.BeginGPU(m_DX12Device.GetDX12CommandList()->GetCommandList(), currBackBufferIndex); // << imgui GPU TIMER START
 
 	m_DX12Device.UpdateFrameResource(m_timer);
@@ -314,9 +320,10 @@ void RenderDX12::RecordAndSubmit_Single()
 
 	m_DX12FrameBuffer.BeginMainPass(m_DX12Device.GetDX12CommandList(), currBackBufferIndex);
 	m_DX12FrameBuffer.SetMainPassRenderViewPort(m_DX12Device.GetDX12CommandList(), currBackBufferIndex);
+#if defined(_DEBUG)
 	PIXEndEvent(m_DX12Device.GetDX12CommandList()->GetCommandList()); //pix frame start setting marking end
-
 	PIXBeginEvent(m_DX12Device.GetDX12CommandList()->GetCommandList(), PIX_COLOR(0, 128, 255), L"MainDraw (%d items)", m_DX12Device.GetRenderItemSize()); //pix marking ~ main draw
+#endif
 	for (int renderItemIndex = 0; renderItemIndex < m_DX12Device.GetRenderItemSize(); renderItemIndex++)
 	{
 		UINT matIndex = m_DX12Device.GetDX12RenderItem(renderItemIndex).GetMaterialIndex();
@@ -335,14 +342,18 @@ void RenderDX12::RecordAndSubmit_Single()
 			m_DX12Device.GetDX12RenderItem(renderItemIndex).GetBaseVertexLocation(),
 			0);
 	}
+#if defined(_DEBUG)
 	PIXEndEvent(m_DX12Device.GetDX12CommandList()->GetCommandList()); //pix main draw marking end
 
 	PIXBeginEvent(m_DX12Device.GetDX12CommandList()->GetCommandList(), PIX_COLOR(255, 128, 0), L"EndFrame/Resolve"); //pix marking ~ resorve RTV
+#endif
 	m_DX12FrameBuffer.EndMainPass(m_DX12Device.GetDX12CommandList(), currBackBufferIndex, m_DX12Device.GetDX12SwapChain()->GetRenderTargetFormat(), m_DX12Device.GetDX12ShadowManager());
+#if defined(_DEBUG)
 	PIXEndEvent(m_DX12Device.GetDX12CommandList()->GetCommandList());
 	//////////////////////////////////imgui drawing
 	// imgui render block
 	PIXBeginEvent(m_DX12Device.GetDX12CommandList()->GetCommandList(), PIX_COLOR(255, 0, 255), L"ImGui"); //pix marking ~ imgui rendering
+#endif
 	ImGui_ImplDX12_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
@@ -363,7 +374,9 @@ void RenderDX12::RecordAndSubmit_Single()
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->SetDescriptorHeaps(1, SRVheaps);
 
 	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_DX12Device.GetDX12CommandList()->GetCommandList());
+#if defined(_DEBUG)
 	PIXEndEvent(m_DX12Device.GetDX12CommandList()->GetCommandList()); //pix imgui marking end
+#endif
 	m_DX12FrameBuffer.SetBackBufferPresent(m_DX12Device.GetDX12CommandList(), currBackBufferIndex);
 	m_timer.EndGPU(m_DX12Device.GetDX12CommandList()->GetCommandList(), currBackBufferIndex); // << GPU TIMER END
 	//////////////////////////////////////////////////////////////////////////////////
@@ -376,8 +389,9 @@ void RenderDX12::RecordAndSubmit_Single()
 	m_DX12Device.GetFrameResource(currBackBufferIndex)->SetFenceValue(fenceValue);
 	m_timer.EndCPU(currBackBufferIndex); // << CPU TIMER END
 	m_DX12FrameBuffer.Present(&m_DX12Device);
-
+#if defined(_DEBUG)
 	PIXEndEvent(m_DX12Device.GetDX12CommandList()->GetCommandQueue()); //pix frame marking end
+#endif
 	sFrameId++;
 }
 
@@ -388,8 +402,9 @@ void RenderDX12::RecordAndSubmit_Multi()
 	// command recording sequence : shadow render setting(main thread) => shadow rendering(worker thread) => execute =>
 	// => main render setting(main thread) => main rendering(worker thread) => finish commands(main thread) => execute.
 	*/
+#if defined(_DEBUG)
 	PIXBeginEvent(m_DX12Device.GetDX12CommandList()->GetCommandQueue(), PIX_COLOR(0, 255, 0), L"Frame %u", sFrameId); //pix marking ~ total frame
-
+#endif
 	m_DX12Device.SetCurrentBackBufferIndex(m_DX12Device.GetDX12SwapChain()->GetSwapChain()->GetCurrentBackBufferIndex());
 	const uint32_t currBackBufferIndex = m_DX12Device.GetDX12SwapChain()->GetSwapChain()->GetCurrentBackBufferIndex();
 
@@ -402,9 +417,9 @@ void RenderDX12::RecordAndSubmit_Multi()
 	m_DX12Device.GetDX12CommandList()->ResetList(m_DX12Device.GetDX12PSO()->GetPipelineState(), m_DX12Device.GetFrameResource(currBackBufferIndex)->GetCommandAllocator()); //main thread reset
 
 	m_timer.BeginCPU(currBackBufferIndex); // << imgui CPU TIMER START
-
+#if defined(_DEBUG)
 	PIXBeginEvent(m_DX12Device.GetDX12CommandList()->GetCommandList(), PIX_COLOR(0, 180, 255), L"BeginFrame"); // pix marking ~ frame start setting
-
+#endif
 	m_timer.BeginGPU(m_DX12Device.GetDX12CommandList()->GetCommandList(), currBackBufferIndex); // << imgui GPU TIMER START
 
 	m_DX12Device.UpdateFrameResource(m_timer);
@@ -483,7 +498,9 @@ void RenderDX12::RecordAndSubmit_Multi()
 	m_DX12Device.GetDX12CommandList()->ResetList(m_DX12Device.GetDX12PSO()->GetPipelineState(), m_DX12Device.GetFrameResource(currBackBufferIndex)->GetCommandAllocator()); //main thread reset
 	m_DX12FrameBuffer.EndShadowRender(m_DX12Device.GetDX12CommandList(), m_DX12Device.GetDX12ShadowManager());
 	m_DX12FrameBuffer.BeginMainPass(m_DX12Device.GetDX12CommandList(), currBackBufferIndex);
+#if defined(_DEBUG)
 	PIXEndEvent(m_DX12Device.GetDX12CommandList()->GetCommandList()); //pix frame start setting marking end
+#endif
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->Close();
 
 	if (numWorkers > 0)
@@ -512,13 +529,16 @@ void RenderDX12::RecordAndSubmit_Multi()
 	}
 
 	m_DX12Device.GetPostDrawDX12CommandList()->ResetList(m_DX12Device.GetDX12PSO()->GetPipelineState(), m_DX12Device.GetFrameResource(currBackBufferIndex)->GetCommandAllocator());
-
+#if defined(_DEBUG)
 	PIXBeginEvent(m_DX12Device.GetPostDrawDX12CommandList()->GetCommandList(), PIX_COLOR(255, 128, 0), L"EndFrame/Resolve"); //pix marking ~ resorve RTV
+#endif
 	m_DX12FrameBuffer.EndMainPass(m_DX12Device.GetPostDrawDX12CommandList(), currBackBufferIndex, m_DX12Device.GetDX12SwapChain()->GetRenderTargetFormat(), m_DX12Device.GetDX12ShadowManager());
+#if defined(_DEBUG)
 	PIXEndEvent(m_DX12Device.GetPostDrawDX12CommandList()->GetCommandList());
 	//////////////////////////////////imgui drawing
 	// imgui render block
 	PIXBeginEvent(m_DX12Device.GetPostDrawDX12CommandList()->GetCommandList(), PIX_COLOR(255, 0, 255), L"ImGui"); //pix marking ~ imgui rendering
+#endif
 	ImGui_ImplDX12_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
@@ -539,7 +559,9 @@ void RenderDX12::RecordAndSubmit_Multi()
 	m_DX12Device.GetPostDrawDX12CommandList()->GetCommandList()->SetDescriptorHeaps(1, SRVheaps);
 
 	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_DX12Device.GetPostDrawDX12CommandList()->GetCommandList());
+#if defined(_DEBUG)
 	PIXEndEvent(m_DX12Device.GetPostDrawDX12CommandList()->GetCommandList()); //pix imgui marking end
+#endif
 	m_DX12FrameBuffer.SetBackBufferPresent(m_DX12Device.GetPostDrawDX12CommandList(), currBackBufferIndex);
 	m_timer.EndGPU(m_DX12Device.GetPostDrawDX12CommandList()->GetCommandList(), currBackBufferIndex); // << GPU TIMER END
 	//////////////////////////////////////////////////////////////////////////////////
@@ -562,8 +584,9 @@ void RenderDX12::RecordAndSubmit_Multi()
 	m_DX12Device.GetFrameResource(currBackBufferIndex)->SetFenceValue(fenceValue);
 	m_timer.EndCPU(currBackBufferIndex); // << CPU TIMER END
 	m_DX12FrameBuffer.Present(&m_DX12Device);
-
+#if defined(_DEBUG)
 	PIXEndEvent(m_DX12Device.GetDX12CommandList()->GetCommandQueue()); //pix frame marking end
+#endif
 	sFrameId++;
 }
 
