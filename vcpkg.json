@@ -2,7 +2,10 @@
   "name": "mini-engine-deps",
   "version-string": "1.0.0",
   "dependencies": [
+    "imgui",
+    "tinygltf",
     "directxtex",
     "directxtk12"
-  ]
+  ],
+  "builtin-baseline": "*"
 }
