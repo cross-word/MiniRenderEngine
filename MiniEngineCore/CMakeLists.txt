@@ -41,3 +41,11 @@ target_link_libraries(MiniEngineCore
         shell32
         shcore
 )
+
+file(GLOB_RECURSE CORE_HEADERS CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.hpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.inl"
+)
+target_sources(MiniEngineCore PRIVATE ${CORE_HEADERS})
+source_group("Header Files" FILES ${CORE_HEADERS})

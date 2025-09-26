@@ -375,3 +375,12 @@ FodyWeavers.xsd
 
 # cmake results
 build/*
+bin/*
+.vscode/*
+external/imgui
+external/vcpkg
+packages/*
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user

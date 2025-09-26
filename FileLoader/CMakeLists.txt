@@ -26,3 +26,11 @@ target_compile_definitions(FileLoader
         UNICODE
         _UNICODE
 )
+
+file(GLOB_RECURSE FILELOADER_HEADERS CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.hpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.inl"
+)
+target_sources(FileLoader PRIVATE ${FILELOADER_HEADERS})
+source_group("Header Files" FILES ${FILELOADER_HEADERS})
