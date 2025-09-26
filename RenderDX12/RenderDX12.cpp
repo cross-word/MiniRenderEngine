@@ -4,9 +4,9 @@
 #include <d3d12sdklayers.h>
 #include <algorithm>
 
-#include "../external/imgui/imgui.h"
-#include "../external/imgui/backends/imgui_impl_win32.h"
-#include "../external/imgui/backends/imgui_impl_dx12.h"
+#include <imgui.h>
+#include "imgui_impl_win32.h"
+#include "imgui_impl_dx12.h"
 
 #if defined(_DEBUG)
 #include <pix3.h>

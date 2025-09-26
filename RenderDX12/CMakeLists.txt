@@ -53,7 +53,7 @@ set_target_properties(RenderDX12 PROPERTIES
 target_include_directories(RenderDX12
   PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR}
   PRIVATE ${CMAKE_SOURCE_DIR}/FileLoader
-          ${CMAKE_SOURCE_DIR}/external/imgui_backends
+          ${IMGUI_BACKENDS_DIR}
           ${D3DX12_INCLUDE_DIR}
           ${RenderDX12_PIX_INCLUDE}
 )
