@@ -250,6 +250,7 @@ void RenderDX12::RecordAndSubmit_Single()
 	////////////////imgui timer set
 	float gpuMS = m_timer.GetElapsedGPUMS(currBackBufferIndex);
 	float cpuMS = m_timer.GetElapsedCPUMS(currBackBufferIndex);
+	m_timer.SetTotalTime(gpuMS > cpuMS ? gpuMS : cpuMS);
 	m_DX12Device.GetFrameResource(currBackBufferIndex)->ResetAllocator();
 	m_DX12Device.GetDX12CommandList()->ResetList(m_DX12Device.GetDX12PSO()->GetPipelineState(), m_DX12Device.GetFrameResource(currBackBufferIndex)->GetCommandAllocator());
 
@@ -412,6 +413,7 @@ void RenderDX12::RecordAndSubmit_Multi()
 	////////////////imgui timer set
 	float gpuMS = m_timer.GetElapsedGPUMS(currBackBufferIndex);
 	float cpuMS = m_timer.GetElapsedCPUMS(currBackBufferIndex);
+	m_timer.SetTotalTime(gpuMS > cpuMS ? gpuMS : cpuMS);
 	m_DX12Device.GetFrameResource(currBackBufferIndex)->ResetAllAllocators();
 	m_DX12Device.GetFrameResource(currBackBufferIndex)->EnsureWorkerCapacity(m_DX12Device.GetDevice(), EngineConfig::NumThreadWorker);
 	m_DX12Device.GetDX12CommandList()->ResetList(m_DX12Device.GetDX12PSO()->GetPipelineState(), m_DX12Device.GetFrameResource(currBackBufferIndex)->GetCommandAllocator()); //main thread reset

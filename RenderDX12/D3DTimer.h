@@ -24,6 +24,7 @@ public:
     float GetElapsedCPUMS(uint32_t frameIndex) const;
 
     // total timer
+    void SetTotalTime(float deltaTime) { m_totalTime += deltaTime; }
     float GetTotalTime() const noexcept { return m_totalTime; }
 private:
     Microsoft::WRL::ComPtr<ID3D12QueryHeap> m_queryHeap;
