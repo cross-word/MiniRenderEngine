@@ -1,8 +1,24 @@
-set(IMGUI_DIR ${PROJECT_SOURCE_DIR}/external/imgui)
-set(IMGUI_BACKENDS_DIR ${IMGUI_DIR}/backends)
+find_package(directxtex CONFIG REQUIRED)          # Microsoft::DirectXTex
+find_package(directxtk12 CONFIG QUIET)            # Microsoft::DirectXTK12
+find_package(winpixevent CONFIG QUIET)     # Microsoft::WinPixEventRuntime
+find_package(imgui CONFIG REQUIRED)               # imgui::imgui
 
-if(NOT EXISTS "${IMGUI_DIR}/imgui.cpp")
-    message(FATAL_ERROR "ImGui sources were not found. Clone https://github.com/ocornut/imgui (commit 87d7f7744efe63e77f4d0e00ccb5f6affd12aca7) into ${IMGUI_DIR}.")
+set(IMGUI_BACKENDS_DIR ${CMAKE_SOURCE_DIR}/external/imgui_backends)
+
+if(NOT EXISTS "${IMGUI_BACKENDS_DIR}/imgui_impl_win32.cpp")
+  message(STATUS "ImGui backends not found in repo. Fetching from upstream...")
+  include(FetchContent)
+  FetchContent_Declare(imgui_src
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG v1.91.9
+  )
+  FetchContent_Populate(imgui_src)
+  set(IMGUI_BACKENDS_DIR ${imgui_src_SOURCE_DIR}/backends)
+endif()
+
+find_path(D3DX12_INCLUDE_DIR d3dx12.h HINTS ${CMAKE_SOURCE_DIR}/external/d3dx12)
+if(NOT D3DX12_INCLUDE_DIR)
+  message(FATAL_ERROR "d3dx12.h not found")
 endif()
 
 add_library(RenderDX12 SHARED
@@ -26,67 +42,37 @@ add_library(RenderDX12 SHARED
     DX12View.cpp
     RenderDX12.cpp
     stdafx.cpp
-    ${IMGUI_DIR}/imgui.cpp
-    ${IMGUI_DIR}/imgui_demo.cpp
-    ${IMGUI_DIR}/imgui_draw.cpp
-    ${IMGUI_DIR}/imgui_tables.cpp
-    ${IMGUI_DIR}/imgui_widgets.cpp
-    ${IMGUI_BACKENDS_DIR}/imgui_impl_dx12.cpp
     ${IMGUI_BACKENDS_DIR}/imgui_impl_win32.cpp
+    ${IMGUI_BACKENDS_DIR}/imgui_impl_dx12.cpp
 )
 
 set_target_properties(RenderDX12 PROPERTIES
     OUTPUT_NAME RenderDX12
 )
 
-find_package(DirectXTex CONFIG REQUIRED)
-find_package(DirectXTK12 CONFIG QUIET)
-find_package(winpixevent CONFIG QUIET)
-
-if(TARGET Microsoft::WinPixEventRuntime)
-  target_link_libraries(RenderDX12 PUBLIC Microsoft::WinPixEventRuntime)
-  target_compile_definitions(RenderDX12 PUBLIC USE_PIX)
-else()
-  message(WARNING "PIX not found via vcpkg. Building without PIX markers.")
-endif()
-
-if(MSVC)
-    target_compile_options(RenderDX12 PRIVATE /W4 /permissive- /wd4100 /wd4201 /wd4324)
-else()
-    target_compile_options(RenderDX12 PRIVATE -Wall -Wextra -Wpedantic)
-endif()
-
 target_include_directories(RenderDX12
-    PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}
-    PRIVATE
-        ${PROJECT_SOURCE_DIR}/FileLoader
-        ${IMGUI_DIR}
-        ${IMGUI_BACKENDS_DIR}
-        ${RenderDX12_PIX_INCLUDE}
+  PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR}
+  PRIVATE ${CMAKE_SOURCE_DIR}/FileLoader
+          ${CMAKE_SOURCE_DIR}/external/imgui_backends
+          ${D3DX12_INCLUDE_DIR}
+          ${RenderDX12_PIX_INCLUDE}
 )
 
 target_link_libraries(RenderDX12
-    PRIVATE
-        FileLoader
-        Microsoft::DirectXTex
-        $<$<TARGET_EXISTS:Microsoft::DirectXTK12::DirectXTK12>:Microsoft::DirectXTK12::DirectXTK12>
-        d3d12
-        dxgi
-        d3dcompiler
-        dxguid
-        user32
-        gdi32
-        shell32
-        imm32
-        shcore
+  PRIVATE
+    FileLoader
+    imgui::imgui
+    Microsoft::DirectXTex
+    $<$<TARGET_EXISTS:Microsoft::DirectXTK12>:Microsoft::DirectXTK12>
+    $<$<TARGET_EXISTS:Microsoft::WinPixEventRuntime>:Microsoft::WinPixEventRuntime>
+    d3d12 dxgi d3dcompiler dxguid user32 gdi32 shell32 imm32 shcore
 )
 
-target_compile_definitions(RenderDX12
-    PRIVATE
-        _BUILDING_RENDERDX12
-        UNICODE
-        _UNICODE
-)
+if(MSVC)
+  target_compile_options(RenderDX12 PRIVATE /W4 /permissive- /wd4100 /wd4201 /wd4324)
+else()
+  target_compile_options(RenderDX12 PRIVATE -Wall -Wextra -Wpedantic)
+endif()
 
+target_compile_definitions(RenderDX12 PRIVATE _BUILDING_RENDERDX12 UNICODE _UNICODE)
 target_precompile_headers(RenderDX12 PRIVATE stdafx.h)
