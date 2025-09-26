@@ -1,8 +1,10 @@
 #pragma once
 #include "MiniTimer.h"
-
+#include <d2d1.h>
 #ifndef _BASEWIN_H
 #define _BASEWIN_H
+
+#include "../RenderDX12/RenderDX12.h"
 
 template <class DERIVED_TYPE>
 class BaseWindow
@@ -86,10 +88,13 @@ public:
     void UpdateFPS();
     void DrawFPS();
     HWND GetMainHWND();
-
+    void SetRenderer(RenderDX12* Renderer) { MainRenderer = Renderer; }
 private:
+    RenderDX12* MainRenderer;
     HWND m_fpsLabel;
     wchar_t m_fpsText[32];
+    POINT m_lastMousePos{};
+    bool m_mouseDown{ false };
 };
 
 class DPIScale
@@ -98,10 +103,11 @@ class DPIScale
     static float scaleY;
 
 public:
-    static void Initialize(ID2D1Factory* pFactory)
+    static void Initialize()
     {
-        FLOAT dpiX, dpiY;
-        pFactory->GetDesktopDpi(&dpiX, &dpiY);
+        UINT dpi = GetDpiForSystem();
+        FLOAT dpiX = static_cast<FLOAT>(dpi);
+        FLOAT dpiY = static_cast<FLOAT>(dpi);
         scaleX = dpiX / 96.0f;
         scaleY = dpiY / 96.0f;
     }

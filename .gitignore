@@ -76,6 +76,8 @@ StyleCopReport.xml
 *.ilk
 *.meta
 *.obj
+Models/*.obj
+Textures/*
 *.iobj
 *.pch
 *.pdb
@@ -98,6 +100,15 @@ StyleCopReport.xml
 *.svclog
 *.scc
 
+external/vcpkg/buildtrees/
+external/vcpkg/packages/
+external/vcpkg/downloads/
+external/vcpkg/installed/
+vcpkg_installed/*
+.vcpkg/
+build/
+*.ipdb
+*.pdb
 # Chutzpah Test files
 _Chutzpah*
 
@@ -361,3 +372,17 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# cmake results
+build/*
+bin/*
+.vscode/*
+external/imgui
+external/vcpkg
+packages/*
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+repo_tree.txt
+Directory.Build.props

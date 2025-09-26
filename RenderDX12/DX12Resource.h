@@ -1,8 +1,11 @@
 #pragma once
 
+#include <span>
+
 #include "stdafx.h"
 #include "DX12CommandList.h"
-
+#include "../FileLoader/SimpleLoader.h"
+#include <DirectXTex.h>
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 
@@ -21,14 +24,13 @@ class DX12Resource
 {
 public:
 	DX12Resource();
-	DX12Resource(D3D12_RESOURCE_STATES  newInitialState);
 	~DX12Resource();
 
 	ID3D12Resource* GetResource() const noexcept { return m_resource.Get(); }
 	D3D12_GPU_VIRTUAL_ADDRESS GetGPUVAdress() const noexcept { return m_resource->GetGPUVirtualAddress(); }
 	D3D12_RESOURCE_STATES GetCurrentState() const noexcept { return m_currentState; }
 
-	void TransitionState(ID3D12GraphicsCommandList* m_commandList, D3D12_RESOURCE_STATES newState);
+	void TransitionState(DX12CommandList* dx12CommandList, D3D12_RESOURCE_STATES newState);
 
 	void Reset() noexcept { m_resource.Reset(); m_currentState = D3D12_RESOURCE_STATE_COMMON; }
 	ID3D12Resource** GetAddressOf() noexcept { return m_resource.GetAddressOf(); }
@@ -39,14 +41,16 @@ protected:
 
 class DX12ResourceBuffer : public DX12Resource
 {
-private:
-
 public:
-	void CreateConstantBuffer(ID3D12Device* m_device);
-    void CreateVertexBuffer(ID3D12Device* m_device, Vertex* vertex, UINT vertexBufferSize);
-    void UploadConstantBuffer(void* sourceAddress, size_t DataSize);
-    void UploadConstantBuffer(CD3DX12_RANGE readRange, void* sourceAddress, size_t dataSize);
+	void ResetUploadBuffer() noexcept { m_uploadBuffer.Reset(); m_uploadBufferCurrentState = D3D12_RESOURCE_STATE_COMMON; }
+	void CreateConstantBuffer(ID3D12Device* device, uint32_t elementByteSize);
+    void CreateVertexBuffer(ID3D12Device* device, std::span<const Vertex> vertices, DX12CommandList* dx12CommandList);
+	void CreateIndexBuffer(ID3D12Device* device, std::span<const uint32_t> indices, DX12CommandList* dx12CommandList);
+	void CopyAndUploadResource(ID3D12Resource* uploadBuffer, const void* sourceAddress, size_t dataSize, CD3DX12_RANGE* readRange = nullptr);
 
+private:
+	ComPtr<ID3D12Resource> m_uploadBuffer;
+	D3D12_RESOURCE_STATES  m_uploadBufferCurrentState = D3D12_RESOURCE_STATE_COMMON; //default state common
 };
 
 class DX12ResourceTexture : public DX12Resource
@@ -54,11 +58,42 @@ class DX12ResourceTexture : public DX12Resource
 private:
 
 public:
+	ID3D12Resource* GetUploadBuffer() const noexcept { return m_uploadBuffer.Get(); }
+	void CreateUploadBuffer(ID3D12Device* device, UINT byteSize);
+	void ResetUploadBuffer() noexcept { m_uploadBuffer.Reset(); m_uploadBufferCurrentState = D3D12_RESOURCE_STATE_COMMON; }
+	void CopyAndUploadResource(ID3D12Resource* uploadBuffer, const void* sourceAddress, size_t dataSize, CD3DX12_RANGE* readRange = nullptr);
 	void CreateDepthStencil(
-		ID3D12Device* m_device,
-		UINT clientWidth,
-		UINT clientHeight,
-		UINT sampleDescCount,
-		UINT sampleDescQuality,
-		DXGI_FORMAT m_depthStencilFormat);
+		ID3D12Device* device,
+		uint32_t clientWidth,
+		uint32_t clientHeight,
+		uint32_t multiSampleDescCount,
+		DXGI_FORMAT depthStencilFormat);
+
+	void CreateRenderTarget(
+		ID3D12Device* device,
+		uint32_t clientWidth,
+		uint32_t clientHeight,
+		uint32_t multiSampleDescCount,
+		DXGI_FORMAT renderTargetFormat);
+
+	void CreateTexture(
+		ID3D12Device* device,
+		DX12CommandList* dx12CommandList,
+		TexMetadata* texMetaData,
+		ScratchImage* img);
+
+	void CreateMaterialorObjectResource(
+		ID3D12Device* device,
+		UINT byteSize);
+
+	void CreateShadowResource(
+		ID3D12Device* device,
+		uint32_t shadowWidth,
+		uint32_t shadowHeight,
+		DXGI_FORMAT shadowResourceFormat,
+		DXGI_FORMAT shadowDSVFormat);
+
+private:
+	ComPtr<ID3D12Resource> m_uploadBuffer;
+	D3D12_RESOURCE_STATES  m_uploadBufferCurrentState = D3D12_RESOURCE_STATE_COMMON; //default state common
 };

@@ -3,18 +3,18 @@
 #include <windows.h>
 #include <Windowsx.h>
 #include <d2d1.h>
-#include <pix3.h>
+#include <shellapi.h>
 
 #include <list>
 #include <memory>
 
 #pragma comment(lib, "d2d1")
+#pragma comment(lib, "Shell32.lib")
 
 #include "MiniWindow.h"
 #include "resource.h"
 #include "MiniTimer.h"
-
-#include "../RenderDX12/RenderDX12.h"
+#include "EngineConfig.h"
 
 using namespace std;
 
@@ -30,21 +30,48 @@ template <class T> void SafeRelease(T** ppT)
 float DPIScale::scaleX = 1.0f;
 float DPIScale::scaleY = 1.0f;
 
+static std::wstring GetOption(int argc, wchar_t** argv, std::wstring_view name) {
+    const std::wstring prefix = L"--" + std::wstring(name);
+    for (int i = 1; i < argc; ++i) {
+        std::wstring_view a = argv[i];
+        // --scene_path=VALUE
+        if (a.rfind(prefix, 0) == 0 && a.size() > prefix.size() && a[prefix.size()] == L'=') {
+            return std::wstring(a.substr(prefix.size() + 1));
+        }
+        // --scene_path VALUE
+        if (a == prefix && i + 1 < argc) {
+            return std::wstring(argv[i + 1]);
+        }
+    }
+    return L"";
+}
+
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
 {
     MainWindow win;
 
     if (!win.Create(L"Draw Circles", WS_OVERLAPPEDWINDOW))
         return 0;
+
     RenderDX12 MainRenderer;
-    MainRenderer.InitializeDX12(win.GetMainHWND());
+    int argc = 0;
+    wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+    std::wstring scenePath = GetOption(argc, argv, L"scene_path");
+    if (!scenePath.empty())
+    {
+        MainRenderer.InitializeDX12(win.GetMainHWND(), scenePath);
+    }
+    else
+    {
+        MainRenderer.InitializeDX12(win.GetMainHWND(), EngineConfig::SceneFilePath);
+    }
+    win.SetRenderer(&MainRenderer);
 
     HACCEL hAccel = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDR_ACCEL1));
     ShowWindow(win.Window(), nCmdShow);
 
     MSG msg = {};
     bool running = true;
-    const LONGLONG targetFrameTime = 16666; // 16.666ms
     LONGLONG lastTime = win.m_timer.GetTime();
 
     while (running)
@@ -63,20 +90,15 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
             }
         }
 
-        static UINT frameIndex = 0;
-        PIXBeginEvent(0, L"Frame %u", frameIndex++);
-
         win.UpdateFPS();
         win.DrawFPS();
-
-        PIXEndEvent();
 
         LONGLONG now = win.m_timer.GetTime();
         LONGLONG elapsed = now - lastTime;
 
-        while (elapsed < targetFrameTime)
+        while (elapsed < EngineConfig::TargetFrameTime)
         {
-            LONGLONG remain = targetFrameTime - elapsed;
+            LONGLONG remain = EngineConfig::TargetFrameTime - elapsed;
             if (remain > 2000)
             {
                 Sleep(1);
@@ -122,27 +144,49 @@ LRESULT MainWindow::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
         
         case WM_LBUTTONDOWN:
         {
-            wchar_t title[100];
-            swprintf(title, 100, L"%lld", m_timer.GetTime());
-
-            int x = GET_X_LPARAM(lParam);
-            int y = GET_Y_LPARAM(lParam);
-
-            HWND hChild = CreateWindowEx(
-                0,
-                L"STATIC",
-                title,
-                WS_CHILD | WS_VISIBLE | SS_CENTER,
-                x, y, 120, 30,
-                m_hwnd,
-                NULL,
-                GetModuleHandle(NULL),
-                NULL
-            );
+            m_mouseDown = true;
+            m_lastMousePos.x = GET_X_LPARAM(lParam);
+            m_lastMousePos.y = GET_Y_LPARAM(lParam);
+            SetCapture(m_hwnd);
+            return 0;
+        }
+        case WM_LBUTTONUP:
+        {
+            m_mouseDown = false;
+            ReleaseCapture();
+            return 0;
+        }
+        case WM_MOUSEMOVE:
+        {
+            if (m_mouseDown)
+            {
+                int x = GET_X_LPARAM(lParam);
+                int y = GET_Y_LPARAM(lParam);
+                float dx = float(x - m_lastMousePos.x) * 0.005f;
+                float dy = float(y - m_lastMousePos.y) * 0.005f;
+                MainRenderer->GetD3DCamera()->Rotate(dx, dy);
+                m_lastMousePos.x = x;
+                m_lastMousePos.y = y;
+            }
+            return 0;
+        }
+        case WM_KEYDOWN:
+        {
+            const float step = 0.1f;
+            switch (wParam)
+            {
+            case 'W': MainRenderer->GetD3DCamera()->Move(XMFLOAT3{ 0.f, 0.f, step }); break;
+            case 'S': MainRenderer->GetD3DCamera()->Move(XMFLOAT3{ 0.f, 0.f, -step }); break;
+            case 'A': MainRenderer->GetD3DCamera()->Move(XMFLOAT3{ -step, 0.f, 0.f }); break;
+            case 'D': MainRenderer->GetD3DCamera()->Move(XMFLOAT3{ step, 0.f, 0.f }); break;
+            case 'Q': MainRenderer->GetD3DCamera()->Move(XMFLOAT3{ 0.f, step, 0.f }); break;
+            case 'E': MainRenderer->GetD3DCamera()->Move(XMFLOAT3{ 0.f, -step, 0.f }); break;
+            }
             return 0;
         }
         case WM_DESTROY:
         {
+            //MainRenderer->ShutDown();
             PostQuitMessage(0);
             return 0;
         }

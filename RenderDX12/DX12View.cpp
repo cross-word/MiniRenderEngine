@@ -1,32 +1,32 @@
 #include "stdafx.h"
 #include "DX12View.h"
 
-DX12View::DX12View(DX12Resource* m_DX12Resource)
+DX12View::DX12View(DX12Resource* dx12Resource)
 {
-	this->m_DX12Resource = m_DX12Resource;
+	this->m_DX12Resource = dx12Resource;
 }
 
-DX12View::DX12View(DX12ResourceBuffer* m_DX12ResourceBuffer)
+DX12View::DX12View(DX12ResourceBuffer* dx12ResourceBuffer)
 {
-	this->m_DX12Resource = m_DX12ResourceBuffer;
+	this->m_DX12Resource = dx12ResourceBuffer;
 }
 
-DX12View::DX12View(DX12ResourceTexture* m_DX12ResourceTexture)
+DX12View::DX12View(DX12ResourceTexture* dx12ResourceTexture)
 {
-	this->m_DX12Resource = m_DX12ResourceTexture;
+	this->m_DX12Resource = dx12ResourceTexture;
 }
 
 DX12View::DX12View(
     ID3D12Device* device,
     EViewType viewType,
-    DX12Resource* DX12Resource,
+    DX12Resource* dx12Resource,
     D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle,
     const D3D12_CONSTANT_BUFFER_VIEW_DESC* cbvDesc,
     const D3D12_SHADER_RESOURCE_VIEW_DESC* srvDesc,
     const D3D12_UNORDERED_ACCESS_VIEW_DESC* uavDesc,
     const D3D12_DEPTH_STENCIL_VIEW_DESC* dsvDesc,
     const D3D12_RENDER_TARGET_VIEW_DESC* rtvDesc)
-    : m_type(viewType), m_DX12Resource(DX12Resource), m_cpuHandle(cpuHandle)
+    : m_type(viewType), m_DX12Resource(dx12Resource), m_cpuHandle(cpuHandle)
 {
     switch (viewType)
     {
@@ -36,19 +36,33 @@ DX12View::DX12View(
         break;
     case EViewType::EShaderResourceView:
         m_resourceView.m_shaderResourceViewDesc = *srvDesc;
-        device->CreateShaderResourceView(DX12Resource->GetResource(), &m_resourceView.m_shaderResourceViewDesc, m_cpuHandle);
+        device->CreateShaderResourceView(dx12Resource->GetResource(), &m_resourceView.m_shaderResourceViewDesc, m_cpuHandle);
         break;
     case EViewType::EUnorderedAccessView:
         m_resourceView.m_unorederedAccessViewDesc = *uavDesc;
-        device->CreateUnorderedAccessView(DX12Resource->GetResource(), nullptr, &m_resourceView.m_unorederedAccessViewDesc, m_cpuHandle);
+        device->CreateUnorderedAccessView(dx12Resource->GetResource(), nullptr, &m_resourceView.m_unorederedAccessViewDesc, m_cpuHandle);
         break;
     case EViewType::EDepthStencilView:
-        m_resourceView.m_depthStencilViewDesc = *dsvDesc;
-        device->CreateDepthStencilView(DX12Resource->GetResource(), &m_resourceView.m_depthStencilViewDesc, m_cpuHandle);
+        if (dsvDesc != nullptr)
+        {
+            m_resourceView.m_depthStencilViewDesc = *dsvDesc;
+            device->CreateDepthStencilView(dx12Resource->GetResource(), &m_resourceView.m_depthStencilViewDesc, m_cpuHandle);
+        }
+        else
+        {
+            device->CreateDepthStencilView(dx12Resource->GetResource(), nullptr, m_cpuHandle);
+        }
         break;
     case EViewType::ERenderTargetView:
-        m_resourceView.m_renderTargetViewDesc = *rtvDesc;
-        device->CreateRenderTargetView(DX12Resource->GetResource(), &m_resourceView.m_renderTargetViewDesc, m_cpuHandle);
+        if (rtvDesc != nullptr)
+        {
+            m_resourceView.m_renderTargetViewDesc = *rtvDesc;
+            device->CreateRenderTargetView(dx12Resource->GetResource(), &m_resourceView.m_renderTargetViewDesc, m_cpuHandle);
+        }
+        else 
+        {
+            device->CreateRenderTargetView(dx12Resource->GetResource(), nullptr, m_cpuHandle);
+        }
         break;
     default:
         assert(false && "Wrong constructor for this view type");
@@ -59,23 +73,23 @@ DX12View::DX12View(
 DX12View::DX12View(
     ID3D12Device* device,
     EViewType viewType,
-    DX12Resource* DX12Resource,
+    DX12Resource* dx12Resource,
     D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle,
     D3D12_GPU_VIRTUAL_ADDRESS bufferLocation,
     UINT sizeInBytes,
     UINT vertexStride,
     DXGI_FORMAT indexFormat)
-    : m_type(viewType), m_DX12Resource(DX12Resource), m_cpuHandle(cpuHandle)
+    : m_type(viewType), m_DX12Resource(dx12Resource), m_cpuHandle(cpuHandle)
 {
     switch (viewType)
     {
     case EViewType::EVertexView:
-        m_resourceView.m_vertexBufferView.BufferLocation = DX12Resource->GetResource()->GetGPUVirtualAddress();
+        m_resourceView.m_vertexBufferView.BufferLocation = dx12Resource->GetResource()->GetGPUVirtualAddress();
         m_resourceView.m_vertexBufferView.SizeInBytes = sizeInBytes;
         m_resourceView.m_vertexBufferView.StrideInBytes = vertexStride;
         break;
     case EViewType::EIndexView:
-        m_resourceView.m_indexBufferView.BufferLocation = DX12Resource->GetResource()->GetGPUVirtualAddress();
+        m_resourceView.m_indexBufferView.BufferLocation = dx12Resource->GetResource()->GetGPUVirtualAddress();
         m_resourceView.m_indexBufferView.SizeInBytes = sizeInBytes;
         m_resourceView.m_indexBufferView.Format = indexFormat;
         break;

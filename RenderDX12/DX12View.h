@@ -18,13 +18,13 @@ class DX12View
 {
 public:
 
-	DX12View(DX12Resource* m_DX12Resource);
-	DX12View(DX12ResourceBuffer* m_DX12ResourceBuffer);
-	DX12View(DX12ResourceTexture* m_DX12ResourceTexture);
+	DX12View(DX12Resource* dx12Resource);
+	DX12View(DX12ResourceBuffer* dx12ResourceBuffer);
+	DX12View(DX12ResourceTexture* dx12ResourceTexture);
 	DX12View(
 		ID3D12Device* device,
 		EViewType viewType,
-		DX12Resource* DX12Resource,
+		DX12Resource* dx12Resource,
 		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle,
 		const D3D12_CONSTANT_BUFFER_VIEW_DESC* cbvDesc = nullptr,
 		const D3D12_SHADER_RESOURCE_VIEW_DESC* srvDesc = nullptr,
@@ -34,7 +34,7 @@ public:
 	DX12View(
 		ID3D12Device* device,
 		EViewType viewType,
-		DX12Resource* DX12Resource,
+		DX12Resource* dx12Resource,
 		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle,
 		D3D12_GPU_VIRTUAL_ADDRESS bufferLocation,
 		UINT sizeInBytes,
@@ -50,6 +50,7 @@ public:
 	D3D12_DEPTH_STENCIL_VIEW_DESC* GetDepthStencilViewDesc();
 	D3D12_RENDER_TARGET_VIEW_DESC* GetRenderTargetViewDesc();
 
+	D3D12_CPU_DESCRIPTOR_HANDLE const GetCPUHandle() { return m_cpuHandle; }
 private:
 	DX12Resource* m_DX12Resource;
 	EViewType m_type{ EViewType::EVertexView };

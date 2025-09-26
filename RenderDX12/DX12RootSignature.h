@@ -16,8 +16,12 @@ class DX12RootSignature
 public:
 	DX12RootSignature();
 	~DX12RootSignature();
-	void Initialize(ID3D12Device* m_device);
+	void Initialize(ID3D12Device* device);
 	inline ID3D12RootSignature* GetRootSignature() const noexcept { return m_rootSignature.Get(); }
+
+private:
+	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> GetStaticSamplers();
+
 private:
 	ComPtr<ID3D12RootSignature> m_rootSignature;
 };
