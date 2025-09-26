@@ -53,7 +53,9 @@ bool DX12RenderGeometry::InitMeshFromData(
 		m_indexFormat);
 
 	m_primitiveTopologyType = vertexPrimitiveType;
-	m_indexCount = (UINT)meshData.indices.size();
-	m_vertexCount = (UINT)meshData.vertices.size();
+	const UINT indexSize = SizeToU32(meshData.indices.size());
+	const UINT vertexSize = SizeToU32(meshData.vertices.size());
+	m_indexCount = indexSize;
+	m_vertexCount = vertexSize;
 	return true;
 }

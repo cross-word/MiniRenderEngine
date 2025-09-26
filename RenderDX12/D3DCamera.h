@@ -1,5 +1,11 @@
 #pragma once
 #include "stdafx.h"
+
+#ifdef _MSC_VER
+#  pragma warning(push)
+#  pragma warning(disable:4251)
+#endif
+
 #ifdef _BUILDING_RENDERDX12
 #define RenderDX12_API __declspec(dllexport)
 #else
@@ -22,3 +28,7 @@ private:
     float m_yaw{ 0.3f };
     float m_pitch{ 0.45f };
 };
+
+#ifdef _MSC_VER
+#  pragma warning(pop)
+#endif

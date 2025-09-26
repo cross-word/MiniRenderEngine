@@ -6,6 +6,11 @@
 #define RenderDX12_API __declspec(dllimport)
 #endif
 
+#ifdef _MSC_VER
+#  pragma warning(push)
+#  pragma warning(disable:4251)
+#endif
+
 #include "stdafx.h"
 
 // Link necessary d3d12 libraries.
@@ -97,3 +102,7 @@ private:
 
 };
 static UINT sFrameId = 0;
+
+#ifdef _MSC_VER
+#  pragma warning(pop)
+#endif

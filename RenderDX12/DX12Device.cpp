@@ -262,10 +262,11 @@ void DX12Device::PrepareInitialResource()
 	// create each texture resource sRGB/Linear.
 	m_DX12TextureManager.clear();
 	m_DX12TextureManager.reserve(m_sceneData.textures.size());
-	for (size_t i = 0; i < m_sceneData.textures.size(); ++i)
+	const UINT numTexture = SizeToU32(m_sceneData.textures.size());
+	for (UINT i = 0; i < numTexture; ++i)
 	{
-		auto SRGBCpuHandle = m_DX12SRVHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + (UINT)i).cpuDescHandle;
-		auto LinearCpuHandle = m_DX12SRVHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + EngineConfig::MaxTextureCount + (UINT)i).cpuDescHandle;
+		auto SRGBCpuHandle = m_DX12SRVHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + i).cpuDescHandle;
+		auto LinearCpuHandle = m_DX12SRVHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + EngineConfig::MaxTextureCount + i).cpuDescHandle;
 
 		auto tmpTexture = std::make_unique<DX12TextureManager>();
 		std::string texName = "tex_" + std::to_string(i);
@@ -281,11 +282,11 @@ void DX12Device::PrepareInitialResource()
 	}
 
 	// fill the remaining texture srv space with dummy textures.
-	const uint32_t dummyStartIndex = m_sceneData.textures.size();
-	for (uint32_t i = dummyStartIndex; i < EngineConfig::MaxTextureCount; ++i)
+	const UINT dummyStartIndex = SizeToU32(m_sceneData.textures.size());
+	for (UINT i = dummyStartIndex; i < EngineConfig::MaxTextureCount; ++i)
 	{
-		auto cpuHandle = m_DX12SRVHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + (UINT)i).cpuDescHandle;
-		auto cpuHandle2 = m_DX12SRVHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + EngineConfig::MaxTextureCount + (UINT)i).cpuDescHandle;
+		auto cpuHandle = m_DX12SRVHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + i).cpuDescHandle;
+		auto cpuHandle2 = m_DX12SRVHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + EngineConfig::MaxTextureCount + i).cpuDescHandle;
 
 		auto tmpTexture = std::make_unique<DX12TextureManager>();
 		tmpTexture->CreateDummyTextureResource(
@@ -307,14 +308,15 @@ void DX12Device::PrepareInitialResource()
 		};
 
 	m_DX12MaterialConstantManager = std::make_unique<DX12MaterialConstantManager>();
-	for (size_t i = 0; i < m_sceneData.materials.size(); ++i)
+	const UINT numMaterial = SizeToU32(m_sceneData.materials.size());
+	for (UINT i = 0; i < numMaterial; ++i)
 	{
 		auto tmpMaterial = std::make_unique<Material>();
 		tmpMaterial->Name = "mat_" + std::to_string(i);
-		tmpMaterial->MatCBIndex = (UINT)i;
+		tmpMaterial->MatCBIndex = i;
 
-		int baseIdx = m_sceneData.materials[i].BaseColorIndex >= 0 ? m_sceneData.materials[i].BaseColorIndex : 0;
-		tmpMaterial->DiffuseSrvHeapIndex = (UINT)baseIdx;
+		UINT baseIdx = m_sceneData.materials[i].BaseColorIndex >= 0 ? m_sceneData.materials[i].BaseColorIndex : 0;
+		tmpMaterial->DiffuseSrvHeapIndex = baseIdx;
 
 		MaterialConstants tmpMaterialConstant{};
 		tmpMaterialConstant.DiffuseAlbedo = m_sceneData.materials[i].DiffuseAlbedo;
@@ -336,22 +338,23 @@ void DX12Device::PrepareInitialResource()
 		m_DX12MaterialConstantManager->PushMaterial(std::move(tmpMaterial));
 	}
 
+	const UINT materialSize = SizeToU32(m_DX12MaterialConstantManager->GetMaterialCount());
 	m_DX12MaterialConstantManager->InitialzieUploadBuffer(
 		m_device.Get(),
 		m_DX12CommandList->GetCommandList(),
-		m_DX12MaterialConstantManager->GetMaterialCount() * sizeof(MaterialConstants));
+		materialSize * sizeof(MaterialConstants));
 
 	auto matCPUHandle = m_DX12SRVHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + 2 * EngineConfig::MaxTextureCount).cpuDescHandle;
 	m_DX12MaterialConstantManager->InitializeSRV(
 		m_device.Get(),
 		&matCPUHandle,
-		m_DX12MaterialConstantManager->GetMaterialCount(),
+		materialSize,
 		sizeof(MaterialConstants));
 
 	m_DX12MaterialConstantManager->UploadConstant(
 		m_device.Get(),
 		m_DX12CommandList.get(),
-		m_DX12MaterialConstantManager->GetMaterialCount() * sizeof(MaterialConstants),
+		materialSize * sizeof(MaterialConstants),
 		m_DX12MaterialConstantManager->GetMaterialConstantData());
 
 	// build Geometry
@@ -375,15 +378,14 @@ void DX12Device::PrepareInitialResource()
 	for (auto& instance : m_sceneData.instances)
 	{
 		Render::RenderItem renderItem{};
-		XMFLOAT4X4 worldTranspose;
 		renderItem.SetObjWorldMatrix(instance.world);
 		renderItem.SetObjWorldInverseTransposeMatrix((instance.world));
 		renderItem.SetRenderGeometry(m_sceneGeometry[instance.primitive].get());
-		UINT matIndex = (UINT)(m_sceneData.primitives[instance.primitive].material >= 0 ? m_sceneData.primitives[instance.primitive].material : 0);
+		UINT matIndex = (m_sceneData.primitives[instance.primitive].material >= 0 ? m_sceneData.primitives[instance.primitive].material : 0);
 		renderItem.SetMaterialIndex(matIndex);
-		int tex = m_sceneData.materials[matIndex].BaseColorIndex; // baseColor
-		if (tex < 0 || tex >= (int)EngineConfig::MaxTextureCount) tex = 0; // default white
-		renderItem.SetTextureIndex((UINT)tex);
+		UINT tex = m_sceneData.materials[matIndex].BaseColorIndex; // baseColor
+		if (tex < 0 || tex >= EngineConfig::MaxTextureCount) tex = 0; // default white
+		renderItem.SetTextureIndex(tex);
 		m_renderItems.push_back(std::move(renderItem));
 	}
 
@@ -471,7 +473,8 @@ UINT DX12Device::GetMaterialIndexAsMaterialName(const std::string materialName)
 		assert(false);
 	}
 
-	for (int i = 0; i < m_DX12MaterialConstantManager->GetMaterialCount(); i++)
+	const UINT materialSize = SizeToU32(m_DX12MaterialConstantManager->GetMaterialCount());
+	for (UINT i = 0; i < materialSize; i++)
 	{
 		if (m_DX12MaterialConstantManager->GetMaterial(i)->Name == materialName) return i;
 	}

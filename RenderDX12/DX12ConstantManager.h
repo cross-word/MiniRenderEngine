@@ -38,7 +38,7 @@ public:
 	void InitializeSRV(ID3D12Device* device, const D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle, UINT numConstants, UINT byteStirde) override;
 
 	void PushMaterial(std::unique_ptr<Material>&& material);
-	inline uint32_t GetMaterialCount() const noexcept { return m_materials.size(); }
+	inline size_t GetMaterialCount() const noexcept { return m_materials.size(); }
 	inline Material* GetMaterial(UINT index) noexcept { return m_materials[index].get(); }
 	inline bool IsMaterailEmpty() const noexcept { return m_materials.empty(); }
 	inline const MaterialConstants* GetMaterialConstantData() const noexcept { return m_materialConstant.data(); }
@@ -68,7 +68,7 @@ public:
 	void StageObjectConstants(const void* src, UINT byteSize, UINT dstOffset);
 	void RecordObjectConstants(DX12CommandList* dx12CommandList);
 
-	inline uint32_t GetObjectConstantCount() const noexcept { return m_objectConstants.size(); }
+	inline size_t GetObjectConstantCount() const noexcept { return m_objectConstants.size(); }
 	inline ObjectConstants& GetObjectConstant(UINT index) noexcept { return m_objectConstants[index]; }
 	inline bool IsobjectConstantEmpty() const noexcept { return m_objectConstants.empty(); }
 	inline const ObjectConstants* GetObjectConstantData() const noexcept { return m_objectConstants.data(); }

@@ -103,6 +103,8 @@ void DX12CommandList::RecordResourceStateTransition()
 		::OutputDebugStringA("There is no Stacked Resource State Transition!");
 		return;
 	}
-	m_commandList->ResourceBarrier(m_resourceStateTransitionStack.size(), m_resourceStateTransitionStack.data());
+
+	UINT numTransitionCommands = SizeToU32(m_resourceStateTransitionStack.size());
+	m_commandList->ResourceBarrier(numTransitionCommands, m_resourceStateTransitionStack.data());
 	m_resourceStateTransitionStack.clear();
 }

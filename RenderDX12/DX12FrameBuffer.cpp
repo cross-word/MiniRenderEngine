@@ -14,7 +14,7 @@ DX12FrameBuffer::~DX12FrameBuffer()
 void DX12FrameBuffer::Initialize(DX12Device* dx12Device)
 {
 	assert(dx12Device);
-	for (int i = 0; i < dx12Device->GetDX12SwapChain()->GetSwapChainBufferCount(); ++i)
+	for (UINT i = 0; i < dx12Device->GetDX12SwapChain()->GetSwapChainBufferCount(); ++i)
 	{
 		m_DX12DepthStencils[i] = std::make_unique<DX12ResourceTexture>();
 		m_DX12RenderTargets[i] = std::make_unique<DX12Resource>();
@@ -26,7 +26,7 @@ void DX12FrameBuffer::Initialize(DX12Device* dx12Device)
 void DX12FrameBuffer::Resize(DX12Device* dx12Device)
 {
 	// Release the previous resources we will be recreating.
-	for (int i = 0; i < dx12Device->GetDX12SwapChain()->GetSwapChainBufferCount(); ++i)
+	for (UINT i = 0; i < dx12Device->GetDX12SwapChain()->GetSwapChainBufferCount(); ++i)
 	{
 		if (m_DX12RenderTargets[i]->GetResource() != nullptr) m_DX12RenderTargets[i]->Reset();
 		if (m_DX12DepthStencils[i]->GetResource() != nullptr) m_DX12DepthStencils[i]->Reset();
@@ -241,10 +241,10 @@ void DX12FrameBuffer::EndShadowRender(DX12CommandList* dx12CommandList, DX12Shad
 
 void DX12FrameBuffer::SetShadowRenderViewPort(DX12CommandList* dx12CommandList, DX12ShadowManager* dx12ShadowManager, D3D12_CPU_DESCRIPTOR_HANDLE shadowDepthStencilCPUHandle)
 {
-	float shadowWidth = dx12ShadowManager->GetShadowWidth();
-	float shadowHeight = dx12ShadowManager->GetShadowHeight();
-	D3D12_VIEWPORT shadowViewPort{ 0.0f, 0.0f, shadowWidth, shadowHeight, 0.0f, 1.0f };
-	D3D12_RECT shadowScissor{ 0, 0, shadowWidth, shadowHeight };
+	UINT shadowWidth = dx12ShadowManager->GetShadowWidth();
+	UINT shadowHeight = dx12ShadowManager->GetShadowHeight();
+	D3D12_VIEWPORT shadowViewPort{ 0.0f, 0.0f, (float)shadowWidth, (float)shadowHeight, 0.0f, 1.0f };
+	D3D12_RECT shadowScissor{ 0, 0, (LONG)shadowWidth, (LONG)shadowHeight };
 	dx12CommandList->GetCommandList()->RSSetViewports(1, &shadowViewPort);
 	dx12CommandList->GetCommandList()->RSSetScissorRects(1, &shadowScissor);
 	dx12CommandList->GetCommandList()->OMSetRenderTargets(0, nullptr, FALSE, &shadowDepthStencilCPUHandle);

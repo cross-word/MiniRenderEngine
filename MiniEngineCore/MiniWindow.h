@@ -103,10 +103,11 @@ class DPIScale
     static float scaleY;
 
 public:
-    static void Initialize(ID2D1Factory* pFactory)
+    static void Initialize()
     {
-        FLOAT dpiX, dpiY;
-        pFactory->GetDesktopDpi(&dpiX, &dpiY);
+        UINT dpi = GetDpiForSystem();
+        FLOAT dpiX = static_cast<FLOAT>(dpi);
+        FLOAT dpiY = static_cast<FLOAT>(dpi);
         scaleX = dpiX / 96.0f;
         scaleY = dpiY / 96.0f;
     }

@@ -24,7 +24,8 @@ void DX12PSO::CreateMainPassPSO(
 {
 	// Describe and create the graphics pipeline state object (PSO).
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-	psoDesc.InputLayout = { inputLayout.data(), (UINT)inputLayout.size() };
+	const UINT inputLayoutSize = SizeToU32(inputLayout.size());
+	psoDesc.InputLayout = { inputLayout.data(), inputLayoutSize };
 	psoDesc.pRootSignature = rootSignature;
 	psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader);
 	psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader);
@@ -63,7 +64,8 @@ void DX12PSO::CreateShadowPassPSO(
 {
 	// Describe and create the graphics pipeline state object (PSO).
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-	psoDesc.InputLayout = { inputLayout.data(), (UINT)inputLayout.size() };
+	const UINT inputLayoutSize = SizeToU32(inputLayout.size());
+	psoDesc.InputLayout = { inputLayout.data(), inputLayoutSize };
 	psoDesc.pRootSignature = rootSignature;
 	psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader);
 	psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader);

@@ -188,8 +188,8 @@ static void GetFrustumCornersWS(const XMMATRIX& invViewProj, XMVECTOR outCorners
 static void BuildDirLightViewProj(
     FXMVECTOR lightDirWS,
     const XMMATRIX& invCameraViewProj,
-    UINT shadowMapWidth,
-    UINT shadowMapHeight,
+    float shadowMapWidth,
+    float shadowMapHeight,
     XMMATRIX& outLightView,
     XMMATRIX& outLightProj)
 {
@@ -267,4 +267,11 @@ static void BuildDirLightViewProj(
     const float maxZ = centerLS.z + depth * 0.5f;
 
     outLightProj = XMMatrixOrthographicOffCenterLH(minX, maxX, minY, maxY, minZ, maxZ);
+}
+
+//check size_t to uint
+inline UINT SizeToU32(size_t n)
+{
+    assert(n <= (std::numeric_limits<UINT>::max)());
+    return static_cast<UINT>(n);
 }

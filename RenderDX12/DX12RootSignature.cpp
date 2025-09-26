@@ -64,7 +64,8 @@ void DX12RootSignature::Initialize(ID3D12Device* device)
 	slotRootParameter[3].InitAsDescriptorTable(1, &shadowMapTable, D3D12_SHADER_VISIBILITY_ALL);
 	slotRootParameter[4].InitAsConstants(3, 2, 0); // index of textur/material/world
 
-	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc(5, slotRootParameter, (UINT)staticSamplers.size(), staticSamplers.data(), D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+	const UINT samplerSize = SizeToU32(staticSamplers.size());
+	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc(5, slotRootParameter, samplerSize, staticSamplers.data(), D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	ComPtr<ID3DBlob> signature = nullptr;
 	ComPtr<ID3DBlob> errorBlob = nullptr;

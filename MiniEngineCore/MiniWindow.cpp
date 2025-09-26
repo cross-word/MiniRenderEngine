@@ -90,7 +90,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow)
             }
         }
 
-        UINT frameIndex = 0;
         win.UpdateFPS();
         win.DrawFPS();
 

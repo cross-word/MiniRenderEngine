@@ -51,7 +51,7 @@ public:
     ID3D12CommandAllocator* GetWorkerCommandAllocator(uint32_t i) { return m_workerAlloc[i].Get(); }
     void ResetAllAllocators();
     inline ID3D12CommandAllocator* GetCommandAllocator(uint32_t workerIndex) const { assert(workerIndex < m_workerAlloc.size()); return m_workerAlloc[workerIndex].Get(); }
-    uint32_t GetWorkerAllocatorCount() const { return m_workerAlloc.size(); }
+    size_t GetWorkerAllocatorCount() const { return m_workerAlloc.size(); }
 
 private:
     ComPtr<ID3D12CommandAllocator> m_commandAllocator; //for single-thread or main thread in multi-thread setting

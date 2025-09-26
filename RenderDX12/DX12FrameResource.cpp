@@ -36,7 +36,6 @@ void DX12FrameResource::CreateSRV(ID3D12Device* device, DX12DescriptorHeap* dx12
 	//CREATE CONSTANT BUFFER
 	//ALLOCATE GPU ADDRESS
 	uint32_t byteSize = CalcConstantBufferByteSize(sizeof(PassConstants));
-	int CBIndex = 0;
 	auto descCPUAddress = dx12DescriptorHeap->Offset(dx12DescriptorHeap->CalcHeapSliceShareBlock(frameIndex, 0, EngineConfig::ConstantBufferCount, 0, 0)).cpuDescHandle;
 
 	//PassConstantBuffer
@@ -158,7 +157,8 @@ void DX12FrameResource::UploadObjectConstant(
 
 	// create upload buffer
 	const UINT offsetStride = sizeof(ObjectConstants);
-	dx12ObjectConstantManager->CreateObjectConstantUploadBuffer(device, dirtyObjects.size() * offsetStride);
+	const UINT numDirtyObjects = SizeToU32(dirtyObjects.size());
+	dx12ObjectConstantManager->CreateObjectConstantUploadBuffer(device, numDirtyObjects* offsetStride);
 
 	// stage dirty objects on buffer
 	for (auto& object : dirtyObjects)

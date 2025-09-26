@@ -210,12 +210,14 @@ void DX12ResourceTexture::CreateTexture(
 	TexMetadata* texMetaData,
 	ScratchImage* img)
 {
+	const UINT texWidth = SizeToU32(texMetaData->width);
+	const UINT texHeight = SizeToU32(texMetaData->height);
 	D3D12_RESOURCE_DESC texDesc = {};
 	texDesc.Dimension = (texMetaData->dimension == TEX_DIMENSION_TEXTURE2D) ? D3D12_RESOURCE_DIMENSION_TEXTURE2D : D3D12_RESOURCE_DIMENSION_TEXTURE3D;
-	texDesc.Width = (UINT)texMetaData->width;
-	texDesc.Height = (UINT)texMetaData->height;
-	texDesc.DepthOrArraySize = (UINT)((texMetaData->dimension == TEX_DIMENSION_TEXTURE3D) ? texMetaData->depth : texMetaData->arraySize);
-	texDesc.MipLevels = (UINT)texMetaData->mipLevels;
+	texDesc.Width = texWidth;
+	texDesc.Height = texHeight;
+	texDesc.DepthOrArraySize = (UINT16)((texMetaData->dimension == TEX_DIMENSION_TEXTURE3D) ? texMetaData->depth : texMetaData->arraySize);
+	texDesc.MipLevels = (UINT16)texMetaData->mipLevels;
 	texDesc.Format = texMetaData->format;
 	texDesc.SampleDesc = { 1, 0 };
 	texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
@@ -245,7 +247,8 @@ void DX12ResourceTexture::CreateTexture(
 		}
 	}
 
-	UINT64 uploadBytes = GetRequiredIntermediateSize(m_resource.Get(), 0, (UINT)subResourceData.size());
+	const UINT resourceDataSize = SizeToU32(subResourceData.size());
+	UINT64 uploadBytes = GetRequiredIntermediateSize(m_resource.Get(), 0, resourceDataSize);
 	CD3DX12_HEAP_PROPERTIES uploadHeap(D3D12_HEAP_TYPE_UPLOAD);
 	auto uploadDesc = CD3DX12_RESOURCE_DESC::Buffer(uploadBytes);
 	ThrowIfFailed(device->CreateCommittedResource(
@@ -256,7 +259,7 @@ void DX12ResourceTexture::CreateTexture(
 		nullptr,
 		IID_PPV_ARGS(m_uploadBuffer.GetAddressOf())));
 
-	UpdateSubresources(dx12CommandList->GetCommandList(), m_resource.Get(), m_uploadBuffer.Get(), 0, 0, (UINT)subResourceData.size(), subResourceData.data());
+	UpdateSubresources(dx12CommandList->GetCommandList(), m_resource.Get(), m_uploadBuffer.Get(), 0, 0, resourceDataSize, subResourceData.data());
 	TransitionState(dx12CommandList, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	dx12CommandList->RecordResourceStateTransition();
 }

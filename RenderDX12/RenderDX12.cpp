@@ -435,10 +435,10 @@ void RenderDX12::RecordAndSubmit_Multi()
 	constexpr uint32_t numDescPerFrame = EngineConfig::ConstantBufferCount;
 	constexpr uint32_t numDescPerThread = 0;
 	constexpr uint32_t maxWorkers = 0;
-	const uint32_t numWorkers = m_DX12Device.GetFrameResource(currBackBufferIndex)->GetWorkerAllocatorCount();
+	const uint32_t numWorkers = SizeToU32(m_DX12Device.GetFrameResource(currBackBufferIndex)->GetWorkerAllocatorCount());
 	const uint32_t frameIndex = currBackBufferIndex;
 	const uint32_t threadIndex = 0;
-	const uint32_t numItems = m_DX12Device.GetRenderItemSize();
+	const uint32_t numItems = SizeToU32(m_DX12Device.GetRenderItemSize());
 	const uint32_t chunkSize = numWorkers > 0 ? (numItems + numWorkers - 1) / numWorkers : 0;
 
 	//if empty, create worker thread which do RenderDX12::AllocateWorkerDrawingCommand
@@ -493,7 +493,9 @@ void RenderDX12::RecordAndSubmit_Multi()
 	submitShadowCommandLists.push_back(m_DX12Device.GetDX12CommandList()->GetCommandList());
 	for (uint32_t i = 0; i < numWorkers; ++i) submitShadowCommandLists.push_back(m_DX12Device.GetWorkerShadowDX12CommandList(i)->GetCommandList());
 	m_DX12Device.GetDX12CommandList()->GetCommandList()->Close();
-	m_DX12Device.GetDX12CommandList()->GetCommandQueue()->ExecuteCommandLists((UINT)submitShadowCommandLists.size(), submitShadowCommandLists.data());
+
+	const UINT submitShadowCommandsSize = SizeToU32(submitShadowCommandLists.size());
+	m_DX12Device.GetDX12CommandList()->GetCommandQueue()->ExecuteCommandLists(submitShadowCommandsSize, submitShadowCommandLists.data());
 
 	m_DX12Device.GetDX12CommandList()->ResetList(m_DX12Device.GetDX12PSO()->GetPipelineState(), m_DX12Device.GetFrameResource(currBackBufferIndex)->GetCommandAllocator()); //main thread reset
 	m_DX12FrameBuffer.EndShadowRender(m_DX12Device.GetDX12CommandList(), m_DX12Device.GetDX12ShadowManager());
@@ -576,9 +578,10 @@ void RenderDX12::RecordAndSubmit_Multi()
 	submitCommandLists.push_back(m_DX12Device.GetDX12CommandList()->GetCommandList());
 	for (uint32_t i = 0; i < numWorkers; ++i) submitCommandLists.push_back(m_DX12Device.GetWorkerDX12CommandList(i)->GetCommandList());
 	submitCommandLists.push_back(m_DX12Device.GetPostDrawDX12CommandList()->GetCommandList());
-
 	m_DX12Device.GetPostDrawDX12CommandList()->GetCommandList()->Close();
-	m_DX12Device.GetDX12CommandList()->GetCommandQueue()->ExecuteCommandLists((UINT)submitCommandLists.size(), submitCommandLists.data());
+
+	const UINT submitCommandsSize = SizeToU32(submitCommandLists.size());
+	m_DX12Device.GetDX12CommandList()->GetCommandQueue()->ExecuteCommandLists(submitCommandsSize, submitCommandLists.data());
 
 	const uint64_t fenceValue = m_DX12Device.GetDX12CommandList()->Signal();
 	m_DX12Device.GetFrameResource(currBackBufferIndex)->SetFenceValue(fenceValue);
