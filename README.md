@@ -3,12 +3,13 @@ gltf file Renderer through DX12 API
 
 
 ## Requirment
-#### you need GPU which support DX12
+#### you need Hardware which support DX12
 
 ## User environment
 #### visual studio 2022 version 17.14.8
 #### Windows 10 SDK(10.0.26100.0)
 #### c++20 standard
+#### cmake 3.31.4
 #### cpu : 12th Gen Intel(R) Core(TM) i5-12400F
 #### gpu : NVIDIA GeForce RTX 3060 Ti
 
