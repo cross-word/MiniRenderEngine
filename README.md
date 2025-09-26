@@ -28,8 +28,9 @@ gltf file Renderer through DX12 API
 >   >   > --(MiniEngine repo code files...)       
 
 > 2. build
->   > run scripts\build.bat    
->   > default build setting is Debug. if you want to build release profile, run scripts\build.bat release.    
+>   > run cmd. 
+>   > enter "scripts\build.bat"    
+>   > default build setting is Debug. if you want to build release profile, enter "scripts\build.bat release"    
 >   > solution file will place in build\     
 >   > .exe file will place in build\bin\{profile_name}\MiniEngineCore.exe     
 
