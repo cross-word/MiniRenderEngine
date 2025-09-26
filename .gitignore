@@ -384,3 +384,5 @@ packages/*
 *.vcxproj
 *.vcxproj.filters
 *.vcxproj.user
+repo_tree.txt
+Directory.Build.props
