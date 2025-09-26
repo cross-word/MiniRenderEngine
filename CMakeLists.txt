@@ -18,3 +18,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 add_subdirectory(FileLoader)
 add_subdirectory(RenderDX12)
 add_subdirectory(MiniEngineCore)
+
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  PROPERTY VS_STARTUP_PROJECT MiniEngineCore)

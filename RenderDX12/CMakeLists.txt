@@ -76,3 +76,11 @@ endif()
 
 target_compile_definitions(RenderDX12 PRIVATE _BUILDING_RENDERDX12 UNICODE _UNICODE)
 target_precompile_headers(RenderDX12 PRIVATE stdafx.h)
+
+file(GLOB_RECURSE RENDERDX12_HEADERS CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.hpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.inl"
+)
+target_sources(RenderDX12 PRIVATE ${RENDERDX12_HEADERS})
+source_group("Header Files" FILES ${RENDERDX12_HEADERS})
