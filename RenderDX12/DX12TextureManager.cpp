@@ -22,19 +22,33 @@ void DX12TextureManager::LoadAndCreateTextureResource(
     TextureColorSpace colorSpace)
 {
     //resource
-    TexMetadata metaData;
-    ScratchImage img;
+    auto decodedData = DecodeTextureFromFile(filename, colorSpace);
+    CreateTextureFromDecodedData(
+        device,
+        dx12CommandList,
+        SRGBCpuHandle,
+        LinearCpuHandle,
+        std::move(decodedData), //avoid unnecessary copy!
+        filename,
+        textureName);
+}
+
+DX12TextureManager::DecodedTextureData DX12TextureManager::DecodeTextureFromFile(
+    const wchar_t* filename,
+    TextureColorSpace colorSpace)
+{
+    DecodedTextureData decoded;
     std::filesystem::path path(filename);
     HRESULT hr = S_OK;
 
     if (path.extension() == L".dds")
     {
-        hr = LoadFromDDSFile(filename, DDS_FLAGS_NONE, &metaData, img);
+        hr = LoadFromDDSFile(filename, DDS_FLAGS_NONE, &decoded.metadata, decoded.image);
     }
     else
     {
         auto flags = (colorSpace == TextureColorSpace::SRGB) ? WIC_FLAGS_FORCE_SRGB : WIC_FLAGS_NONE;
-        hr = LoadFromWICFile(filename, flags, &metaData, img);
+        hr = LoadFromWICFile(filename, flags, &decoded.metadata, decoded.image);
     }
 
     if (FAILED(hr))
@@ -48,30 +62,49 @@ void DX12TextureManager::LoadAndCreateTextureResource(
         ThrowIfFailed(hr);
     }
 
-    if (metaData.mipLevels <= 1) {
+    if (decoded.metadata.mipLevels <= 1)
+    {
         ScratchImage mip;
         ThrowIfFailed(GenerateMipMaps(
-            img.GetImages(), img.GetImageCount(), img.GetMetadata(),
+            decoded.image.GetImages(), decoded.image.GetImageCount(), decoded.image.GetMetadata(),
             TEX_FILTER_DEFAULT, 0, mip));
-        img = std::move(mip);
-        metaData = img.GetMetadata(); // mipLevels
+        decoded.image = std::move(mip);
+        decoded.metadata = decoded.image.GetMetadata();
     }
 
-    if (colorSpace == TextureColorSpace::SRGB)
+    decoded.metadata.format = DXGI_FORMAT_R8G8B8A8_TYPELESS;
+
+#if defined(_DEBUG)
+    std::wstringstream ss;
+    ss << L"[Texture] Decoded successfully: " << path.wstring() << L"\n";
+    OutputDebugStringW(ss.str().c_str());
+#endif
+    return decoded;
+}
+
+void DX12TextureManager::CreateTextureFromDecodedData(
+    ID3D12Device* device,
+    DX12CommandList* dx12CommandList,
+    const D3D12_CPU_DESCRIPTOR_HANDLE* SRGBCpuHandle,
+    const D3D12_CPU_DESCRIPTOR_HANDLE* LinearCpuHandle,
+    DecodedTextureData&& decodedData,
+    const std::wstring& filename,
+    const std::string& textureName)
+{
+    if (decodedData.image.GetImageCount() < 1)
     {
-        metaData.format = DXGI_FORMAT_R8G8B8A8_TYPELESS;
-    }
-    else
-    {
-        metaData.format = DXGI_FORMAT_R8G8B8A8_TYPELESS;
+        std::wstringstream ss;
+        ss << L"[Texture] No image data available for resource creation: " << filename << L"\n";
+        OutputDebugStringW(ss.str().c_str());
+        ThrowIfFailed(E_FAIL);
     }
 
     m_textureResource = std::make_unique<DX12ResourceTexture>();
     m_textureResource->CreateTexture(
         device,
         dx12CommandList,
-        &metaData,
-        &img);
+        &decodedData.metadata,
+        &decodedData.image);
 
     D3D12_SHADER_RESOURCE_VIEW_DESC SRGBSrvDesc{};
     SRGBSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -109,6 +142,12 @@ void DX12TextureManager::LoadAndCreateTextureResource(
 
     m_fileName = filename;
     m_textureName = textureName;
+
+#if defined(_DEBUG)
+    std::wstringstream ss;
+    ss << L"[Texture] GPU resource created: " << filename << L"\n";
+    OutputDebugStringW(ss.str().c_str());
+#endif
 }
 
 void DX12TextureManager::CreateDummyTextureResource(

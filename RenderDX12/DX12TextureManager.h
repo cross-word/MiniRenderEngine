@@ -21,6 +21,12 @@ MAIN WORK:
 class DX12TextureManager
 {
 public:
+    struct DecodedTextureData
+    {
+        TexMetadata metadata{};
+        ScratchImage image; //scratch image is heavy data
+    };
+
     DX12TextureManager();
     ~DX12TextureManager();
 
@@ -32,6 +38,17 @@ public:
         const wchar_t* filename,
         const std::string textureName,
         TextureColorSpace colorSpace);
+    static DecodedTextureData DecodeTextureFromFile(
+        const wchar_t* filename,
+        TextureColorSpace colorSpace);
+    void CreateTextureFromDecodedData(
+        ID3D12Device* device,
+        DX12CommandList* dx12CommandList,
+        const D3D12_CPU_DESCRIPTOR_HANDLE* SRGBCpuHandle,
+        const D3D12_CPU_DESCRIPTOR_HANDLE* LinearCpuHandle,
+        DecodedTextureData&& decodedData,
+        const std::wstring& filename,
+        const std::string& textureName);
     void CreateDummyTextureResource(
         ID3D12Device* device,
         DX12CommandList* dx12CommandList,
