@@ -3,6 +3,7 @@
 #include "D3DCamera.h"
 #include "../FileLoader/SimpleLoader.h"
 
+#include <future>
 DX12Device::DX12Device()
 {
 	m_fenceEvent = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
@@ -262,22 +263,74 @@ void DX12Device::PrepareInitialResource()
 	// create each texture resource sRGB/Linear.
 	m_DX12TextureManager.clear();
 	m_DX12TextureManager.reserve(m_sceneData.textures.size());
-	const UINT numTexture = SizeToU32(m_sceneData.textures.size());
-	for (UINT i = 0; i < numTexture; ++i)
+
+	std::vector<std::future<DX12TextureManager::DecodedTextureData>> decodeTasks; //async decode textures
+	decodeTasks.reserve(m_sceneData.textures.size());
+
+#if defined(_DEBUG)
+	if (!m_sceneData.textures.empty())
 	{
-		auto SRGBCpuHandle = m_DX12SRVHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + i).cpuDescHandle;
-		auto LinearCpuHandle = m_DX12SRVHeap->Offset(EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + EngineConfig::MaxTextureCount + i).cpuDescHandle;
+		std::wstringstream ss;
+		ss << L"[Texture] Launching decode tasks for " << m_sceneData.textures.size() << L" textures.\n";
+		OutputDebugStringW(ss.str().c_str());
+	}
+#endif
+
+	for (size_t i = 0; i < m_sceneData.textures.size(); ++i)
+	{
+		std::wstring texturePath = m_sceneData.textures[i];
+		TextureColorSpace colorSpace = colorSpaces[i];
+		decodeTasks.emplace_back(std::async(std::launch::async, [texturePath, colorSpace]() {
+			return DX12TextureManager::DecodeTextureFromFile(texturePath.c_str(), colorSpace);
+			})); //async decode texture, automatically allocate thread
+	}
+
+	std::vector<DX12TextureManager::DecodedTextureData> decodedTextures;
+	decodedTextures.reserve(decodeTasks.size());
+
+	for (size_t i = 0; i < decodeTasks.size(); ++i)
+	{
+		try
+		{
+			//if decoding of decodeTasks[i] does not finish, wait here
+			decodeTasks[i].wait();
+			decodedTextures.emplace_back(decodeTasks[i].get());
+		}
+		catch (const DxException& dx)
+		{
+			std::wstringstream ss;
+			ss << L"[Texture] Decode task failed for " << m_sceneData.textures[i]
+				<< L": " << dx.ToString() << L"\n";
+			OutputDebugStringW(ss.str().c_str());
+			throw;
+		}
+		catch (const std::exception& e)
+		{
+			std::wstringstream ss;
+			ss << L"[Texture] Decode task failed for " << m_sceneData.textures[i]
+				<< L": " << AnsiToWString(e.what()) << L"\n";
+			OutputDebugStringW(ss.str().c_str());
+			throw;
+		}
+	}
+
+	for (size_t i = 0; i < decodedTextures.size(); ++i)
+	{
+		auto SRGBCpuHandle = m_DX12SRVHeap->Offset(
+			EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + (UINT)i).cpuDescHandle;
+		auto LinearCpuHandle = m_DX12SRVHeap->Offset(
+			EngineConfig::ConstantBufferCount * EngineConfig::SwapChainBufferCount + EngineConfig::MaxTextureCount + (UINT)i).cpuDescHandle;
 
 		auto tmpTexture = std::make_unique<DX12TextureManager>();
 		std::string texName = "tex_" + std::to_string(i);
-		tmpTexture->LoadAndCreateTextureResource(
+		tmpTexture->CreateTextureFromDecodedData(
 			m_device.Get(),
 			m_DX12CommandList.get(),
 			&SRGBCpuHandle,
 			&LinearCpuHandle,
-			m_sceneData.textures[i].c_str(),
-			texName,
-			colorSpaces[i]);
+			std::move(decodedTextures[i]),
+			m_sceneData.textures[i],
+			texName);
 		m_DX12TextureManager.push_back(std::move(tmpTexture));
 	}
 
