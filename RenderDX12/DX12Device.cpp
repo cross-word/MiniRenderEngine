@@ -282,7 +282,7 @@ void DX12Device::PrepareInitialResource()
 		TextureColorSpace colorSpace = colorSpaces[i];
 		decodeTasks.emplace_back(std::async(std::launch::async, [texturePath, colorSpace]() {
 			return DX12TextureManager::DecodeTextureFromFile(texturePath.c_str(), colorSpace);
-			})); //async decode texture
+			})); //async decode texture, automatically allocate thread
 	}
 
 	std::vector<DX12TextureManager::DecodedTextureData> decodedTextures;
@@ -292,7 +292,9 @@ void DX12Device::PrepareInitialResource()
 	{
 		try
 		{
-			decodedTextures.emplace_back(decodeTasks[i].get()); //if decoding of decodeTasks[i] does not finish, wait here
+			//if decoding of decodeTasks[i] does not finish, wait here
+			decodeTasks[i].wait();
+			decodedTextures.emplace_back(decodeTasks[i].get());
 		}
 		catch (const DxException& dx)
 		{

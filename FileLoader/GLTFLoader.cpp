@@ -6,6 +6,7 @@
 #include "GLTFLoader.h"
 #include <filesystem>
 #include <unordered_map>
+#include <future>
 
 static const XMMATRIX FlipZ = XMMatrixScaling(1.f, 1.f, -1.f);
 
@@ -287,6 +288,7 @@ SceneData LoadGLTFScene(const std::wstring& filename)
     else                              ok = loader.LoadBinaryFromFile(&model, &err, &warn, input);
     if (!ok) return scene;
 
+    ///////////texture path
     auto base = std::filesystem::weakly_canonical(std::filesystem::absolute(path.parent_path()));
     scene.textures.reserve(model.images.size());
     for (const auto& img : model.images)
@@ -296,6 +298,7 @@ SceneData LoadGLTFScene(const std::wstring& filename)
         scene.textures.push_back(abs.wstring());
     }
 
+    ///////////material info
     scene.materials.reserve(model.materials.size());
     for (const auto& m : model.materials)
     {
@@ -330,19 +333,31 @@ SceneData LoadGLTFScene(const std::wstring& filename)
         scene.materials.push_back(mt);
     }
 
-    std::vector<std::pair<int, int>> primMap;
+    ///////////mesh primi
+    std::vector<std::future<PrimitiveMeshEx>> asyncPrimitive;
+    const int primitiveNum =
+        std::accumulate(model.meshes.begin(), model.meshes.end(), 0,
+            [](int a, const auto& m) { return a + (int)m.primitives.size(); });
+
+    asyncPrimitive.reserve(primitiveNum);
     for (size_t mi = 0; mi < model.meshes.size(); ++mi)
     {
-        const auto& mesh = model.meshes[mi];
-        for (size_t pi = 0; pi < mesh.primitives.size(); ++pi)
+        for (size_t pi = 0; pi < model.meshes[mi].primitives.size(); ++pi)
         {
-            const auto& prim = mesh.primitives[pi];
-            PrimitiveMeshEx pm{};
-            pm.mesh = BuildMeshFromPrimitive(model, prim);
-            pm.material = prim.material;
-            scene.primitives.push_back(std::move(pm));
-            primMap.emplace_back((int)mi, (int)pi);
+            asyncPrimitive.emplace_back(std::async(std::launch::async, [&, mi, pi]() {
+                const auto& mesh = model.meshes[mi];
+                const auto& prim = mesh.primitives[pi];
+                PrimitiveMeshEx tmpPM{};
+                tmpPM.mesh = BuildMeshFromPrimitive(model, prim);
+                tmpPM.material = prim.material;
+                return tmpPM;
+                }));
         }
+    }
+    scene.primitives.resize(primitiveNum);
+    for (size_t i = 0; i < primitiveNum; ++i)
+    {
+        scene.primitives[i] = asyncPrimitive[i].get();
     }
 
     // 인스턴스(노드 트리 순회)
@@ -367,6 +382,37 @@ SceneData LoadGLTFScene(const std::wstring& filename)
             for (size_t i = 0; i < model.nodes.size(); ++i)
             {
                 std::function<void(int, const XMMATRIX&)> dfs = [&](int nodeIdx, const XMMATRIX& parent)
+                    {
+                        const auto& n = model.nodes[nodeIdx];
+                        XMFLOAT4X4 lf;
+                        XMStoreFloat4x4(&lf, NodeLocal(n));
+                        XMMATRIX lw = XMLoadFloat4x4(&lf);
+                        XMMATRIX ww = XMMatrixMultiply(parent, lw);
+                        // RH→LH
+                        ww = FlipZ * ww * FlipZ;
+                        if (n.mesh >= 0)
+                        {
+                            const auto& mesh = model.meshes[n.mesh];
+                            for (size_t pi = 0; pi < mesh.primitives.size(); ++pi)
+                            {
+                                int primIdx = meshPrimOffset[n.mesh] + (int)pi;
+                                XMFLOAT4X4 W; XMStoreFloat4x4(&W, XMMatrixTranspose(ww));
+                                instRaw.emplace_back(primIdx, W);
+                            }
+                        }
+                        for (int c : n.children) dfs(c, ww);
+                    };
+                dfs((int)i, I);
+            }
+        }
+    }
+    else
+    {
+        int sceneIdx = model.defaultScene >= 0 ? model.defaultScene : 0;
+        const auto& sc = model.scenes[sceneIdx];
+        for (int root : sc.nodes)
+        {
+            std::function<void(int, const XMMATRIX&)> dfs = [&](int nodeIdx, const XMMATRIX& parent)
                 {
                     const auto& n = model.nodes[nodeIdx];
                     XMFLOAT4X4 lf;
@@ -387,37 +433,6 @@ SceneData LoadGLTFScene(const std::wstring& filename)
                     }
                     for (int c : n.children) dfs(c, ww);
                 };
-                dfs((int)i, I);
-            }
-        }
-    }
-    else
-    {
-        int sceneIdx = model.defaultScene >= 0 ? model.defaultScene : 0;
-        const auto& sc = model.scenes[sceneIdx];
-        for (int root : sc.nodes)
-        {
-            std::function<void(int, const XMMATRIX&)> dfs = [&](int nodeIdx, const XMMATRIX& parent)
-            {
-                const auto& n = model.nodes[nodeIdx];
-                XMFLOAT4X4 lf;
-                XMStoreFloat4x4(&lf, NodeLocal(n));
-                XMMATRIX lw = XMLoadFloat4x4(&lf);
-                XMMATRIX ww = XMMatrixMultiply(parent, lw);
-                // RH→LH
-                ww = FlipZ * ww * FlipZ;
-                if (n.mesh >= 0)
-                {
-                    const auto& mesh = model.meshes[n.mesh];
-                    for (size_t pi = 0; pi < mesh.primitives.size(); ++pi)
-                    {
-                        int primIdx = meshPrimOffset[n.mesh] + (int)pi;
-                        XMFLOAT4X4 W; XMStoreFloat4x4(&W, XMMatrixTranspose(ww));
-                        instRaw.emplace_back(primIdx, W);
-                    }
-                }
-                for (int c : n.children) dfs(c, ww);
-            };
             dfs(root, I);
         }
     }
